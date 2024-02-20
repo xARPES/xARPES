@@ -1,0 +1,3 @@
+igor2
+jupyterlab
+jupytext
