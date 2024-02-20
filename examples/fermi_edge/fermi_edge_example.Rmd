@@ -16,6 +16,11 @@ jupyter:
 ### In this example, we fit the Fermi edge of the Si-intercalated graphene data set, demonstrating at which kinetic energy to set the chemical potential when it has not been determined from an external reference (such as gold).
 
 ```{python}
+# %load_ext autoreload
+# %autoreload 2
+```
+
+```{python}
 import numpy as np
 from igor2 import binarywave
 
