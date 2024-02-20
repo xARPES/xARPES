@@ -17,10 +17,6 @@ jupyter:
 
 ```{python}
 import numpy as np
-import sys
-
-sys.path.append("../../")
-
 from igor2 import binarywave
 
 from exubi import band_map
