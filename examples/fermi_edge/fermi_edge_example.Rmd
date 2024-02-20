@@ -19,11 +19,11 @@ jupyter:
 import numpy as np
 import sys
 
-sys.path.append("../../exubi")
-
+sys.path.append("../../")
 
 from igor2 import binarywave
-import band_map
+
+from exubi import band_map
 ```
 
 ```{python}
