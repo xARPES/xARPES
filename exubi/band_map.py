@@ -1,4 +1,4 @@
-class band_map(object):
+class band_map():
     """Raw data from the ARPES experiment
 
     Parameters

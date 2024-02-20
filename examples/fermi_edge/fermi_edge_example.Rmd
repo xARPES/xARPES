@@ -50,3 +50,7 @@ ekin = np.linspace(fmin, fmin+(fnum-1)*fstp, fnum)
 ```{python}
 bmap = band_map.band_map(intensities=intn, angles=angl, ekin=ekin)
 ```
+
+```{python}
+
+```
