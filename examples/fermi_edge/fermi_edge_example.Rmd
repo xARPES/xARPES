@@ -18,13 +18,13 @@ jupyter:
 ```{python}
 # %load_ext autoreload
 # %autoreload 2
-```
-
-```{python}
 import numpy as np
 from igor2 import binarywave
-
 from exubi import band_map
+from exubi.plotting import my_settings
+from exubi.distributions import *
+
+my_settings()
 ```
 
 ```{python}
@@ -32,7 +32,6 @@ dfld = "data_sets"          # Folder containing the data
 flnm = "graphene_raw_101"   # Name of the file
 extn = ".ibw"               # Extension of the file
 tmpr = 80                   # Data temperature [K]
-
 
 data = binarywave.load(dfld + "/" + flnm + extn)
 
@@ -48,7 +47,24 @@ ekin = np.linspace(fmin, fmin+(fnum-1)*fstp, fnum)
 ```
 
 ```{python}
-bmap = band_map.band_map(intensities=intn, angles=angl, ekin=ekin)
+bmap = band_map.band_map(intensities=intn, angles=angl, ekin=ekin, energy_resolution=0.01, temperature=80)
+```
+
+```{python}
+fdir = fermi_dirac(mu=31.7, temperature=20, background=100, integrated_weight=1000, \
+        energy_resolution=0.03, name="test_distribution")
+
+plt.plot(ekin, fdir.convolve(ekin))
+plt.show()
+```
+
+```{python}
+fig = plt.figure(figsize=(6, 5))
+ax = fig.gca()
+
+fig = bmap.fit_fermi_edge(mu=32, temperature=80, energy_resolution=0.01,
+                          angle_min=-10, angle_max=5, ekin_min=31.9, ekin_max = 32.1, \
+                    background=1e5, integrated_weight=1.0e6, ax=ax, title="Fermi edge fit")
 ```
 
 ```{python}
