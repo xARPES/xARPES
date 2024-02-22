@@ -2,3 +2,5 @@ igor2
 jupyterlab
 jupytext
 numpy
+matplotlib
+scipy
