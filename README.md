@@ -7,10 +7,6 @@ Instructions provided here are for Linux Ubuntu V22 or later.
 
 ### pip
 
-(Optional) Install venv
-
-	sudo apt install python3.10-venv 
-
 The user is assumed to be in a pristine virtual environment, created using:
 
 	python3 -m venv <my_venv>
