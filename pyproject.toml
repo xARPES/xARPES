@@ -10,7 +10,7 @@ description = "Eliashberg eXtraction Using Bayesian Inference"
 readme = "README.md"
 urls = {Homepage = "https://github.com/TeetotalingTom/exubi"}
 classifiers = [
-    "Programming Language :: Python3",
+    "Programming Language :: Python :: 3",
 ]
 
 [tool.setuptools]
