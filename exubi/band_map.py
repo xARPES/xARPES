@@ -92,7 +92,7 @@ class band_map():
 
         self.mu = popt[0]
 
-        ax.set_xlabel("$E_{\mathrm{kin}}$ (-)")
+        ax.set_xlabel(r"$E_{\mathrm{kin}}$ (-)")
         ax.set_ylabel("Counts (-)")
         ax.set_xlim([ekin_min, ekin_max])
         
