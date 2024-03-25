@@ -18,7 +18,7 @@ jupyter:
 ```{python}
 # %load_ext autoreload
 # %autoreload 2
-    
+
 import exubi
 import numpy as np
 import matplotlib.pyplot as plt
@@ -70,8 +70,4 @@ fig = bmap.fit_fermi_edge(mu_guess=32, background_guess=1e5, integrated_weight_g
                           ax=ax, savefig="edge_fit.png", show=True, title="Fermi edge fit")
 
 print("The optimised μ=" + f"{bmap.mu:.3f}" + " eV.")
-```
-
-```{python}
-bmap.plot
 ```
