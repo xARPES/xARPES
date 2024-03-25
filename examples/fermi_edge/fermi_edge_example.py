@@ -1,4 +1,8 @@
-import pathlib
+#!/usr/bin/env python3
+
+# Fermi edge fitting example
+### In this example, we fit the Fermi edge of the Si-intercalated graphene data set, demonstrating at which kinetic energy to set the chemical potential when it has not been determined from an external reference (such as gold).
+
 
 import exubi
 import numpy as np
@@ -7,16 +11,12 @@ from igor2 import binarywave
 
 exubi.my_plot_settings("default")
 
-script_dir = pathlib.Path(__file__).parent.resolve()
-
 dfld = "data_sets"          # Folder containing the data
 flnm = "graphene_raw_101"   # Name of the file
 extn = ".ibw"               # Extension of the file
 tmpr = 80                   # Data temperature [K]
 
-data_file_path = script_dir / dfld / (flnm + extn)
-
-data = binarywave.load(str(data_file_path))
+data = binarywave.load(dfld + "/" + flnm + extn)
 
 intn = data["wave"]["wData"]
 
@@ -28,7 +28,6 @@ fmin, amin = data["wave"]["wave_header"]["sfB"][0:2]
 angl = np.linspace(amin, amin+(anum-1)*astp, anum)
 ekin = np.linspace(fmin, fmin+(fnum-1)*fstp, fnum)
 
-
 fdir = exubi.fermi_dirac(mu=31.7, temperature=20, background=100, integrated_weight=1000, \
         name="test_distribution")
 
@@ -38,7 +37,6 @@ ax = fig.gca()
 ax.plot(ekin, fdir.convolve(ekin, energy_resolution=0.05))
 plt.savefig("fermi_dirac.png")
 plt.close()
-
 
 fig = plt.figure(figsize=(6, 5))
 ax = fig.gca()

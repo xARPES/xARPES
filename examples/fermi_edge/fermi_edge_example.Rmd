@@ -55,7 +55,7 @@ ax = fig.gca()
 
 ax.plot(ekin, fdir.convolve(ekin, energy_resolution=0.05))
 plt.savefig("fermi_dirac.png")
-plt.show()
+plt.show() # Jupyter only
 plt.close()
 ```
 
