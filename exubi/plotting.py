@@ -4,7 +4,7 @@ from functools import wraps
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
-def my_settings(name="default"):
+def my_plot_settings(name="default"):
     
     # ml = 18 # Font size for captions
     mpl.rc("xtick", labelsize=10, direction="in")

@@ -1,6 +1,8 @@
+# Explanation of the files
+
 import numpy as np
-from exubi.plotting import get_ax_fig_plt, add_fig_kwargs
-from exubi.distributions import fermi_dirac
+from .plotting import get_ax_fig_plt, add_fig_kwargs
+from .distributions import fermi_dirac
 
 
 class band_map():

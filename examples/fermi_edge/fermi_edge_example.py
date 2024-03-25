@@ -1,12 +1,11 @@
 import pathlib
+
+import exubi
 import numpy as np
 import matplotlib.pyplot as plt
-from exubi import binarywave
-from exubi import band_map
-from exubi.plotting import my_settings
-from exubi.distributions import fermi_dirac
+from igor2 import binarywave
 
-my_settings("default")
+exubi.my_plot_settings("default")
 
 script_dir = pathlib.Path(__file__).parent.resolve()
 
@@ -19,8 +18,6 @@ data_file_path = script_dir / dfld / (flnm + extn)
 
 data = binarywave.load(str(data_file_path))
 
-# data = binarywave.load(dfld + "/" + flnm + extn)
-
 intn = data["wave"]["wData"]
 
 fnum, anum = data["wave"]["wave_header"]["nDim"][0:2]
@@ -32,7 +29,7 @@ angl = np.linspace(amin, amin+(anum-1)*astp, anum)
 ekin = np.linspace(fmin, fmin+(fnum-1)*fstp, fnum)
 
 
-fdir = fermi_dirac(mu=31.7, temperature=20, background=100, integrated_weight=1000, \
+fdir = exubi.fermi_dirac(mu=31.7, temperature=20, background=100, integrated_weight=1000, \
         name="test_distribution")
 
 fig = plt.figure(figsize=(6, 5))
@@ -46,11 +43,10 @@ plt.close()
 fig = plt.figure(figsize=(6, 5))
 ax = fig.gca()
 
-bmap = band_map.band_map(intensities=intn, angles=angl, ekin=ekin, energy_resolution=0.01, temperature=80)
+bmap = exubi.band_map(intensities=intn, angles=angl, ekin=ekin, energy_resolution=0.01, temperature=80)
 
 fig = bmap.fit_fermi_edge(mu_guess=32, background_guess=1e5, integrated_weight_guess=1.5e6, \
                           angle_min=-10, angle_max=10, ekin_min=31.9, ekin_max = 32.1, \
                           ax=ax, savefig="edge_fit.png", show=True, title="Fermi edge fit")
-
 
 print("The optimised μ=" + f"{bmap.mu:.3f}" + " eV.")

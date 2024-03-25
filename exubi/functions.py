@@ -1,7 +1,7 @@
 # File containing basic functionalities used by other routines.
 
-from scipy.optimize import leastsq
 import numpy as np
+from scipy.optimize import leastsq
 
 def error_function(p, x, y, function, extra_args):
     """
