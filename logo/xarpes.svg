@@ -17,8 +17,7 @@
     </defs>
     <use xlink:href='#xarpes' fill='#004e9c' transform='translate(0.5) skewX(-9)'/>
     <use xlink:href='#xarpes' fill='#5db3e6' transform='skewX(-9)'/>
-    <use xlink:href='#feynman' stroke='#76ad1c' stroke-width='0.35' transform='skewX(-9)'/>
-    <use xlink:href='#feynman' stroke='#afca0b' stroke-width='0.175' transform='skewX(-9)'/>
+    <use xlink:href='#feynman' stroke='#00214e' stroke-width='0.2' transform='skewX(-9)'/>
 </svg>
 <!--
     We choose a slope of 4/3 for the letter x since cos(arcsin(0.8)) = 0.6 (and vice versa) is rational.
