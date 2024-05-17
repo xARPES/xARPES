@@ -1,0 +1,22 @@
+<?xml version='1.0'?>
+<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='496' height='132' viewBox='-1.0 -0.3 24.8 6.6'>
+    <defs>
+        <g id='xarpes'>
+            <path d='M0.25,2 l3,4 h1.25 l-3,-4 z'/>
+            <path d='M0.25,6 h1.25 l3.6,-4.8 a0.5,0.5,0,0,1,0.9,0.3 v0.5 h-1.25 l-0.75,1 h2 v2 h1 v-3.5 a1.5,1.5,0,0,0,-2.7,-0.9 z'/>
+            <path d='M8,5 h1 v-5 h-1 z m0,-2 h1.5 a1.5,1.5,0,0,0,0,-3 h-1.5 v1 h1.5 a0.5,0.5,0,0,1,0,1 h-1.5 z h1.5 a0.5,0.5,0,0,1,0.5,0.5 v1.5 h1 v-1.5 a1.5,1.5,0,0,0,-1.5,-1.5 h-1.5 z'/>
+            <path d='M12,5 h1 v-5 h-1 z m0,-2 h1.5 a1.5,1.5,0,0,0,0,-3 h-1.5 v1 h1.5 a0.5,0.5,0,0,1,0,1 h-1.5 z'/>
+            <path d='M16,5 h3 v-1 h-2 v-1 h2 l-0.75,-1 h-1.25 v-1 h2 v-1 h-3 z'/>
+            <path d='M20,5 h1.5 a1.5,1.5,0,0,0,0,-3 a0.5,0.5,0,0,1,0,-1 h1.5 v-1 h-1.5 a1.5,1.5,0,0,0,0,3 a0.5,0.5,0,0,1,0,1 h-1.5 z'/>
+        </g>
+        <g id='feynman' stroke-linecap='round' stroke-linejoin='round' fill='none'>
+            <path d='M3.865,2 l0.05,0.35 l-0.4,-0.3 z'/>
+            <path d='M2.375,4 l2.325,-3.1 a1,1,0,0,1,1.8,0.6 v1'/>
+            <path transform='translate(1.625, 3) rotate(53.13010235415597)' d='M-1,0 q0.1,0.5,0.2,0 q0.1,-0.5,0.2,0 q0.1,0.5,0.2,0 q0.1,-0.5,0.2,0 q0.1,0.5,0.2,0 q0.1,-0.5,0.2,0 q0.1,0.5,0.2,0 q0.1,-0.5,0.2,0 q0.1,0.5,0.2,0 q0.1,-0.5,0.2,0'/>
+        </g>
+    </defs>
+    <use xlink:href='#xarpes' fill='DarkBlue' transform='translate(0.5) skewX(-9)'/>
+    <use xlink:href='#xarpes' fill='CornflowerBlue' transform='skewX(-9)'/>
+    <use xlink:href='#feynman' stroke='DarkGoldenRod' stroke-width='0.35' transform='skewX(-9)'/>
+    <use xlink:href='#feynman' stroke='Gold' stroke-width='0.175' transform='skewX(-9)'/>
+</svg>
