@@ -12,7 +12,7 @@
         <g id='feynman' stroke-linecap='round' stroke-linejoin='round' fill='none'>
             <path d='M2.125,3 l1.575,-2.1 a1,1,0,0,1,1.8,0.6 v1'/>
             <path d='M3.615,1 l0.05,0.35 l-0.4,-0.3 z'/>
-            <path transform='translate(1.375, 2) rotate(53.13)' d='M-1,0 q0.1,0.5,0.2,0 q0.1,-0.5,0.2,0 q0.1,0.5,0.2,0 q0.1,-0.5,0.2,0 q0.1,0.5,0.2,0 q0.1,-0.5,0.2,0 q0.1,0.5,0.2,0 q0.1,-0.5,0.2,0 q0.1,0.5,0.2,0 q0.1,-0.5,0.2,0'/>
+            <path transform='translate(1.375, 2) rotate(53.13)' d='M-0.9,0 q0.15,0.3,0.3,0 q0.15,-0.3,0.3,0 q0.15,0.3,0.3,0 q0.15,-0.3,0.3,0 q0.15,0.3,0.3,0 q0.15,-0.3,0.3,0'/>
         </g>
     </defs>
     <use xlink:href='#xarpes' fill='DarkBlue' transform='translate(0.5) skewX(-9)'/>
