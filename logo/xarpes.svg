@@ -15,8 +15,8 @@
             <path transform='translate(1.375, 2) rotate(53.13)' d='M-0.9,0 q0.15,0.3,0.3,0 q0.15,-0.3,0.3,0 q0.15,0.3,0.3,0 q0.15,-0.3,0.3,0 q0.15,0.3,0.3,0 q0.15,-0.3,0.3,0'/>
         </g>
     </defs>
-    <use xlink:href='#xarpes' fill='DarkBlue' transform='translate(0.5) skewX(-9)'/>
-    <use xlink:href='#xarpes' fill='CornflowerBlue' transform='skewX(-9)'/>
-    <use xlink:href='#feynman' stroke='DarkGoldenRod' stroke-width='0.35' transform='skewX(-9)'/>
-    <use xlink:href='#feynman' stroke='Gold' stroke-width='0.175' transform='skewX(-9)'/>
+    <use xlink:href='#xarpes' fill='#004e9c' transform='translate(0.5) skewX(-9)'/>
+    <use xlink:href='#xarpes' fill='#5db3e6' transform='skewX(-9)'/>
+    <use xlink:href='#feynman' stroke='#76ad1c' stroke-width='0.35' transform='skewX(-9)'/>
+    <use xlink:href='#feynman' stroke='#afca0b' stroke-width='0.175' transform='skewX(-9)'/>
 </svg>
