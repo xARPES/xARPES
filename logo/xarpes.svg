@@ -20,3 +20,7 @@
     <use xlink:href='#feynman' stroke='#76ad1c' stroke-width='0.35' transform='skewX(-9)'/>
     <use xlink:href='#feynman' stroke='#afca0b' stroke-width='0.175' transform='skewX(-9)'/>
 </svg>
+<!--
+    We choose a slope of 4/3 for the letter x since cos(arcsin(0.8)) = 0.6 (and vice versa) is rational.
+    The bottom-left x coordinate is shifted by -0.8 because of the skew: 5 tan(-9 degrees) = -0.7919222.
+-->
