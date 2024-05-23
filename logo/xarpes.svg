@@ -10,14 +10,16 @@
             <path d='M19,5 h1.5 a1.5,1.5,0,0,0,0,-3 a0.5,0.5,0,0,1,0,-1 h1.5 v-1 h-1.5 a1.5,1.5,0,0,0,0,3 a0.5,0.5,0,0,1,0,1 h-1.5 z'/>
         </g>
     </defs>
-    <path d='M4.5,0 h0.5' stroke='#5db3e6' stroke-width='0.1' transform='skewX(-9)'/>
-    <use xlink:href='#xarpes' fill='#5db3e6' stroke='#5db3e6' stroke-width='0.1' transform='translate(0.5) skewX(-9)'/>
-    <use xlink:href='#xarpes' fill='#5db3e6' stroke='#5db3e6' stroke-width='0.1' transform='skewX(-9)'/>
-    <use xlink:href='#xarpes' fill='#00214e' transform='skewX(-9)'/>
-    <g stroke='#fece43' stroke-width='0.2' stroke-linejoin='round' stroke-linecap='round' transform='skewX(-9)'>
-        <path d='M2.125,3 l1.575,-2.1 a1,1,0,0,1,1.8,0.6 v1' fill='none'/>
-        <path d='M3.615,1 v0.5 l-0.48,-0.36 z' fill='#fece43'/>
-        <path transform='translate(1.375, 2) rotate(53.13)' d='M-0.9,0 q0.15,0.3,0.3,0 q0.15,-0.3,0.3,0 q0.15,0.3,0.3,0 q0.15,-0.3,0.3,0 q0.15,0.3,0.3,0 q0.15,-0.3,0.3,0' fill='none'/>
+    <g transform='skewX(-9)'>
+        <path d='M4.5,0 h0.5' stroke='#5db3e6' stroke-width='0.1'/>
+        <use xlink:href='#xarpes' fill='#5db3e6' stroke='#5db3e6' stroke-width='0.1' transform='translate(0.5)'/>
+        <use xlink:href='#xarpes' fill='#5db3e6' stroke='#5db3e6' stroke-width='0.1'/>
+        <use xlink:href='#xarpes' fill='#00214e'/>
+        <g stroke='#fece43' stroke-width='0.2' stroke-linejoin='round' stroke-linecap='round'>
+            <path d='M2.125,3 l1.575,-2.1 a1,1,0,0,1,1.8,0.6 v1' fill='none'/>
+            <path d='M3.615,1 v0.5 l-0.48,-0.36 z' fill='#fece43'/>
+            <path transform='translate(1.375, 2) rotate(53.13)' d='M-0.9,0 q0.15,0.3,0.3,0 q0.15,-0.3,0.3,0 q0.15,0.3,0.3,0 q0.15,-0.3,0.3,0 q0.15,0.3,0.3,0 q0.15,-0.3,0.3,0' fill='none'/>
+        </g>
     </g>
 </svg>
 <!--
