@@ -10,6 +10,7 @@
             <path d='M19,5 h1.5 a1.5,1.5,0,0,0,0,-3 a0.5,0.5,0,0,1,0,-1 h1.5 v-1 h-1.5 a1.5,1.5,0,0,0,0,3 a0.5,0.5,0,0,1,0,1 h-1.5 z'/>
         </g>
     </defs>
+    <path d='M4.5,0 h0.5' stroke='#5db3e6' stroke-width='0.1' transform='skewX(-9)'/>
     <use xlink:href='#xarpes' fill='#5db3e6' stroke='#5db3e6' stroke-width='0.1' transform='translate(0.5) skewX(-9)'/>
     <use xlink:href='#xarpes' fill='#5db3e6' stroke='#5db3e6' stroke-width='0.1' transform='skewX(-9)'/>
     <use xlink:href='#xarpes' fill='#00214e' transform='skewX(-9)'/>
