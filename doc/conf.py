@@ -8,7 +8,7 @@ copyright = '2024 xARPES Developers'
 html_logo = '../logo/xarpes_small.svg'
 html_theme_options = {'logo_only': True}
 
-extensions = ['sphinx.ext.autodoc', 'numpydoc', 'm2r2']
+extensions = ['sphinx.ext.autodoc', 'numpydoc', 'myst-parser']
 
 exclude_patterns = ['README.md']
 
