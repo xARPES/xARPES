@@ -52,7 +52,7 @@ def add_fig_kwargs(func):
 
     The function should return either a matplotlib figure or None to signal
     some sort of error/unexpected event.
-    See doc string below for the list of supported options.
+    See notes below for the list of supported options.
     """
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -111,7 +111,10 @@ def add_fig_kwargs(func):
         return fig
 
     # Add docstring to the decorated method.
-    s = """\n\n
+    s = """
+
+    Notes
+    =====
     Keyword arguments controlling the display of the figure:
 
         ================  ====================================================
