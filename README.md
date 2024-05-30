@@ -1,4 +1,4 @@
-![xARPES](logo/xarpes.svg)
+![xARPES](https://xarpes.github.io/_images/xarpes.svg)
 
 Repository for the code xARPES - extraction from angle resolved photoemission spectra.
 
