@@ -20,5 +20,3 @@ rst_epilog = '''
 '''
 
 html_theme = 'sphinx_rtd_theme'
-
-numpydoc_show_class_members = False
