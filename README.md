@@ -2,11 +2,11 @@
 
 Repository for the code xARPES - extraction from angle resolved photoemission spectra.
 
-## Installation
+# Installation
 
 Instructions provided here are for Linux Ubuntu v22 or later.
 
-### pip
+## pip
 
 It is highly recommended to set up a pristine virtual environment. First, ``python3-venv`` might have to be installed:
 
@@ -70,7 +70,7 @@ Finally, the following steps are executed for the installation &ndash; the ``xAR
 
 Answer ``y`` to questions.
 
-## Execution
+# Execution
 
 It is recommended to use JupyterLab to analyse data. JupyterLab is launched using:
 

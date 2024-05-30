@@ -1,23 +1,27 @@
-# Explanation of the files
+# Copyright (C) 2024 xARPES Developers
+# This program is free software under the terms of the GNU GPLv2 license.
+
+"""The band map class and allowed operations on it."""
 
 import numpy as np
 from .plotting import get_ax_fig_plt, add_fig_kwargs
 from .distributions import fermi_dirac
 
-
 class band_map():
-    """Raw data from the ARPES experiment.
+    r"""Class for the band map from the ARPES experiment.
 
     Parameters
     ----------
-    intensities: ndarray
-        Intensities of the band map.
-    angles: ndarray
-        Theta angle values.
-    ekin: ndarray
-        Kinetic energies detected during experiment.
-    temperature: float
-        Temperature of the band map in Kelvin.
+    intensities : ndarray
+        2D array of counts for given (E,k) or (E,angle) pairs.
+    angles : ndarray
+        1D array of angular values for the abscissa.
+    ekin : ndarray
+        1D array of kinetic energy values for the ordinate.
+    energy_resolution : float
+        Energy resolution of the detector [eV]
+    temperature : float
+        Temperature of the sample [K]
     """
     def __init__(self, intensities, angles, ekin, energy_resolution=None,
                  temperature=None, hnuminphi=None):
@@ -28,10 +32,11 @@ class band_map():
         self.energy_resolution = energy_resolution
         self.temperature = temperature
         self.hnuminphi = hnuminphi
-
+        print(type(self.energy_resolution))
+    
     @property
     def hnuminphi(self):
-        """
+        r"""
         Returns the chemical potential corresponding to a particular kinetic
         energy.
         """
@@ -39,14 +44,14 @@ class band_map():
 
     @hnuminphi.setter
     def hnuminphi(self, hnuminphi):
-        """
+        r"""
         Sets the chemical potential corresponding to a particular kinetic
         energy.
         """
         self._hnuminphi = hnuminphi
 
     def shift_angles(self, shift):
-        """
+        r"""
         Shifts the angles by the specified amount. Used to align with respect to
         experimentally observed angles.
         """
@@ -57,7 +62,7 @@ class band_map():
                        integrated_weight_guess=1, angle_min=-np.infty,
                        angle_max=np.infty, ekin_min=-np.infty,
                        ekin_max=np.infty, ax=None, **kwargs):
-        """
+        r"""
         Plots the band map.
 
         Returns

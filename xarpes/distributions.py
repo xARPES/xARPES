@@ -1,10 +1,10 @@
-# To do: Convert the Fermi-Dirac distribution to a proper distribution
-# Convolve will be a method for the distributions, whether it be an energy or
-# momentum convolution.
+# Copyright (C) 2024 xARPES Developers
+# This program is free software under the terms of the GNU GPLv2 license.
 
+"""The distributions used throughout the code."""
 
 class distribution:
-    """
+    r"""
     TBD
     """
     def __init__(self, name):
@@ -15,7 +15,7 @@ class distribution:
 
 
 class unique_distribution(distribution):
-    """
+    r"""
     TBD
     """
     def __init__(self, name):
@@ -27,7 +27,7 @@ class unique_distribution(distribution):
 
 
 class fermi_dirac(unique_distribution):
-    """
+    r"""
     Returns the Fermi-Dirac distribution.
 
     Parameters
@@ -52,7 +52,7 @@ class fermi_dirac(unique_distribution):
 
     def __call__(self, energy_range, hnuminphi, background, integrated_weight,
                  energy_resolution):
-        """
+        r"""
         TBD
         """
         from scipy.ndimage import gaussian_filter
@@ -73,7 +73,7 @@ class fermi_dirac(unique_distribution):
         return gaussian_filter(result, sigma=estep)[enumb:-enumb]
 
     def evaluate(self, energy_range):
-        """
+        r"""
         Evaluates the Fermi-Dirac distribution on a certain energy range.
         """
         import numpy as np
@@ -84,7 +84,7 @@ class fermi_dirac(unique_distribution):
             + self.background)
 
     def convolve(self, energy_range, energy_resolution):
-        """
+        r"""
         TBD
         """
         import numpy as np
@@ -102,7 +102,7 @@ class fermi_dirac(unique_distribution):
 
 
 class constant(unique_distribution):
-    """
+    r"""
     TBD
     """
     def __init__(self, offset):
@@ -117,7 +117,7 @@ class constant(unique_distribution):
 
 
 class linear(unique_distribution):
-    """
+    r"""
     TBD
     """
     def __init__(self, slope, offset):
