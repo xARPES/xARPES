@@ -66,7 +66,7 @@ class band_map():
         Plots the band map.
 
         Returns
-        ----------
+        -------
         Matplotlib-Figure
         """
         from xarpes.functions import fit_leastsq
