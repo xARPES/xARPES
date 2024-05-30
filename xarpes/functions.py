@@ -8,14 +8,13 @@ from scipy.optimize import leastsq
 
 
 def error_function(p, x, y, function, extra_args):
-    r"""The error function used inside the fit_least() function.
+    r"""The error function used inside the fit_leastsq function.
     """
     return function(x, *p, extra_args) - y
 
 
 def fit_leastsq(p0, xdata, ydata, function, extra_args):
-    r"""
-    Wrapper arround scipy.optimize.leastsq.
+    r"""Wrapper arround scipy.optimize.leastsq.
     """
     pfit, pcov, infodict, errmsg, success = leastsq(
         error_function, p0, args=(xdata, ydata, function, extra_args),

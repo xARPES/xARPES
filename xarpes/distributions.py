@@ -4,9 +4,6 @@
 """The distributions used throughout the code."""
 
 class distribution:
-    r"""
-    TBD
-    """
     def __init__(self, name):
         self.name = name
 
@@ -15,9 +12,6 @@ class distribution:
 
 
 class unique_distribution(distribution):
-    r"""
-    TBD
-    """
     def __init__(self, name):
         super().__init__(name)
         self._label = name
@@ -27,19 +21,6 @@ class unique_distribution(distribution):
 
 
 class fermi_dirac(unique_distribution):
-    r"""
-    Returns the Fermi-Dirac distribution.
-
-    Parameters
-    ----------
-    background
-
-    integrated_weight
-
-    Methods
-    ----------
-
-    """
     def __init__(self, temperature, hnuminphi, background=0,
                  integrated_weight=1, name='fermi_dirac'):
 
@@ -52,9 +33,6 @@ class fermi_dirac(unique_distribution):
 
     def __call__(self, energy_range, hnuminphi, background, integrated_weight,
                  energy_resolution):
-        r"""
-        TBD
-        """
         from scipy.ndimage import gaussian_filter
         import numpy as np
         sigma_extend = 5 # Extend data range by "5 sigma"
@@ -73,9 +51,6 @@ class fermi_dirac(unique_distribution):
         return gaussian_filter(result, sigma=estep)[enumb:-enumb]
 
     def evaluate(self, energy_range):
-        r"""
-        Evaluates the Fermi-Dirac distribution on a certain energy range.
-        """
         import numpy as np
         k_B = 8.617e-5 # Boltzmann constant [eV/K]
         k_BT = self.temperature * k_B
@@ -84,9 +59,6 @@ class fermi_dirac(unique_distribution):
             + self.background)
 
     def convolve(self, energy_range, energy_resolution):
-        r"""
-        TBD
-        """
         import numpy as np
         from scipy.ndimage import gaussian_filter
         sigma_extend = 5 # Extend data range by "5 sigma"
@@ -102,9 +74,6 @@ class fermi_dirac(unique_distribution):
 
 
 class constant(unique_distribution):
-    r"""
-    TBD
-    """
     def __init__(self, offset):
         super().__init__(name='constant')
         self._offset = offset
@@ -117,9 +86,6 @@ class constant(unique_distribution):
 
 
 class linear(unique_distribution):
-    r"""
-    TBD
-    """
     def __init__(self, slope, offset):
         super().__init__(name='linear')
         self._offset = offset

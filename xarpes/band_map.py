@@ -1,6 +1,14 @@
 # Copyright (C) 2024 xARPES Developers
 # This program is free software under the terms of the GNU GPLv2 license.
 
+# get_ax_fig_plt and add_fig_kwargs originate from pymatgen/util/plotting.py.
+# Copyright (C) 2011-2024 Shyue Ping Ong and the pymatgen Development Team
+# Pymatgen is released under the MIT License.
+
+# See also abipy/tools/plotting.py.
+# Copyright (C) 2021 Matteo Giantomassi and the AbiPy Group
+# AbiPy is free software under the terms of the GNU GPLv2 license.
+
 """The band map class and allowed operations on it."""
 
 import numpy as np
@@ -13,15 +21,17 @@ class band_map():
     Parameters
     ----------
     intensities : ndarray
-        2D array of counts for given (E,k) or (E,angle) pairs.
+        2D array of counts for given (E,k) or (E,angle) pairs [counts]
     angles : ndarray
-        1D array of angular values for the abscissa.
+        1D array of angular values for the abscissa [degrees]
     ekin : ndarray
-        1D array of kinetic energy values for the ordinate.
+        1D array of kinetic energy values for the ordinate. [eV]
     energy_resolution : float
         Energy resolution of the detector [eV]
     temperature : float
         Temperature of the sample [K]
+    hnuminphi : float
+        Kinetic energy minus the work function [eV]
     """
     def __init__(self, intensities, angles, ekin, energy_resolution=None,
                  temperature=None, hnuminphi=None):
@@ -32,43 +42,76 @@ class band_map():
         self.energy_resolution = energy_resolution
         self.temperature = temperature
         self.hnuminphi = hnuminphi
-        print(type(self.energy_resolution))
     
     @property
     def hnuminphi(self):
-        r"""
-        Returns the chemical potential corresponding to a particular kinetic
-        energy.
+        r"""Returns the the photon energy minus the work function in eV.
+
+        Returns
+        -------
+        hnuminphi : float
+            Kinetic energy minus the work function [eV]
         """
         return self._hnuminphi
 
     @hnuminphi.setter
     def hnuminphi(self, hnuminphi):
-        r"""
-        Sets the chemical potential corresponding to a particular kinetic
-        energy.
+        r"""Manually sets the photon energy minus the work function in eV.
+
+        Parameters
+        ----------
+        hnuminphi : float
+            Kinetic energy minus the work function [eV]
         """
         self._hnuminphi = hnuminphi
 
     def shift_angles(self, shift):
         r"""
-        Shifts the angles by the specified amount. Used to align with respect to
-        experimentally observed angles.
+        Shifts the angles by the specified amount in degrees. Used to shift
+        from the detector angle to the material angle.
+
+        Parameters
+        ----------
+        shift : float
+            Angular shift [degrees]
         """
         self.angles = self.angles + shift
 
     @add_fig_kwargs
-    def fit_fermi_edge(self, hnuminphi_guess, background_guess=0,
-                       integrated_weight_guess=1, angle_min=-np.infty,
+    def fit_fermi_edge(self, hnuminphi_guess, background_guess=0.0,
+                       integrated_weight_guess=1.0, angle_min=-np.infty,
                        angle_max=np.infty, ekin_min=-np.infty,
                        ekin_max=np.infty, ax=None, **kwargs):
         r"""
-        Plots the band map.
+        Fits the fermi edge of the band map and plots the result.
 
+        Parameters
+        ----------
+        hnuminphi_guess : float
+            Initial guess for kinetic energy minus the work function [eV]
+        background_guess : float
+            Initial guess for background intensity [counts]
+        integrated_weight_guess : float
+            Initial guess for integrated spectral intensity [counts]
+        angle_min : float
+            Minimum angle of integration interval [degrees]
+        angle_max : float
+            Maximum angle of integration interval [degrees]
+        ekin_min : float
+            Minimum kinetic energy of integration interval [eV]
+        ekin_max : float
+            Maximum kinetic energy of integration interval [eV]
+        ax : Matplotlib-Axes / NoneType
+            Axis for plotting the Fermi edge on. Created if not provided by
+            the user.
+        **kwargs : dict, optional
+            Additional arguments passed on to add_fig_kwargs. See the keyword
+            table below.
+            
         Returns
         -------
         Matplotlib-Figure
-        """
+        """        
         from xarpes.functions import fit_leastsq
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
@@ -84,7 +127,7 @@ class band_map():
         integrated_intensity = np.trapz(
             self.intensities[min_ekin_index:max_ekin_index,
                 min_angle_index:max_angle_index], axis=1)
-
+        
         fdir_initial = fermi_dirac(temperature=self.temperature,
                                    hnuminphi=hnuminphi_guess,
                                    background=background_guess,

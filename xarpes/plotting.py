@@ -1,8 +1,8 @@
 # Copyright (C) 2024 xARPES Developers
 # This program is free software under the terms of the GNU GPLv2 license.
 
-# Some routines in this file are from abipy/tools.plotting.py.
-# Copyright (C) 2017-2024 the Abipy Developers.
+# Some routines in this file are from pymatgen/util/plotting.py.
+# Copyright (C) 2012-2024 pymatgen Development Team, including M.G. and S.P.O.
 
 """Functions related to plotting."""
 
@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 def my_plot_settings(name='default'):
-    r"""TBD
+    r"""
     """
     # ml = 18 # Font size for captions
     mpl.rc('xtick', labelsize=10, direction='in')
@@ -54,7 +54,6 @@ def add_fig_kwargs(func):
 
     The function should return either a matplotlib figure or None to signal
     some sort of error/unexpected event.
-    See doc string below for the list of supported options.
     """
 
     @wraps(func)
