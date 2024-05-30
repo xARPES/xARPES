@@ -2,9 +2,19 @@
 
 Repository for the code xARPES - extraction from angle resolved photoemission spectra.
 
+This preliminary release can only be used to fit a Fermi edge. The complete functionality will be made available soon.
+
 # Installation
 
-Instructions provided here are for Linux Ubuntu v22 or later.
+xARPES can be installed with `pip`:
+
+	python3 -m pip install xarpes
+
+Or with `conda`:
+
+	conda install conda-forge::xarpes
+
+More detailed instructions for installing the development version, tested for recent Ubuntu and Debian GNU/Linux, are provided below.
 
 ## pip
 
