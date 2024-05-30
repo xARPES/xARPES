@@ -43,10 +43,10 @@ ax = fig.gca()
 bmap = xarpes.band_map(intensities=intn, angles=angl, ekin=ekin,
                        energy_resolution=0.01, temperature=80)
 
-# fig = bmap.fit_fermi_edge(hnuminphi_guess=32, background_guess=1e5,
-#                           integrated_weight_guess=1.5e6, angle_min=-10,
-#                           angle_max=10, ekin_min=31.9, ekin_max=32.1, ax=ax,
-#                           savefig='edge_fit.png', show=True,
-#                           title='Fermi edge fit')
+fig = bmap.fit_fermi_edge(hnuminphi_guess=32, background_guess=1e5,
+                          integrated_weight_guess=1.5e6, angle_min=-10,
+                          angle_max=10, ekin_min=31.9, ekin_max=32.1,
+                          ax=ax, savefig='edge_fit.png', show=True,
+                          title='Fermi edge fit')
 
-# print('The optimised h nu - phi=' + f'{bmap.hnuminphi:.4f}' + ' eV.')
+print('The optimised hnu - phi=' + f'{bmap.hnuminphi:.4f}' + ' eV.')
