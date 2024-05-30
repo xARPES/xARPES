@@ -25,7 +25,7 @@ class band_map():
     angles : ndarray
         1D array of angular values for the abscissa [degrees]
     ekin : ndarray
-        1D array of kinetic energy values for the ordinate. [eV]
+        1D array of kinetic energy values for the ordinate [eV]
     energy_resolution : float
         Energy resolution of the detector [eV]
     temperature : float
@@ -45,7 +45,7 @@ class band_map():
 
     @property
     def hnuminphi(self):
-        r"""Returns the the photon energy minus the work function in eV.
+        r"""Returns the photon energy minus the work function in eV.
 
         Returns
         -------
@@ -83,7 +83,7 @@ class band_map():
                        angle_max=np.infty, ekin_min=-np.infty,
                        ekin_max=np.infty, ax=None, **kwargs):
         r"""
-        Fits the fermi edge of the band map and plots the result.
+        Fits the Fermi edge of the band map and plots the result.
 
         Parameters
         ----------

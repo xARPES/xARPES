@@ -6,7 +6,6 @@
 import numpy as np
 from scipy.optimize import leastsq
 
-
 def error_function(p, x, y, function, extra_args):
     r"""The error function used inside the fit_leastsq function.
     """

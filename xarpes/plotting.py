@@ -16,9 +16,6 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 def my_plot_settings(name='default'):
-    r"""
-    """
-    # ml = 18 # Font size for captions
     mpl.rc('xtick', labelsize=10, direction='in')
     mpl.rc('ytick', labelsize=10, direction='in')
     lw = dict(default=2.0, large=4.0)[name]
@@ -60,7 +57,6 @@ def add_fig_kwargs(func):
     The function should return either a matplotlib figure or None to signal
     some sort of error/unexpected event.
     """
-
     @wraps(func)
     def wrapper(*args, **kwargs):
         # pop the kwds used by the decorator.
