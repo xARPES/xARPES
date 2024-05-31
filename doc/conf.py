@@ -2,13 +2,22 @@
 
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import xarpes
+
 project = 'xARPES'
 copyright = '2024 xARPES Developers'
+version = xarpes.__version__
+release = xarpes.__version__
 
 html_logo = '../logo/xarpes_small.svg'
 html_theme_options = {'logo_only': True}
 
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.viewcode', 'numpydoc', 'myst_parser']
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.viewcode',
+    'numpydoc',
+    'myst_parser',
+]
 
 exclude_patterns = ['README.md']
 

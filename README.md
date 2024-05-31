@@ -1,18 +1,28 @@
-![xARPES](logo/xarpes.svg)
+![xARPES](https://xarpes.github.io/_images/xarpes.svg)
 
-Repository for the code xARPES - extraction from angle resolved photoemission spectra.
+Repository for the code xARPES &ndash; extraction from angle resolved photoemission spectra.
+
+This preliminary release can only be used to fit a Fermi edge. The complete functionality will be made available soon.
 
 # Installation
 
-Instructions provided here are for Linux Ubuntu v22 or later.
+xARPES can be installed with `pip`:
+
+	python3 -m pip install xarpes
+
+Or with `conda`:
+
+	conda install conda-forge::xarpes
+
+More detailed instructions for installing the development version, tested for recent Ubuntu and Debian GNU/Linux, are provided below.
 
 ## pip
 
-It is highly recommended to set up a pristine virtual environment. First, ``python3-venv`` might have to be installed:
+It is highly recommended to set up a pristine Python virtual environment. First, the `venv` module might have to be installed:
 
 	sudo apt install python3-venv
 
-Afterwards, one can activate a virtual environment named ``<my_venv>`` using:
+Afterwards, one can activate a virtual environment named `<my_venv>` using:
 
 	python3 -m venv <my_venv>
 
@@ -20,7 +30,7 @@ It has to be activated whenever installing/running xARPES:
 
 	source <my_venv>/bin/activate
 
-It is recommended to upgrade pip to the latest version:
+It is recommended to upgrade `pip` to the latest version:
 
 	python3 -m pip install --upgrade pip
 
@@ -40,38 +50,46 @@ Start the installation:
 
 	bash Miniconda3-latest-Linux-x86_64.sh
 
-Then scroll down the license agreement and answer ``yes`` to the following question:
+Then scroll down the license agreement and answer `yes` to the following question:
 
 	Do you accept the license terms? [yes|no]
 
 Also specify your installation location.
 
-It is convenient to also answer ``yes`` to the following, which will append new lines to your ``~/.bashrc``:
+It is convenient to also answer `yes` to the following, which will append new lines to your `~/.bashrc`:
 
 	You can undo this by running `conda init --reverse $SHELL`? [yes|no]
 
-A conda base environment is then activated with ``source ~/.bashrc`` or by starting a new terminal session.
+A conda base environment is then activated with `source ~/.bashrc` or by starting a new terminal session.
 
-Alternatively, you can answer ``no`` to the above question and activate conda whenever you need it:
+Alternatively, you can answer `no` to the above question and activate conda whenever you need it:
 
-	eval "$(/YOUR/PATH/TO/miniconda3/bin/conda shell.YOUR_SHELL_NAME hook)"
+	eval "$(<your_path>/miniconda3/bin/conda shell.<your_shell> hook)"
 
-Next, we install ``conda-build`` for developing xARPES (anwer ``y`` to questions):
+Next, we install `conda-build` for developing xARPES (answer `y` to questions):
 
 	conda install conda-build
 
-Finally, the following steps are executed for the installation &ndash; the ``xARPES`` environment will have to be launched whenever running xARPES:
+Finally, the following steps are executed for the installation &ndash; the `<my_env>` environment will have to be launched whenever running xARPES:
 
 	git clone git@github.com:xARPES/xARPES.git
 	cd xARPES
-	conda create -n xARPES -c defaults -c conda-forge --file requirements.txt
-	conda activate xARPES
+	conda create -n <my_env> -c defaults -c conda-forge --file requirements.txt
+	conda activate <my_env>
 	conda develop .
 
-Answer ``y`` to questions.
+Answer `y` to questions.
 
 # Execution
 
 It is recommended to use JupyterLab to analyse data. JupyterLab is launched using:
 
 	jupyter lab
+
+# License
+
+Copyright (C) 2024 xARPES Developers
+
+This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License, version 2, as published by the Free Software Foundation.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.

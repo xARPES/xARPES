@@ -16,38 +16,6 @@ from .plotting import get_ax_fig_plt, add_fig_kwargs
 from .distributions import fermi_dirac
 
 
-
-class ExampleError(Exception):
-    """Exceptions are documented in the same way as classes.
-
-    The __init__ method may be documented in either the class level
-    docstring, or as a docstring on the __init__ method itself.
-
-    Either form is acceptable, but the two should not be mixed. Choose one
-    convention to document the __init__ method and be consistent with it.
-
-    Note
-    ----
-    Do not include the `self` parameter in the ``Parameters`` section.
-
-    Parameters
-    ----------
-    msg : str
-        Human readable string describing the exception.
-    code : :obj:`int`, optional
-        Numeric error code.
-
-    Attributes
-    ----------
-    msg : str
-        Human readable string describing the exception.
-    code : int
-        Numeric error code.
-
-    """
-
-
-
 class band_map():
     r"""Class for the band map from the ARPES experiment.
 
@@ -58,20 +26,13 @@ class band_map():
     angles : ndarray
         1D array of angular values for the abscissa [degrees]
     ekin : ndarray
-        1D array of kinetic energy values for the ordinate. [eV]
+        1D array of kinetic energy values for the ordinate [eV]
     energy_resolution : float
         Energy resolution of the detector [eV]
     temperature : float
         Temperature of the sample [K]
     hnuminphi : float
         Kinetic energy minus the work function [eV]
-
-
-    Attributes
-    ----------
-    module_level_variable1 : int
-        Module level variables may be documented in either the ``Attributes``
-
        
     """
     def __init__(self, intensities, angles, ekin, energy_resolution=None,
@@ -83,10 +44,10 @@ class band_map():
         self.energy_resolution = energy_resolution
         self.temperature = temperature
         self.hnuminphi = hnuminphi
-    
+
     @property
     def hnuminphi(self):
-        r"""Returns the the photon energy minus the work function in eV.
+        r"""Returns the photon energy minus the work function in eV.
 
         Returns
         -------
@@ -124,7 +85,7 @@ class band_map():
                        angle_max=np.infty, ekin_min=-np.infty,
                        ekin_max=np.infty, ax=None, **kwargs):
         r"""
-        Fits the fermi edge of the band map and plots the result.
+        Fits the Fermi edge of the band map and plots the result.
 
         Parameters
         ----------
@@ -148,12 +109,12 @@ class band_map():
         **kwargs : dict, optional
             Additional arguments passed on to add_fig_kwargs. See the keyword
             table below.
-            
+
         Returns
         -------
-        Matplotlib-Figure
-        
+        Matplotlib-Figure        
         """        
+
         from xarpes.functions import fit_leastsq
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
@@ -169,7 +130,7 @@ class band_map():
         integrated_intensity = np.trapz(
             self.intensities[min_ekin_index:max_ekin_index,
                 min_angle_index:max_angle_index], axis=1)
-        
+
         fdir_initial = fermi_dirac(temperature=self.temperature,
                                    hnuminphi=hnuminphi_guess,
                                    background=background_guess,
