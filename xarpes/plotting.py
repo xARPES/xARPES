@@ -34,7 +34,7 @@ def get_ax_fig_plt(ax=None, **kwargs):
         ax (Axes, optional): Axes object. Defaults to None.
         kwargs: keyword arguments are passed to plt.figure if ax is not None.
 
-      Returns:
+    Returns:
         ax: :class:`Axes` object
         figure: matplotlib figure
         plt: matplotlib pyplot module.
@@ -111,6 +111,10 @@ def add_fig_kwargs(func):
 
     # Add docstring to the decorated method.
     doc_str = """\n\n
+
+        notes
+        -----
+    
         Keyword arguments controlling the display of the figure:
 
         ================  ====================================================

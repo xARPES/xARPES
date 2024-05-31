@@ -15,6 +15,39 @@ import numpy as np
 from .plotting import get_ax_fig_plt, add_fig_kwargs
 from .distributions import fermi_dirac
 
+
+
+class ExampleError(Exception):
+    """Exceptions are documented in the same way as classes.
+
+    The __init__ method may be documented in either the class level
+    docstring, or as a docstring on the __init__ method itself.
+
+    Either form is acceptable, but the two should not be mixed. Choose one
+    convention to document the __init__ method and be consistent with it.
+
+    Note
+    ----
+    Do not include the `self` parameter in the ``Parameters`` section.
+
+    Parameters
+    ----------
+    msg : str
+        Human readable string describing the exception.
+    code : :obj:`int`, optional
+        Numeric error code.
+
+    Attributes
+    ----------
+    msg : str
+        Human readable string describing the exception.
+    code : int
+        Numeric error code.
+
+    """
+
+
+
 class band_map():
     r"""Class for the band map from the ARPES experiment.
 
@@ -32,6 +65,14 @@ class band_map():
         Temperature of the sample [K]
     hnuminphi : float
         Kinetic energy minus the work function [eV]
+
+
+    Attributes
+    ----------
+    module_level_variable1 : int
+        Module level variables may be documented in either the ``Attributes``
+
+       
     """
     def __init__(self, intensities, angles, ekin, energy_resolution=None,
                  temperature=None, hnuminphi=None):
@@ -49,7 +90,7 @@ class band_map():
 
         Returns
         -------
-        hnuminphi : float
+        hnuminphi : float 
             Kinetic energy minus the work function [eV]
         """
         return self._hnuminphi
@@ -111,6 +152,7 @@ class band_map():
         Returns
         -------
         Matplotlib-Figure
+        
         """        
         from xarpes.functions import fit_leastsq
 
