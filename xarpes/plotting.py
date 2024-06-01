@@ -15,7 +15,7 @@ from functools import wraps
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
-def my_plot_settings(name='default'):
+def plot_settings(name='default'):
     mpl.rc('xtick', labelsize=10, direction='in')
     mpl.rc('ytick', labelsize=10, direction='in')
     lw = dict(default=2.0, large=4.0)[name]
@@ -147,7 +147,7 @@ def add_fig_kwargs(func):
         ================  ====================================================
 
 """
-
+        
     if wrapper.__doc__ is not None:
         # Add s at the end of the docstring.
         wrapper.__doc__ += f'\n{doc_str}'

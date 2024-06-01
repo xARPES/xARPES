@@ -30,4 +30,7 @@ rst_epilog = '''
 
 html_theme = 'sphinx_rtd_theme'
 
+# The following setting specifies the order in which members are documented
+autodoc_member_order = 'bysource'
+
 numpydoc_show_class_members = False

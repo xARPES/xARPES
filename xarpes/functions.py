@@ -6,14 +6,54 @@
 import numpy as np
 from scipy.optimize import leastsq
 
-def error_function(p, x, y, function, extra_args):
+def error_function(p, xdata, ydata, function, extra_args):
     r"""The error function used inside the fit_leastsq function.
-    """
-    return function(x, *p, extra_args) - y
+
+    Parameters
+    ----------
+    p : ndarray
+        Array of parameters during the optimization
+    xdata : ndarray
+        Array of abscissa values the function is evaluated on
+    ydata : ndarray
+        Outcomes on ordinate the evaluated function is compared to
+    function : function
+        Function or class with call method to be evaluated
+    extra_args : 
+        Arguments provided to function that should not be optimized
+
+    Returns
+    -------
+
+    residual : 
+    
+    """   
+    residual = function(xdata, *p, extra_args) - ydata
+    return residual
 
 
 def fit_leastsq(p0, xdata, ydata, function, extra_args):
     r"""Wrapper arround scipy.optimize.leastsq.
+
+    Parameters
+    ----------
+    p0 : ndarray
+        Initial guess for parameters to be optimized
+    xdata : ndarray
+        Array of abscissa values the function is evaluated on
+    ydata : ndarray
+        Outcomes on ordinate the evaluated function is compared to
+    function : function
+        Function or class with call method to be evaluated
+    extra_args : 
+        Arguments provided to function that should not be optimized
+
+    Returns
+    -------
+    pfit_leastsq : ndarray
+        Array containing the optimized parameters
+    perr_leastsq : ndarray
+        Covariance matrix of the optimized parameters
     """
     pfit, pcov, infodict, errmsg, success = leastsq(
         error_function, p0, args=(xdata, ydata, function, extra_args),

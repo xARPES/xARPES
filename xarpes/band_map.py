@@ -29,11 +29,10 @@ class band_map():
         1D array of kinetic energy values for the ordinate [eV]
     energy_resolution : float
         Energy resolution of the detector [eV]
-    temperature : float
+    temperature : float, None
         Temperature of the sample [K]
-    hnuminphi : float
-        Kinetic energy minus the work function [eV]
-       
+    hnuminphi : float, None
+        Kinetic energy minus the work function [eV]      
     """
     def __init__(self, intensities, angles, ekin, energy_resolution=None,
                  temperature=None, hnuminphi=None):
@@ -47,25 +46,28 @@ class band_map():
 
     @property
     def hnuminphi(self):
-        r"""Returns the photon energy minus the work function in eV.
+        r"""Returns the photon energy minus the work function in eV if it has
+        been set, either during instantiation, with the setter, or by fitting
+        the Fermi-Dirac distribution to the integrated weight.
 
         Returns
         -------
-        hnuminphi : float 
+        hnuminphi : float, None 
             Kinetic energy minus the work function [eV]
         """
         return self._hnuminphi
 
     @hnuminphi.setter
     def hnuminphi(self, hnuminphi):
-        r"""Manually sets the photon energy minus the work function in eV.
+        r"""Manually sets the photon energy minus the work function in eV if it
+        has been set; otherwise returns None.
 
         Parameters
         ----------
-        hnuminphi : float
+        hnuminphi : float, None
             Kinetic energy minus the work function [eV]
         """
-        self._hnuminphi = hnuminphi
+        self._hnuminphi = hnuminphi        
 
     def shift_angles(self, shift):
         r"""
@@ -86,6 +88,9 @@ class band_map():
                        ekin_max=np.infty, ax=None, **kwargs):
         r"""
         Fits the Fermi edge of the band map and plots the result.
+        Also sets hnuminphi, the kinetic energy minus the work function in eV.
+        The fitting includes an energy convolution with an abscissa range
+        expanded by 5 times the energy resolution standard deviation.
 
         Parameters
         ----------
@@ -106,15 +111,18 @@ class band_map():
         ax : Matplotlib-Axes / NoneType
             Axis for plotting the Fermi edge on. Created if not provided by
             the user.
+
+        Other parameters
+        ----------------   
         **kwargs : dict, optional
             Additional arguments passed on to add_fig_kwargs. See the keyword
             table below.
 
         Returns
         -------
-        Matplotlib-Figure        
+        fig : Matplotlib-Figure
+            Figure containing the Fermi edge fit            
         """        
-
         from xarpes.functions import fit_leastsq
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
