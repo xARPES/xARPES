@@ -1,5 +1,5 @@
 # Copyright (C) 2024 xARPES Developers
-# This program is free software under the terms of the GNU GPLv2 license.
+# This program is free software under the terms of the GNU GPLv3 license.
 
 """The distributions used throughout the code."""
 
@@ -27,7 +27,6 @@ class distribution:
         """
         return self._name
 
-
 class unique_distribution(distribution):
     r"""Parent class for unique distributions, to be used one at a time, e.g.,
     during the background of an MDC fit or the Fermi-Dirac distribution.
@@ -53,7 +52,6 @@ class unique_distribution(distribution):
             distributions. Not to be modified after instantiation.
         """
         return self._label
-
 
 class constant(unique_distribution):
     r"""Child class for constant distributions, used e.g., during MDC fitting.
@@ -90,7 +88,6 @@ class constant(unique_distribution):
         """
         self._offset = x
 
-
 class linear(unique_distribution):
     r"""Child cass for for linear distributions, used e.g., during MDC fitting.
     The constant class is unique, only one instance should be used per task.
@@ -151,7 +148,6 @@ class linear(unique_distribution):
         """
         self._slope = x
 
-
 class linear(unique_distribution):
     r"""Child cass for for linear distributions, used e.g., during MDC fitting.
     The constant class is unique, only one instance should be used per task.
@@ -212,7 +208,6 @@ class linear(unique_distribution):
             The linear slope of the distribution w.r.t. the abscissa.
         """
         self._slope = x
-
 
 class fermi_dirac(unique_distribution):
     r"""Child class for Fermi-Dirac (FD) distributions, used e.g., during Fermi
@@ -337,7 +332,6 @@ class fermi_dirac(unique_distribution):
                 Integrated weight on top of the background [counts]
             """
             self._integrated_weight = x
-    
 
     def __call__(self, energy_range, hnuminphi, background, integrated_weight,
                  energy_resolution):

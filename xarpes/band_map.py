@@ -1,5 +1,5 @@
 # Copyright (C) 2024 xARPES Developers
-# This program is free software under the terms of the GNU GPLv2 license.
+# This program is free software under the terms of the GNU GPLv3 license.
 
 # get_ax_fig_plt and add_fig_kwargs originate from pymatgen/util/plotting.py.
 # Copyright (C) 2011-2024 Shyue Ping Ong and the pymatgen Development Team
@@ -14,7 +14,6 @@
 import numpy as np
 from .plotting import get_ax_fig_plt, add_fig_kwargs
 from .distributions import fermi_dirac
-
 
 class band_map():
     r"""Class for the band map from the ARPES experiment.
@@ -69,7 +68,7 @@ class band_map():
         hnuminphi : float, None
             Kinetic energy minus the work function [eV]
         """
-        self._hnuminphi = hnuminphi        
+        self._hnuminphi = hnuminphi
 
     @property
     def hnuminphi_std(self):

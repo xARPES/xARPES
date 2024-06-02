@@ -1,5 +1,5 @@
 # Copyright (C) 2024 xARPES Developers
-# This program is free software under the terms of the GNU GPLv2 license.
+# This program is free software under the terms of the GNU GPLv3 license.
 
 # get_ax_fig_plt and add_fig_kwargs originate from pymatgen/util/plotting.py.
 # Copyright (C) 2011-2024 Shyue Ping Ong and the pymatgen Development Team
@@ -25,7 +25,6 @@ def plot_settings(name='default'):
     mpl.rcParams['xtick.minor.size'] = 2
     mpl.rcParams['xtick.major.width'] = 0.8
     mpl.rcParams.update({'font.size': 16})
-
 
 def get_ax_fig_plt(ax=None, **kwargs):
     r"""Helper function used in plot functions supporting an optional `Axes`
@@ -57,7 +56,6 @@ def get_ax_fig_plt(ax=None, **kwargs):
         fig = plt.gcf()
 
     return ax, fig, plt
-
 
 def add_fig_kwargs(func):
     """Decorator that adds keyword arguments for functions returning matplotlib
@@ -148,7 +146,7 @@ def add_fig_kwargs(func):
         ================  ====================================================
 
 """
-        
+
     if wrapper.__doc__ is not None:
         # Add s at the end of the docstring.
         wrapper.__doc__ += f'\n{doc_str}'

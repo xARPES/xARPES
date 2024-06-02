@@ -80,6 +80,12 @@ Finally, the following steps are executed for the installation &ndash; the `<my_
 
 Answer `y` to questions.
 
+# Examples
+
+Afer installation of xARPES, the `examples/` folder can be downloaded to the current directory with
+
+    python3 -c "import xarpes; xarpes.download_examples()"
+
 # Execution
 
 It is recommended to use JupyterLab to analyse data. JupyterLab is launched using:
