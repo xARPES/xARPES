@@ -12,8 +12,48 @@
 """The band map class and allowed operations on it."""
 
 import numpy as np
+
 from .plotting import get_ax_fig_plt, add_fig_kwargs
+from .functions import fit_leastsq
 from .distributions import fermi_dirac
+
+
+class MDCs():
+    r"""
+    """
+    def __init__(self, intensities, angles, ekin, angular_resolution):
+        self.intensities = intensities
+        self.angles = angles
+        self.ekin = ekin
+        self.angular_resolution = angular_resolution
+
+    # @add_fig_kwargs
+    # def fit(self):
+    #     r"""
+    #     """
+    #     return 0
+
+ 
+    # @add_fig_kwargs
+    # def fit_fermi_edge(self, hnuminphi_guess, background_guess=0.0,
+    #                    integrated_weight_guess=1.0, angle_min=-np.infty,
+    #                    angle_max=np.infty, ekin_min=-np.infty,
+    #                    ekin_max=np.infty, ax=None, **kwargs):
+    
+    
+    @add_fig_kwargs
+    def plot(self, ax=None, **kwargs):
+        r"""
+        """
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        ax.scatter(self.angles, self.intensities)
+        
+        ax.set_xlabel("Angle ($\degree$)")
+        ax.set_ylabel('Counts (-)')
+        
+        return fig
+        
 
 class band_map():
     r"""Class for the band map from the ARPES experiment.
@@ -26,7 +66,9 @@ class band_map():
         1D array of angular values for the abscissa [degrees]
     ekin : ndarray
         1D array of kinetic energy values for the ordinate [eV]
-    energy_resolution : float
+    angular_resolution : float, None
+        Angular resolution of the detector [degrees]
+    energy_resolution : float, None
         Energy resolution of the detector [eV]
     temperature : float, None
         Temperature of the sample [K]
@@ -36,11 +78,13 @@ class band_map():
         Standard deviation of kinetic energy minus work function [eV]
     """
     def __init__(self, intensities, angles, ekin, energy_resolution=None,
-                 temperature=None, hnuminphi=None, hnuminphi_std=None):
+                 angular_resolution=None, temperature=None, hnuminphi=None,
+                 hnuminphi_std=None):
         self.intensities = intensities
         self.angles = angles
         self.ekin = ekin
         self.energy_resolution = energy_resolution
+        self.angular_resolution = angular_resolution
         self.temperature = temperature
         self.hnuminphi = hnuminphi
         self.hnuminphi_std = hnuminphi_std
@@ -106,13 +150,72 @@ class band_map():
         """
         self.angles = self.angles + shift
 
+    def slice(self, angle_min, angle_max, energy_value):
+        r"""
+        Parameters
+        ----------
+        angle_min : float
+            Minimum angle of integration interval [degrees]
+        angle_max : float
+            Maximum angle of integration interval [degrees]
+            
+
+        Returns
+        -------
+        angle_range : ndarray
+            Array of size n containing the angular values
+        energy_range : ndarray
+            Array of size m containing the energy values
+        mdcs : 
+            Array of size nxm containing the MDC intensities
+        """
+        
+        energy_index = np.abs(self.ekin-energy_value).argmin()
+        angle_min_index = np.abs(self.angles-angle_min).argmin() 
+        angle_max_index = np.abs(self.angles-angle_max).argmin()
+        
+        angle_range = self.angles[angle_min_index:angle_max_index+1]
+        energy_range = self.ekin[energy_index]
+        mdcs = self.intensities[energy_index, angle_min_index:angle_max_index+1]
+
+        return mdcs, angle_range, energy_range, self.angular_resolution
+
+    
+    @add_fig_kwargs
+    def plot_band_map(self, ax=None, **kwargs):
+        r"""Plots the band map.
+        
+        Parameters
+        ----------
+
+        Other parameters
+        ----------------
+        **kwargs : dict, optional
+            Additional arguments passed on to add_fig_kwargs. See the keyword
+            table below.      
+
+        Returns
+        -------
+        fig : Matplotlib-Figure
+            Figure containing the Fermi edge fit
+        """        
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        Angl, Ekin = np.meshgrid(self.angles, self.ekin)
+        mesh = ax.pcolormesh(Angl, Ekin, self.intensities, shading="auto", cmap=plt.get_cmap("bone").reversed())
+        cbar = plt.colorbar(mesh, ax=ax)
+        
+        ax.set_xlabel("Angle ($\degree$)")
+        ax.set_ylabel("$E_{\mathrm{kin}}$ (eV)")
+        
+        return fig
+    
     @add_fig_kwargs
     def fit_fermi_edge(self, hnuminphi_guess, background_guess=0.0,
                        integrated_weight_guess=1.0, angle_min=-np.infty,
                        angle_max=np.infty, ekin_min=-np.infty,
                        ekin_max=np.infty, ax=None, **kwargs):
-        r"""
-        Fits the Fermi edge of the band map and plots the result.
+        r"""Fits the Fermi edge of the band map and plots the result.
         Also sets hnuminphi, the kinetic energy minus the work function in eV.
         The fitting includes an energy convolution with an abscissa range
         expanded by 5 times the energy resolution standard deviation.
@@ -148,8 +251,6 @@ class band_map():
         fig : Matplotlib-Figure
             Figure containing the Fermi edge fit
         """
-        from xarpes.functions import fit_leastsq
-
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
         min_angle_index = np.argmin(np.abs(self.angles - angle_min))

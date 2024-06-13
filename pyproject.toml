@@ -14,7 +14,7 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python :: 3",
 ]
-requires-python = ">=3.8.0"
+requires-python = ">=3.9.0"
 dependencies = [
     "igor2",
     "jupyterlab",
@@ -23,4 +23,5 @@ dependencies = [
     "numpy",
     "scipy",
     "lmfit",
+    "xarray",
 ]

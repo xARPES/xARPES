@@ -3,6 +3,8 @@
 
 """The distributions used throughout the code."""
 
+import numpy as np
+
 class distribution:
     r"""Parent class for distributions. The class cannot be used on its own,
     but is used to instantiate unique and non-unique distributions.
@@ -27,6 +29,7 @@ class distribution:
         """
         return self._name
 
+        
 class unique_distribution(distribution):
     r"""Parent class for unique distributions, to be used one at a time, e.g.,
     during the background of an MDC fit or the Fermi-Dirac distribution.
@@ -53,6 +56,7 @@ class unique_distribution(distribution):
         """
         return self._label
 
+
 class constant(unique_distribution):
     r"""Child class for constant distributions, used e.g., during MDC fitting.
     The constant class is unique, only one instance should be used per task.
@@ -62,8 +66,8 @@ class constant(unique_distribution):
     offset : float
         The value of the distribution for the abscissa equal to 0.
     """
-    def __init__(self, offset):
-        super().__init__(name='constant')
+    def __init__(self, offset, name='constant'):
+        super().__init__(name)
         self._offset = offset
 
     @property
@@ -88,6 +92,7 @@ class constant(unique_distribution):
         """
         self._offset = x
 
+
 class linear(unique_distribution):
     r"""Child cass for for linear distributions, used e.g., during MDC fitting.
     The constant class is unique, only one instance should be used per task.
@@ -99,8 +104,8 @@ class linear(unique_distribution):
     slope : float
         The linear slope of the distribution w.r.t. the abscissa.
     """
-    def __init__(self, slope, offset):
-        super().__init__(name='linear')
+    def __init__(self, slope, offset, name='linear'):
+        super().__init__(name)
         self._offset = offset
         self._slope = slope
 
@@ -148,66 +153,6 @@ class linear(unique_distribution):
         """
         self._slope = x
 
-class linear(unique_distribution):
-    r"""Child cass for for linear distributions, used e.g., during MDC fitting.
-    The constant class is unique, only one instance should be used per task.
-
-    Parameters
-    ----------
-    offset : float
-        The value of the distribution for the abscissa equal to 0.
-    slope : float
-        The linear slope of the distribution w.r.t. the abscissa.
-    """
-    def __init__(self, slope, offset):
-
-        super().__init__(name='linear')
-        self._offset = offset
-        self._slope = slope
-
-    @property
-    def offset(self):
-        r"""Returns the offset of the linear distribution.
-
-        Returns
-        -------
-        offset : float
-            The value of the distribution for the abscissa equal to 0.
-        """
-        return self._offset
-
-    @offset.setter
-    def set_offset(self, x):
-        r"""Sets the offset of the linear distribution.
-
-        Parameters
-        ----------
-        offset : float
-            The value of the distribution for the abscissa equal to 0.
-        """
-        self._offset = x
-
-    @property
-    def slope(self):
-        r"""Returns the slope of the linear distribution.
-
-        Returns
-        -------
-        slope : float
-            The linear slope of the distribution w.r.t. the abscissa.
-        """
-        return self._slope
-
-    @slope.setter
-    def set_slope(self, x):
-        r"""Sets the slope of the linear distribution.
-
-        Parameters
-        ----------
-        slope : float
-            The linear slope of the distribution w.r.t. the abscissa.
-        """
-        self._slope = x
 
 class fermi_dirac(unique_distribution):
     r"""Child class for Fermi-Dirac (FD) distributions, used e.g., during Fermi
@@ -357,7 +302,7 @@ class fermi_dirac(unique_distribution):
             1D array of the energy-convolved FD distribution [counts]
         """
         from scipy.ndimage import gaussian_filter
-        import numpy as np
+        
         sigma_extend = 5 # Extend data range by "5 sigma"
         # Conversion from FWHM to standard deviation [-]
         fwhm_to_std = np.sqrt(8 * np.log(2))
@@ -387,8 +332,7 @@ class fermi_dirac(unique_distribution):
         -------
         evalf : ndarray
             1D array of the evaluated FD distribution [counts]
-        """
-        import numpy as np
+        """        
         k_B = 8.617e-5 # Boltzmann constant [eV/K]
         k_BT = self.temperature * k_B
         evalf = (self.integrated_weight
@@ -414,8 +358,8 @@ class fermi_dirac(unique_distribution):
         evalf : ndarray
             1D array of the energy-convolved FD distribution [counts]
         """
-        import numpy as np
         from scipy.ndimage import gaussian_filter
+        
         sigma_extend = 5 # Extend data range by "5 sigma"
         # Conversion from FWHM to standard deviation [-]
         fwhm_to_std = np.sqrt(8 * np.log(2))
@@ -428,3 +372,134 @@ class fermi_dirac(unique_distribution):
         evalf = gaussian_filter(self.evaluate(extend),
                                 sigma=estep)[enumb:-enumb]
         return evalf
+
+
+class non_unique_distribution(distribution):
+    r"""Parent class for unique distributions, to be used one at a time, e.g.,
+    during the background of an MDC fit or the Fermi-Dirac distribution.
+
+    Parameters
+    ----------
+    label : str
+        Unique label for instances, identical to the name for unique
+        distributions. Not to be modified after instantiation.
+    """
+    def __init__(self, name, index):
+        super().__init__(name)
+        self._label = name + index
+
+    @property
+    def label(self):
+        r"""Returns the unique class label.
+
+        Returns
+        -------
+        label : str
+            Unique label for instances, identical to the name for unique
+            distributions. Not to be modified after instantiation.
+        """
+        return self._label
+
+
+class dispersion(distribution):
+    r"""Dispersions are assumed to be unique, so they need an index.
+    """
+    def __init__(self, amplitude, center, broadening, name, index):
+        super().__init__(name)
+        self._amplitude = amplitude
+        self._center = center
+        self._broadening = broadening
+        self._label = name + index
+
+    @property
+    def label(self):
+        r"""
+        """
+        return self._label
+
+    @property
+    def amplitude(self):
+        r"""
+        """
+        return self._amplitude
+
+    @amplitude.setter
+    def set_amplitude(self, x):
+        r"""
+        """
+        self._amplitude = x
+
+    @property
+    def center(self):
+        r"""
+        """
+        return self._center
+
+    @amplitude.setter
+    def set_center(self, x):
+        r"""
+        """
+        self._center = x
+
+    @property
+    def broadening(self):
+        r"""
+        """
+        return self._broadening
+
+    @broadening.setter
+    def set_broadening(self, x):
+        r"""
+        """
+        self._broadening = x
+
+
+# class spectral_linear(dispersion):
+#     r"""Class for the linear dispersion spectral function"""
+#     def __init__(self, amplitude, center, broadening, name, index):
+#         super().__init__(amplitude=amplitude, center=center,
+#                          broadening=broadening, name=name, index=index)
+    
+#     def result(self, x):
+#         r"""
+#         """
+#         dtor = np.pi/180
+#         evalf = self.amplitude / np.pi * self.broadening / ((np.sin(x*dtor)
+#               - np.sin(self.center*dtor))**2 + self.broadening**2)
+#         return evalf
+
+
+# class spectral_linear(dispersion):
+#     r"""Class for the linear dispersion spectral function"""
+#     def __init__(self, amplitude, center, broadening, bottom, side, name, 
+#                  index):
+#         super()__init__(amplitude=amplitude, center=center,
+#                          broadening=broadening, name=name, index=index)
+#         self._bottom = bottom
+#         self._side = side
+
+#     @property
+#     def bottom(self):
+#         r"""
+#         """
+#         return self._bottom
+
+#     @bottom.setter
+#     def set_bottom(self, x):
+#         r"""
+#         """
+#         self._bottom = x
+
+#     @property
+#     def side(self):
+#         r"""
+#         """
+#         return self._side
+    
+#     def result(self, x):
+#         r"""
+#         """
+#         dtor = np.pi/180
+#         evalf = self.amplitude / np.pi * self.broadening / (((np.sin(x*dtor)
+#               - np.sin(self.bottom*dtor))**2 - np.sin(self.center*dtor)**2)**2
+#               + self.broadening**2)    
