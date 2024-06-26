@@ -3,6 +3,8 @@
 # Fermi edge fitting example
 ### In this example, we fit a linear dispersion to one of the graphene bands.
 
+import matplotlib as mpl                                        
+mpl.use('Qt5Agg')
 
 import os
 import xarpes
@@ -18,12 +20,12 @@ try:
     script_dir = os.getcwd()
 except:
     try:
-        # This should work if we're running as a standalone script and __file__ is defined
+        # This should work if we're running as a standalone script 
+        # and __file__ is defined
         script_dir = os.path.dirname(os.path.abspath(__file__))
     except NameError:
-        # If __file__ isn't defined, fall back to the current working directory (less reliable)
+        # If __file__ isn't defined, fall back to current working directory
         script_dir = os.getcwd()
-
 
 dfld = 'data_sets'  # Folder containing the data
 flnm = 'graphene_raw_101'  # Name of the file
@@ -53,8 +55,9 @@ bmap = xarpes.band_map(intensities=intn, angles=angl, ekin=ekin,
 fig = bmap.fit_fermi_edge(hnuminphi_guess=32, background_guess=1e5,
                           integrated_weight_guess=1.5e6, angle_min=-10,
                           angle_max=10, ekin_min=31.9, ekin_max=32.1,
-                          ax=ax, savefig='edge_fit.png', show=True,
+                          ax=ax, show=True,
                           title='Fermi edge fit')
+
 
 print('The optimised h nu - phi=' + f'{bmap.hnuminphi:.4f}' + ' +/- '
       + f'{bmap.hnuminphi_std:.4f}' + ' eV.')

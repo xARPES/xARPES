@@ -25,7 +25,7 @@ def plot_settings(name='default'):
     mpl.rcParams['xtick.minor.size'] = 2
     mpl.rcParams['xtick.major.width'] = 0.8
     mpl.rcParams.update({'font.size': 16})
-    mpl.use('Qt5Agg') # Backend for showing plots in terminal
+
 
 def get_ax_fig_plt(ax=None, **kwargs):
     r"""Helper function used in plot functions supporting an optional `Axes`
