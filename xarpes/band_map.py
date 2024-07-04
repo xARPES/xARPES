@@ -89,7 +89,7 @@ class MDCs():
         return fig
     
     @add_fig_kwargs
-    def initial_guess(self, distribution_list, energy_value=None, \
+    def initial_guess(self, distributions, energy_value=None, \
                       matrix_element=None, matrix_args=None, ax=None, **kwargs):
         r"""
         """
@@ -101,20 +101,20 @@ class MDCs():
         
         ax.set_xlabel('Angle ($\degree$)')
         ax.set_ylabel('Counts (-)')
+        
+        ax.scatter(self.angles, counts, label='data')
 
         # Modify this when mdcs is a larger collection
         kinetic_energy = self.ekin        
-
-        ax.scatter(self.angles, counts, label='data')
         
-        # It might be possible to simplify this code by calling the distribution_list
+        # It might be possible to simplify this code by calling the distributions
         # plotting functionality, depending on the possibility of passing on
         # add_fig_kwargs.
         extend, step, numb = extend_function(self.angles, self.angle_resolution)
         
         total_result = np.zeros(np.shape(extend))
         
-        for dist in distribution_list:
+        for dist in distributions:
             if dist.class_name == 'spectral_quadratic':
                 if (dist.center_angle is not None) and (kinetic_energy is \
                     None or hnuminphi is None):
@@ -146,7 +146,7 @@ class MDCs():
         return fig
 
     @add_fig_kwargs
-    def fit(self, distribution_list, matrix_element=None, matrix_args=None, \
+    def fit(self, distributions,matrix_element=None, matrix_args=None, \
             ax=None, **kwargs):
         r"""
         """
@@ -154,34 +154,42 @@ class MDCs():
         residual
         from scipy.ndimage import gaussian_filter
         from lmfit import Minimizer
+        import copy
         
         # Modify this when mdcs is a larger collection
         kinetic_energy = self.ekin
         
+        new_distributions = copy.deepcopy(distributions)
+        
         if matrix_element is not None:
-            parameters = construct_parameters(distribution_list, matrix_args)
+            parameters, element_names = construct_parameters(distributions, matrix_args)
+            new_distributions = build_distributions(new_distributions, parameters)
             mini = Minimizer(residual, parameters, fcn_args=(self.angles,
-            self.intensities, self.angle_resolution, distribution_list, \
-                    kinetic_energy, self.hnuminphi, matrix_element))                   
+            self.intensities, self.angle_resolution, new_distributions, \
+                    kinetic_energy, self.hnuminphi, matrix_element, element_names))                   
 
         else:
-            parameters = construct_parameters(distribution_list)
+            parameters = construct_parameters(distributions)
+            new_distributions = build_distributions(new_distributions, parameters)
             mini = Minimizer(residual, parameters, fcn_args=(self.angles,
-            self.intensities, self.angle_resolution, distribution_list, \
+            self.intensities, self.angle_resolution, new_distributions, \
                                 kinetic_energy, self.hnuminphi))            
         
         outcome = mini.minimize("least_squares")
         pcov = outcome.covar
+
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
         
-        new_distributions = build_distributions(distribution_list, outcome.params)
+        ax.set_xlabel('Angle ($\degree$)')
+        ax.set_ylabel('Counts (-)')
         
         if matrix_element is not None: # Get the matrix element values
             new_matrix_args = {}
             for key in matrix_args:
                 new_matrix_args[key]= outcome.params[key].value                            
-            return new_distributions, new_matrix_args, pcov
+            return fig, new_distributions, pcov, new_matrix_args
         else:
-            return new_distributions, pcov
+            return fig, new_distributions, pcov
     
     
 class band_map():

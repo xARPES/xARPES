@@ -5,7 +5,7 @@ jupyter:
       extension: .Rmd
       format_name: rmarkdown
       format_version: '1.2'
-      jupytext_version: 1.16.2
+      jupytext_version: 1.15.2
   kernelspec:
     display_name: Python 3 (ipykernel)
     language: python
@@ -53,9 +53,6 @@ ekin = np.linspace(fmin, fmin + (fnum - 1) * fstp, fnum)
 ```
 
 ```{python}
-import importlib
-importlib.reload(xarpes)
-
 fig = plt.figure(figsize=(6, 5))
 ax = fig.gca()
 
@@ -114,39 +111,30 @@ fig = mdcs.plot(ax=ax)
 ```
 
 ```{python}
-dist_list = xarpes.distribution_list([
-xarpes.linear(offset=2.2e3, slope=-65),
-xarpes.spectral_linear(amplitude=450, peak=7.4, broadening=0.012, name='Linear_test', index='1'),
-# xarpes.spectral_linear(amplitude=60, peak=4.2, broadening=0.018, name='Linear_test', index='2'),
-xarpes.spectral_quadratic(amplitude=20, peak=5.5, center_wavevector=0, broadening=0.005, 
-                         side='right', name='Quadratic_test', index='1')
-])
-
-fig = mdcs.initial_guess(distribution_list=dist_list())
-```
-
-```{python}
-dist_list = xarpes.distribution_list([
-xarpes.linear(offset=2.2e3, slope=-65),
+guess_dists = xarpes.create_distributions([
+xarpes.constant(offset=2.0e3),
 xarpes.spectral_linear(amplitude=450, peak=7.4, broadening=0.012, name='Linear_test', index='1'),
 # xarpes.spectral_linear(amplitude=60, peak=4.2, broadening=0.018, name='Linear_test', index='2'),
 xarpes.spectral_quadratic(amplitude=20, peak=4.5, center_wavevector=0, broadening=0.005, 
                          side='right', name='Quadratic_test', index='1')
 ])
 
-
-mat_el = lambda x, scal, brew, **kwargs: scal * x + brew
+mat_el = lambda x, scal, brew: scal * x + brew
 mat_args = {
-    'scal' : 0.03,
+    'scal' : 0.01,
     'brew' : 1.0,
 }
 
-fig = mdcs.initial_guess(distribution_list=dist_list(), matrix_element=mat_el, matrix_args=mat_args)
+fig = mdcs.initial_guess(distributions=guess_dists, matrix_element=mat_el, matrix_args=mat_args)
+```
 
-new_distributions, new_mat_args, covariance_matrix = mdcs.fit(distribution_list=dist_list(),
-                                    matrix_element=mat_el, matrix_args=mat_args)
+```{python}
+fig, new_distributions, covariance_matrix, new_mat_args = mdcs.fit(distributions=guess_dists,
+                                matrix_element=mat_el, matrix_args=mat_args)
+```
 
-fig = mdcs.initial_guess(distribution_list=new_distributions, matrix_element=mat_el, matrix_args=new_mat_args)
+```{python}
+fig = mdcs.initial_guess(distributions=new_distributions, matrix_element=mat_el, matrix_args=new_mat_args)
 ```
 
 ```{python}
@@ -155,15 +143,6 @@ change = xarpes.spectral_linear(amplitude=500, peak=7.5, broadening=0.01, name="
 change.broadening = 0.02
 
 print(change.broadening)
-```
-
-```{python}
-add = lambda x: np.sin(x)**2
-
-import numpy as np
-xrange = np.linspace(-np.pi/2, np.pi/2, 100)
-
-plt.plot(xrange, add(xrange))
 ```
 
 ```{python}

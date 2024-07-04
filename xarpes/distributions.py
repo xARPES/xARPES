@@ -14,7 +14,7 @@ fwhm_to_std = np.sqrt(8 * np.log(2)) # Convert FWHM to std [-]
 sigma_extend = 5 # Extend data range by "5 sigma"
 
 
-class distribution_list:
+class create_distributions:
     r"""
     """
     def __init__(self, distributions):
@@ -37,7 +37,15 @@ class distribution_list:
         self._distributions = x
 
     def __iter__(self):
-        return iter(self.distributions)
+        r"""
+        """
+        return iter(self.distributions)   
+    
+    def __deepcopy__(self, memo):
+        r"""
+        """
+        import copy
+        return type(self)(copy.deepcopy(self.distributions, memo))
         
     @add_fig_kwargs
     def plot(self, angle_range, angle_resolution, kinetic_energy=None, \

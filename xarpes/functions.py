@@ -12,7 +12,7 @@ sigma_extend = 5 # Extend data range by "5 sigma"
 
 def build_distributions(distributions, parameters):
     r"""TBD
-    """
+    """   
     for dist in distributions:
         if dist.class_name == 'constant':
             dist.offset = parameters['offset_' + dist.label].value
@@ -57,31 +57,39 @@ def construct_parameters(distribution_list, matrix_args=None):
                  min=0)
             
     if matrix_args is not None:
+        element_names = list()
         for key, value in matrix_args.items():
             parameters.add(name=key, value=value)
-    return parameters
+            element_names.append(key)
+        return parameters, element_names
+    else:
+        return parameters
 
 
-def residual(parameters, xdata, ydata, angle_resolution, distributions,
-             kinetic_energy, hnuminphi, matrix_element=None):
+def residual(parameters, xdata, ydata, angle_resolution, new_distributions,
+             kinetic_energy, hnuminphi, matrix_element=None, element_names=None):
     r"""
     """
     from scipy.ndimage import gaussian_filter
     
-    distributions = build_distributions(distributions, parameters)
+    new_distributions = build_distributions(new_distributions, parameters)
 
     extend, step, numb = extend_function(xdata, angle_resolution)
     
     model = np.zeros_like(extend)
-    for dist in distributions:
+    for dist in new_distributions:
         if dist.class_name == 'spectral_quadratic': 
             model += dist.evaluate(extend, kinetic_energy,
                                   hnuminphi)
         else:
             model += dist.evaluate(extend)
-            
+                
     if matrix_element is not None:
-        model *= matrix_element(extend, **parameters)
+        matrix_parameters = {}
+        for name in element_names:
+            if name in parameters:
+                matrix_parameters[name] = parameters[name].value
+        model *= matrix_element(extend, **matrix_parameters)
             
     model = gaussian_filter(model, sigma=step)[numb:-numb if numb else None]      
     return model - ydata
