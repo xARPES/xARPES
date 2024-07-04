@@ -63,8 +63,7 @@ bmap = xarpes.band_map(intensities=intn, angles=angl, ekin=ekin,
 fig = bmap.fit_fermi_edge(hnuminphi_guess=32, background_guess=1e5,
                           integrated_weight_guess=1.5e6, angle_min=-10,
                           angle_max=10, ekin_min=31.9, ekin_max=32.1,
-                          ax=ax, show=True,
-                          title='Fermi edge fit')
+                          ax=ax, show=True, title='Fermi edge fit')
 
 print('The optimised h nu - phi=' + f'{bmap.hnuminphi:.4f}' + ' +/- '
       + f'{bmap.hnuminphi_std:.4f}' + ' eV.')
@@ -77,8 +76,8 @@ fig = bmap.plot()
 ```{python}
 angle_min = 0
 angle_max = 1e6
-en_val = 32.0107
-energy_range = [31.9, 32.1]
+en_val = 0
+energy_range = [-0.3, 0.05]
 
 mdcs = xarpes.MDCs(*bmap.slicing(angle_min, angle_max, energy_value=en_val))
 
@@ -94,7 +93,7 @@ importlib.reload(xarpes)
 
 angle_min = 0
 angle_max = 1e6
-en_val = 32.0107
+en_val = 0
 
 mdcs = xarpes.MDCs(*bmap.slicing(angle_min, angle_max, energy_value=en_val))
 new_range = mdcs.angles
@@ -116,7 +115,7 @@ xarpes.constant(offset=2.0e3),
 xarpes.spectral_linear(amplitude=450, peak=7.4, broadening=0.012, name='Linear_test', index='1'),
 # xarpes.spectral_linear(amplitude=60, peak=4.2, broadening=0.018, name='Linear_test', index='2'),
 xarpes.spectral_quadratic(amplitude=20, peak=4.5, center_wavevector=0, broadening=0.005, 
-                         side='right', name='Quadratic_test', index='1')
+                        side='right', name='Quadratic_test', index='1')
 ])
 
 mat_el = lambda x, scal, brew: scal * x + brew
@@ -125,16 +124,17 @@ mat_args = {
     'brew' : 1.0,
 }
 
-fig = mdcs.initial_guess(distributions=guess_dists, matrix_element=mat_el, matrix_args=mat_args)
+fig = mdcs.visualize_guess(distributions=guess_dists, 
+                           matrix_element=mat_el, matrix_args=mat_args)
 ```
 
 ```{python}
 fig, new_distributions, covariance_matrix, new_mat_args = mdcs.fit(distributions=guess_dists,
-                                matrix_element=mat_el, matrix_args=mat_args)
+                        matrix_element=mat_el, matrix_args=mat_args)
 ```
 
 ```{python}
-fig = mdcs.initial_guess(distributions=new_distributions, matrix_element=mat_el, matrix_args=new_mat_args)
+fig = mdcs.visualize_guess(distributions=new_distributions, matrix_element=mat_el, matrix_args=new_mat_args)
 ```
 
 ```{python}

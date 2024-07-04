@@ -49,7 +49,7 @@ class create_distributions:
         
     @add_fig_kwargs
     def plot(self, angle_range, angle_resolution, kinetic_energy=None, \
-             hnuminphi=None, ax=None, **kwargs):
+             hnuminphi=None, matrix_element=None, matrix_args=None, ax=None, **kwargs):
         r"""
         """
         if angle_resolution < 0:
@@ -76,6 +76,10 @@ class create_distributions:
                                             kinetic_energy, hnuminphi)
             else:
                 extended_result = dist.evaluate(extend)
+                
+            if matrix_element is not None:
+                extended_result *= matrix_element(extend, **matrix_args)
+                
             total_result += extended_result
             
             individual_result = gaussian_filter(extended_result, sigma=step \
@@ -129,8 +133,9 @@ class distribution:
 
     @add_fig_kwargs
     def plot(self, angle_range, angle_resolution, kinetic_energy=None, \
-             hnuminphi=None, ax=None, **kwargs):
-        r"""Overwritten for fermi_dirac and spectral_quadratic
+             hnuminphi=None, matrix_element=None, matrix_args=None, \
+             ax=None, **kwargs):
+        r"""Overwritten for fermi_dirac distribution.
         """
         if angle_resolution < 0:
             raise ValueError('Distribution cannot be plotted with negative '
@@ -144,7 +149,13 @@ class distribution:
         
         extend, step, numb = self.extend_range(angle_range, angle_resolution)
         
-        extended_result = self.evaluate(extend)
+        if self.class_name == 'spectral_quadratic':
+            extended_result = self.evaluate(extend, kinetic_energy, hnuminphi)
+        else:
+            extended_result = self.evaluate(extend)
+        
+        if matrix_element is not None:
+            extended_result *= matrix_element(extend, **matrix_args) 
         
         final_result = gaussian_filter(extended_result, sigma=step)\
         [numb:-numb if numb else None]
@@ -153,7 +164,7 @@ class distribution:
 
         ax.legend()
         
-        return fig   
+        return fig
     
 
 class unique_distribution(distribution):
@@ -698,7 +709,7 @@ class spectral_quadratic(dispersion):
     
     @add_fig_kwargs
     def plot(self, angle_range, angle_resolution, kinetic_energy, hnuminphi, \
-             ax=None, **kwargs):
+             matrix_element=None, matrix_args=None, ax=None, **kwargs):
         r"""Overwrites generic class plotting method.
         """
         from scipy.ndimage import gaussian_filter
@@ -708,9 +719,12 @@ class spectral_quadratic(dispersion):
         ax.set_xlabel('Angle ($\degree$)')
         ax.set_ylabel('Counts (-)')
         
-        extend, step, numb = self.extend(angle_range, angle_resolution)
+        extend, step, numb = self.extend_range(angle_range, angle_resolution)
         
         extended_result = self.evaluate(extend, kinetic_energy, hnuminphi)
+        
+        if matrix_element is not None:
+            extended_result *= matrix_element(extend, **matrix_args)   
         
         final_result = gaussian_filter(extended_result, sigma=step)[numb:-numb if numb else None]
         
