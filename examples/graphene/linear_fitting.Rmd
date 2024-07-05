@@ -5,7 +5,7 @@ jupyter:
       extension: .Rmd
       format_name: rmarkdown
       format_version: '1.2'
-      jupytext_version: 1.15.2
+      jupytext_version: 1.16.2
   kernelspec:
     display_name: Python 3 (ipykernel)
     language: python
@@ -113,9 +113,9 @@ fig = mdcs.plot(ax=ax)
 guess_dists = xarpes.create_distributions([
 xarpes.constant(offset=2.0e3),
 xarpes.spectral_linear(amplitude=450, peak=7.4, broadening=0.012, name='Linear_test', index='1'),
-# xarpes.spectral_linear(amplitude=60, peak=4.2, broadening=0.018, name='Linear_test', index='2'),
-xarpes.spectral_quadratic(amplitude=20, peak=4.5, center_wavevector=0, broadening=0.005, 
-                        side='right', name='Quadratic_test', index='1')
+xarpes.spectral_linear(amplitude=60, peak=4.2, broadening=0.018, name='Linear_test', index='2'),
+# xarpes.spectral_quadratic(amplitude=20, peak=4.5, center_wavevector=0, broadening=0.005, 
+#                        side='right', name='Quadratic_test', index='1')
 ])
 
 mat_el = lambda x, scal, brew: scal * x + brew
@@ -124,8 +124,7 @@ mat_args = {
     'brew' : 1.0,
 }
 
-fig = mdcs.visualize_guess(distributions=guess_dists, 
-                           matrix_element=mat_el, matrix_args=mat_args)
+fig = mdcs.visualize_guess(distributions=guess_dists, matrix_element=mat_el, matrix_args=mat_args)
 ```
 
 ```{python}
