@@ -3,13 +3,11 @@
 # SrTiO$_3$ example
 ### In this example, we extract the self-energies and Eliashberg function from a 2DEL in the d_{xy} bands on the TiO$_2$-terminated surface of SrTiO$_3$.
 
-# # %load_ext autoreload
-# # %autoreload 2
 
-# import xarpes
-# import matplotlib.pyplot as plt
+import xarpes
+import matplotlib.pyplot as plt
 
-# xarpes.plot_settings('default')
+xarpes.plot_settings('default')
 
 script_dir = xarpes.set_script_dir()
 
@@ -60,7 +58,7 @@ mdcs = xarpes.MDCs(*bmap.slicing(angle_min, angle_max, energy_value=en_val))
 fig = plt.figure(figsize=(6, 5))
 ax = fig.gca()
 
-fig = mdcs.plot(ax=ax, show=False)
+fig = mdcs.plot(ax=ax)
 
 import importlib
 importlib.reload(xarpes)
@@ -88,4 +86,4 @@ mat_args = {
 fig = mdcs.visualize_guess(distributions=guess_dists, matrix_element=mat_el, matrix_args=mat_args)
 
 fig, new_dists, covariance_matrix, new_mat_args = mdcs.fit(distributions=guess_dists,
-                        matrix_element=mat_el, matrix_args=mat_args)
+                        matrix_element=mat_el, matrix_args=mat_args, show=True)

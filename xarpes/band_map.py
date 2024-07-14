@@ -120,14 +120,13 @@ class MDCs():
         ax.set_xlabel('Angle ($\degree$)')
         ax.set_ylabel('Counts (-)')
                 
-        self.plot(ax=ax, show=False)
+        ax.scatter(self.angles, counts, label='Data')
 
         # Modify this when mdcs is a larger collection
         kinetic_energy = self.ekin
         
         extend, step, numb = extend_function(self.angles, \
                                              self.angle_resolution)
-        
         total_result = np.zeros(np.shape(extend))
         
         for dist in distributions:
@@ -165,15 +164,24 @@ class MDCs():
         return fig
 
     @add_fig_kwargs
-    def fit(self, distributions, matrix_element=None, matrix_args=None, \
+    def fit(self, distributions, energy_value=None, matrix_element=None, matrix_args=None, \
             ax=None, **kwargs):
         r"""
-        """
+        """        
         from .functions import construct_parameters, build_distributions, \
         residual
         from scipy.ndimage import gaussian_filter
         from lmfit import Minimizer
         import copy
+        
+        counts = self.energy_check(energy_value)
+        
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+        
+        ax.set_xlabel('Angle ($\degree$)')
+        ax.set_ylabel('Counts (-)')
+        
+        ax.scatter(self.angles, counts, label='Data')
         
         # Modify this when mdcs is a larger collection
         kinetic_energy = self.ekin
@@ -189,7 +197,6 @@ class MDCs():
             self.intensities, self.angle_resolution, new_distributions, \
                     kinetic_energy, self.hnuminphi, matrix_element, \
                                                              element_names))                   
-
         else:
             parameters = construct_parameters(distributions)
             new_distributions = build_distributions(new_distributions, \
@@ -205,37 +212,42 @@ class MDCs():
             new_matrix_args = {}
             for key in matrix_args:
                 new_matrix_args[key]= outcome.params[key].value
-        
-        ax, fig, plt = get_ax_fig_plt(ax=ax)
-        
-        ax.set_xlabel('Angle ($\degree$)')
-        ax.set_ylabel('Counts (-)')
-        
-        self.plot(ax=ax, show=False)
-    
-        for dist in new_distributions:
-            if hasattr(dist, 'index') and matrix_element is not None:
-                if dist.class_name == 'spectral_quadratic':
-                    dist.plot(self.angles, self.angle_resolution,
-                    kinetic_energy=kinetic_energy, hnuminphi=self.hnuminphi, \
-                    matrix_element=matrix_element, matrix_args=matrix_args, \
-                          ax=ax, show=False)
-                else:
-                    dist.plot(self.angles, self.angle_resolution, \
-                    matrix_element=matrix_element, matrix_args=matrix_args, \
-                              ax=ax, show=False)
-            else:
-                if dist.class_name == 'spectral_quadratic':
-                    dist.plot(self.angles, self.angle_resolution, \
-                    kinetic_energy=kinetic_energy, hnuminphi=self.hnuminphi, \
-                    ax=ax, show=False)
-                else:
-                    dist.plot(self.angles, self.angle_resolution, \
-                        ax=ax, show=False)           
                 
-        ax.plot(self.angles, self.intensities + outcome.residual, \
-                label='Distribution sum')
-        ax.scatter(self.angles, outcome.residual, label='residual')
+        extend, step, numb = extend_function(self.angles, \
+                                             self.angle_resolution)
+        
+        total_result = np.zeros(np.shape(extend))
+        
+        for dist in new_distributions:
+            if dist.class_name == 'spectral_quadratic':
+                if (dist.center_angle is not None) and (kinetic_energy is \
+                    None or hnuminphi is None):
+                    raise ValueError('Spectral quadratic function is ' +
+                    'defined in terms of a center angle. Please provide ' +
+                    'a kinetic energy and hnuminphi.')
+                extended_result = dist.evaluate(extend, \
+                                            kinetic_energy, self.hnuminphi)
+            else:
+                extended_result = dist.evaluate(extend)
+                
+            if matrix_element is not None and hasattr(dist, 'index'):
+                extended_result *= matrix_element(extend, **matrix_args)
+                
+            total_result += extended_result
+
+            individual_result = gaussian_filter(extended_result, \
+                                    sigma=step)[numb:-numb]
+
+            ax.plot(self.angles, individual_result, label=dist.label)    
+                
+        final_result = gaussian_filter(total_result, \
+                                sigma=step)[numb:-numb]                
+        
+        ax.plot(self.angles, final_result, label='Distribution sum')
+            
+        residual = counts - final_result
+        
+        ax.scatter(self.angles, residual, label='Residual')
         
         ax.legend()
                 
@@ -418,6 +430,7 @@ class band_map():
         fig : Matplotlib-Figure
             Figure containing the Fermi edge fit
         """
+        
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
         Angl, Ekin = np.meshgrid(self.angles, self.ekin)

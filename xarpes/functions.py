@@ -258,22 +258,24 @@ def download_examples():
                 {response.status_code}')
         return 1
 
+    
 def set_script_dir():
     r"""This function sets the directory such that the xARPES code can be
     executed either inside IPython environments or as .py scripts from
     arbitrary locations.
     """
     import os
+    import inspect
     try:
         # This block checks if the script is running in an IPython environment
         cfg = get_ipython().config
         script_dir = os.getcwd()
+    except NameError:
+        # If not in IPython, get the caller's file location
+        frame = inspect.stack()[1]
+        module = inspect.getmodule(frame[0])
+        script_dir = os.path.dirname(os.path.abspath(module.__file__))
     except:
-        try:
-            # This should work if we're running as a standalone script 
-            # and __file__ is defined
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-        except NameError:
-            # If __file__ isn't defined, fall back to current working directory
-            script_dir = os.getcwd()
+        # If __file__ isn't defined, fall back to current working directory
+        script_dir = os.getcwd()
     return script_dir

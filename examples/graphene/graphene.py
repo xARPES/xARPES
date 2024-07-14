@@ -62,13 +62,10 @@ energy_range = [-0.3, 0.05]
 
 mdcs = xarpes.MDCs(*bmap.slicing(angle_min, angle_max, energy_value=en_val))
 
-fig = plt.figure(figsize=(6, 5))
+fig = plt.figure(figsize=(5, 4))
 ax = fig.gca()
 
-fig = mdcs.plot(ax=ax, show=False)
-
-import importlib
-importlib.reload(xarpes)
+fig = mdcs.plot(ax=ax, show=True)
 
 angle_min = 0
 angle_max = 1e6
@@ -77,15 +74,18 @@ en_val = 0
 mdcs = xarpes.MDCs(*bmap.slicing(angle_min, angle_max, energy_value=en_val))
 new_range = mdcs.angles
 
-fig = plt.figure(figsize=(6, 5))
+fig = plt.figure(figsize=(7, 5))
 ax = fig.gca()
 
 line1 = xarpes.spectral_linear(amplitude=500, peak=7.5, broadening=0.01, name="Linear test", index="1")
 line2 = xarpes.spectral_linear(amplitude=600, peak=5.5, broadening=0.02, name="Linear test", index="2")
 
-line1.plot(angle_range=new_range, angle_resolution=0.1, ax=ax, show=False)
-line2.plot(angle_range=new_range, angle_resolution=0.1, ax=ax, show=False)
+line1.plot(angle_range=new_range, angle_resolution=0.1, ax=ax, show=False, fig_close=False)
+line2.plot(angle_range=new_range, angle_resolution=0.1, ax=ax, show=False, fig_close=False)
 fig = mdcs.plot(ax=ax)
+
+fig = plt.figure(figsize=(8, 6))
+ax = fig.gca()
 
 guess_dists = xarpes.create_distributions([
 xarpes.linear(offset=3.0e3, slope=-100),
@@ -95,9 +95,12 @@ xarpes.spectral_linear(amplitude=60, peak=4.2, broadening=0.018, name='Linear_te
 #                        side='right', name='Quadratic_test', index='1')
 ])
 
-fig = mdcs.visualize_guess(distributions=guess_dists)
+fig = mdcs.visualize_guess(distributions=guess_dists, ax=ax, show=True)
 
-fig, new_distributions, covariance_matrix = mdcs.fit(distributions=guess_dists)
+fig = plt.figure(figsize=(8, 6))
+ax = fig.gca()
+
+fig, new_distributions, covariance_matrix = mdcs.fit(distributions=guess_dists, ax=ax, show=True)
 
 change = xarpes.spectral_linear(amplitude=500, peak=7.5, broadening=0.01, name="Linear_test", index="1")
 

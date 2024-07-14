@@ -25,6 +25,7 @@ def plot_settings(name='default'):
     mpl.rcParams['xtick.minor.size'] = 2
     mpl.rcParams['xtick.major.width'] = 0.8
     mpl.rcParams.update({'font.size': 16})
+    plt.rcParams['legend.frameon'] = False
 
 
 def get_ax_fig_plt(ax=None, **kwargs):
@@ -58,12 +59,16 @@ def get_ax_fig_plt(ax=None, **kwargs):
 
     return ax, fig, plt
 
+from functools import wraps
+import matplotlib.pyplot as plt
+import string
+
 def add_fig_kwargs(func):
     """Decorator that adds keyword arguments for functions returning matplotlib
     figures.
 
-    The function should return either a matplotlib figure or None to signal
-    some sort of error/unexpected event.
+    The function should return either a matplotlib figure or a tuple where the first element
+    is a matplotlib figure, or None to signal some sort of error/unexpected event.
     """
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -75,42 +80,46 @@ def add_fig_kwargs(func):
         tight_layout = kwargs.pop('tight_layout', False)
         ax_grid = kwargs.pop('ax_grid', None)
         ax_annotate = kwargs.pop('ax_annotate', None)
-        fig_close = kwargs.pop('fig_close', False)
+        fig_close = kwargs.pop('fig_close', True)
 
-        # Call func and return immediately if None is returned.
-        fig = func(*args, **kwargs)
+        # Call the original function
+        result = func(*args, **kwargs)
+        
+        # Determine if result is a figure or a tuple with the first element as figure
+        if isinstance(result, tuple):
+            fig = result[0]
+            rest = result[1:]
+        else:
+            fig = result
+            rest = None
+
+        # Return immediately if no figure is returned
         if fig is None:
-            return fig
+            return result
 
-        # Operate on matplotlib figure.
+        # Operate on the matplotlib figure
         if title is not None:
             fig.suptitle(title)
 
         if size_kwargs is not None:
-            fig.set_size_inches(size_kwargs.pop('w'), size_kwargs.pop('h'),
-                                **size_kwargs)
+            fig.set_size_inches(size_kwargs.pop('w'), size_kwargs.pop('h'), **size_kwargs)
 
         if ax_grid is not None:
             for ax in fig.axes:
                 ax.grid(bool(ax_grid))
 
         if ax_annotate:
-            tags = ascii_letters
+            tags = string.ascii_letters
             if len(fig.axes) > len(tags):
-                tags = (1 + len(ascii_letters) // len(fig.axes)) * ascii_letters
+                tags = (1 + len(string.ascii_letters) // len(fig.axes)) * string.ascii_letters
             for ax, tag in zip(fig.axes, tags):
-                ax.annotate(f'({tag})', xy=(0.05, 0.95),
-                            xycoords='axes fraction')
+                ax.annotate(f'({tag})', xy=(0.05, 0.95), xycoords='axes fraction')
 
         if tight_layout:
             try:
                 fig.tight_layout()
             except Exception as exc:
-                # For some unknown reason, this problem shows up only on travis.
-                # https://stackoverflow.com/questions/22708888/
-                #valueerror-when-using-matplotlib-tight-layout
-                print('Ignoring Exception raised by fig.tight_layout\n',
-                      str(exc))
+                print('Ignoring Exception raised by fig.tight_layout\n', str(exc))
 
         if savefig:
             fig.savefig(savefig)
@@ -120,7 +129,11 @@ def add_fig_kwargs(func):
         if fig_close:
             plt.close(fig=fig)
 
-        return fig
+        # Reassemble the tuple if necessary and return
+        if rest is not None:
+            return (fig, *rest)
+        else:
+            return fig
 
     # Add docstring to the decorated method.
     doc_str = """\n\n
@@ -142,18 +155,16 @@ def add_fig_kwargs(func):
         ax_grid           True (False) to add (remove) grid from all axes in
                           fig.
                           Default: None i.e. fig is left unchanged.
-        ax_annotate       Add labels to  subplots e.g. (a), (b).
+        ax_annotate       Add labels to subplots e.g. (a), (b).
                           Default: False
-        fig_close         Close figure. Default: False.
+        fig_close         Close figure. Default: True.
         ================  ====================================================
 
 """
 
     if wrapper.__doc__ is not None:
-        # Add s at the end of the docstring.
         wrapper.__doc__ += f'\n{doc_str}'
     else:
-        # Use s
         wrapper.__doc__ = doc_str
 
     return wrapper
