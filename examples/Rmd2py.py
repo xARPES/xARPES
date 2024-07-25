@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+
+"""Convert all example notebooks (.Rmd) to simple scripts (.py)."""
+
 import os
 
 first_magic_comment = True # Flag to check the first magic comment
