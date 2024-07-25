@@ -22,6 +22,8 @@ jupyter:
 
 import xarpes
 import matplotlib.pyplot as plt
+import numpy as np
+import os
 
 xarpes.plot_settings('default')
 ```
@@ -33,31 +35,15 @@ dfld = 'data_sets'  # Folder containing the data
 flnm = 'STO_2_0010STO_2_' # Name of the file
 extn = '.ibw'  # Extension of the file
 
-# These three packages no longer have to be loaded once data is generated
-# inside the band map class. Although maybe later on numpy will be needed.
-import numpy as np
-from igor2 import binarywave
-import os
 data_file_path = os.path.join(script_dir, dfld, flnm + extn)
-data = binarywave.load(data_file_path)
-
-intn = data['wave']['wData']
-
-fnum, anum = data['wave']['wave_header']['nDim'][0:2]
-fstp, astp = data['wave']['wave_header']['sfA'][0:2]
-fmin, amin = data['wave']['wave_header']['sfB'][0:2]
-
-angl = np.linspace(amin, amin + (anum - 1) * astp, anum)
-ekin = np.linspace(fmin, fmin + (fnum - 1) * fstp, fnum)
 ```
 
 ```{python}
 fig = plt.figure(figsize=(8, 5))
 ax = fig.gca()
 
-bmap = xarpes.band_map(intensities=intn, angles=angl, ekin=ekin,
-                       energy_resolution=0.01, angle_resolution=0.2,
-                       temperature=20)
+bmap = xarpes.band_map(data_file_path, energy_resolution=0.01,
+                       angle_resolution=0.2, temperature=20)
 
 fig = bmap.plot(abscissa='angle', ordinate='kinetic_energy', ax=ax)
 ```

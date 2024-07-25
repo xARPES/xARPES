@@ -11,6 +11,7 @@
 
 """The band map class and allowed operations on it."""
 
+import igor2
 import numpy as np
 from .plotting import get_ax_fig_plt, add_fig_kwargs
 from .functions import fit_leastsq, extend_function
@@ -262,6 +263,10 @@ class band_map():
 
     Parameters
     ----------
+    datafile : str
+        Name of data file. Currently, only IGOR Binary Wave files are supported.
+        If absent, `intensities`, `angles`, and `ekin` are mandatory. Otherwise,
+        those arguments can be used to overwrite the contents of `datafile`.
     intensities : ndarray
         2D array of counts for given (E,k) or (E,angle) pairs [counts]
     angles : ndarray
@@ -279,12 +284,31 @@ class band_map():
     hnuminphi_std : float, None
         Standard deviation of kinetic energy minus work function [eV]
     """
-    def __init__(self, intensities, angles, ekin, ebin=None, \
-                 energy_resolution=None, angle_resolution=None, \
+    def __init__(self, datafile=None, intensities=None, angles=None, ekin=None,
+                 ebin=None, energy_resolution=None, angle_resolution=None,
                  temperature=None, hnuminphi=None, hnuminphi_std=None):
-        self.intensities = intensities
-        self.angles = angles
-        self.ekin = ekin
+
+        if datafile is not None:
+            data = igor2.binarywave.load(datafile)
+
+            self.intensities = data['wave']['wData']
+
+            fnum, anum = data['wave']['wave_header']['nDim'][0:2]
+            fstp, astp = data['wave']['wave_header']['sfA'][0:2]
+            fmin, amin = data['wave']['wave_header']['sfB'][0:2]
+
+            self.angles = np.linspace(amin, amin + (anum - 1) * astp, anum)
+            self.ekin = np.linspace(fmin, fmin + (fnum - 1) * fstp, fnum)
+
+        if intensities is not None:
+            self.intensities = intensities
+
+        if angles is not None:
+            self.angles = angles
+
+        if ekin is not None:
+            self.ekin = ekin
+
         self.ebin = ebin
         self.energy_resolution = energy_resolution
         self.angle_resolution = angle_resolution

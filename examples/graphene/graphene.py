@@ -11,6 +11,7 @@ mpl.use('Qt5Agg')
 
 import xarpes
 import matplotlib.pyplot as plt
+import os
 
 xarpes.plot_settings('default')
 
@@ -20,30 +21,13 @@ dfld = 'data_sets' # Folder containing the data
 flnm = 'graphene_raw_101' # Name of the file
 extn = '.ibw' # Extension of the file
 
-# These three packages no longer have to be loaded once data is generated
-# inside the band map class
-import numpy as np
-from igor2 import binarywave
-import os
-
 data_file_path = os.path.join(script_dir, dfld, flnm + extn)
-data = binarywave.load(data_file_path)
-
-intn = data['wave']['wData']
-
-fnum, anum = data['wave']['wave_header']['nDim'][0:2]
-fstp, astp = data['wave']['wave_header']['sfA'][0:2]
-fmin, amin = data['wave']['wave_header']['sfB'][0:2]
-
-angl = np.linspace(amin, amin + (anum - 1) * astp, anum)
-ekin = np.linspace(fmin, fmin + (fnum - 1) * fstp, fnum)
 
 fig = plt.figure(figsize=(6, 5))
 ax = fig.gca()
 
-bmap = xarpes.band_map(intensities=intn, angles=angl, ekin=ekin,
-                       energy_resolution=0.01, angle_resolution=0.1,
-                       temperature=80)
+bmap = xarpes.band_map(data_file_path, energy_resolution=0.01,
+                       angle_resolution=0.1, temperature=80)
 
 fig = bmap.fit_fermi_edge(hnuminphi_guess=32, background_guess=1e5,
                           integrated_weight_guess=1.5e6, angle_min=-10,
