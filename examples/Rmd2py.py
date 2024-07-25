@@ -4,8 +4,6 @@
 
 import os
 
-first_magic_comment = True # Flag to check the first magic comment
-
 # Get the directory name safely
 base_dir = os.path.dirname(os.path.abspath(__file__)) if '__file__' in \
 locals() else os.getcwd()
@@ -22,6 +20,8 @@ for path, folders, files in os.walk(base_dir):
 
             with open(rmd) as lines, open(py, 'w') as text:
                 text.write('#!/usr/bin/env python3\n')
+
+                first_magic_comment = True
 
                 for line in lines:
                     if line.startswith('---'):

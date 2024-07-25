@@ -4,6 +4,9 @@
 ### In this example, we extract the self-energies and Eliashberg function from
 ### a 2DEL in the d$_{xy}$ bands on the TiO$_2$-terminated surface of SrTiO$_3$.
 
+import matplotlib as mpl
+mpl.use('Qt5Agg')
+
 import xarpes
 import matplotlib.pyplot as plt
 import numpy as np
