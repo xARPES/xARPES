@@ -248,8 +248,8 @@ def download_examples():
         print(f'Cleaned up temporary files in {main_folder_path}')
         return 0
     else:
-        print(f'Failed to download the repository. Status code:
-                {response.status_code}')
+        print('Failed to download the repository. Status code: '
+             f'{response.status_code}')
         return 1
 
 def set_script_dir():
