@@ -283,10 +283,13 @@ class band_map():
         Kinetic energy minus the work function [eV]
     hnuminphi_std : float, None
         Standard deviation of kinetic energy minus work function [eV]
+    transpose : bool, False
+        Are the energy and angle axes swapped (angle first) in the input file?
     """
     def __init__(self, datafile=None, intensities=None, angles=None, ekin=None,
                  ebin=None, energy_resolution=None, angle_resolution=None,
-                 temperature=None, hnuminphi=None, hnuminphi_std=None):
+                 temperature=None, hnuminphi=None, hnuminphi_std=None,
+                 transpose=False):
 
         if datafile is not None:
             data = igor2.binarywave.load(datafile)
@@ -296,6 +299,16 @@ class band_map():
             fnum, anum = data['wave']['wave_header']['nDim'][0:2]
             fstp, astp = data['wave']['wave_header']['sfA'][0:2]
             fmin, amin = data['wave']['wave_header']['sfB'][0:2]
+
+            if self.intensities.shape != (fnum, anum):
+                raise ValueError('nDim and shape of wData do not match.')
+
+            if transpose:
+                self.intensities = self.intensities.T
+
+                fnum, anum = anum, fnum
+                fstp, astp = astp, fstp
+                fmin, amin = amin, fmin
 
             self.angles = np.linspace(amin, amin + (anum - 1) * astp, anum)
             self.ekin = np.linspace(fmin, fmin + (fnum - 1) * fstp, fnum)
