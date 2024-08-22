@@ -42,8 +42,8 @@ data_file_path = os.path.join(script_dir, dfld, flnm + extn)
 fig = plt.figure(figsize=(8, 5))
 ax = fig.gca()
 
-bmap = xarpes.band_map(data_file_path, energy_resolution=0.01,
-                       angle_resolution=0.2, temperature=20)
+bmap = xarpes.BandMap(data_file_path, energy_resolution=0.01,
+                      angle_resolution=0.2, temperature=20)
 
 fig = bmap.plot(abscissa='angle', ordinate='kinetic_energy', ax=ax)
 ```
@@ -79,17 +79,17 @@ k_0 = 0.03
 theta_0 = 0.6
 dtor = np.pi/180
 
-guess_dists = xarpes.create_distributions([
-xarpes.constant(offset=600),
-xarpes.spectral_linear(amplitude=3000, peak=2.4, broadening=0.0001, 
-                       name='Faint_band', index='1'),
+guess_dists = xarpes.CreateDistributions([
+xarpes.Constant(offset=600),
+xarpes.SpectralLinear(amplitude=3000, peak=2.4, broadening=0.0001,
+                      name='Faint_band', index='1'),
     
 
-xarpes.spectral_quadratic(amplitude=3800, peak=2.45, broadening=0.00024, 
+xarpes.SpectralQuadratic(amplitude=3800, peak=2.45, broadening=0.00024,
             center_wavevector=k_0, side='right', name='Inner_band', index='2'),
     
     
-xarpes.spectral_quadratic(amplitude=1800, peak=3.6, broadening=0.0004, 
+xarpes.SpectralQuadratic(amplitude=1800, peak=3.6, broadening=0.0004,
             center_wavevector=k_0, side='right', name='Outer_band', index='3')
 ])
 

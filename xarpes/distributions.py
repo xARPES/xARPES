@@ -13,7 +13,7 @@ pref = 3.80998211616 # hbar^2/(2m_e) [eV Angstrom^2]
 fwhm_to_std = np.sqrt(8 * np.log(2)) # Convert FWHM to std [-]
 sigma_extend = 5 # Extend data range by "5 sigma"
 
-class create_distributions:
+class CreateDistributions:
     r"""
     """
     def __init__(self, distributions):
@@ -71,7 +71,7 @@ class create_distributions:
         total_result = np.zeros(np.shape(extend))
 
         for dist in self.distributions:
-            if dist.class_name == 'spectral_quadratic':
+            if dist.class_name == 'SpectralQuadratic':
                 if (dist.center_angle is not None) and (kinetic_energy is
                     None or hnuminphi is None):
                     raise ValueError('Spectral quadratic function is ' +
@@ -100,7 +100,7 @@ class create_distributions:
 
         return fig
 
-class distribution:
+class Distribution:
     r"""Parent class for distributions. The class cannot be used on its own,
     but is used to instantiate unique and non-unique distributions.
 
@@ -139,7 +139,7 @@ class distribution:
     def plot(self, angle_range, angle_resolution, kinetic_energy=None,
              hnuminphi=None, matrix_element=None, matrix_args=None,
              ax=None, **kwargs):
-        r"""Overwritten for fermi_dirac distribution.
+        r"""Overwritten for FermiDirac distribution.
         """
         if angle_resolution < 0:
             raise ValueError('Distribution cannot be plotted with negative '
@@ -153,7 +153,7 @@ class distribution:
 
         extend, step, numb = self.extend_range(angle_range, angle_resolution)
 
-        if self.class_name == 'spectral_quadratic':
+        if self.class_name == 'SpectralQuadratic':
             extended_result = self.evaluate(extend, kinetic_energy, hnuminphi)
         else:
             extended_result = self.evaluate(extend)
@@ -170,7 +170,7 @@ class distribution:
 
         return fig
 
-class unique_distribution(distribution):
+class UniqueDistribution(Distribution):
     r"""Parent class for unique distributions, to be used one at a time, e.g.,
     during the background of an MDC fit or the Fermi-Dirac distribution.
 
@@ -196,7 +196,7 @@ class unique_distribution(distribution):
         """
         return self._label
 
-class fermi_dirac(unique_distribution):
+class FermiDirac(UniqueDistribution):
     r"""Child class for Fermi-Dirac (FD) distributions, used e.g., during Fermi
     edge fitting. The FD class is unique, only one instance should be used
     per task.
@@ -223,7 +223,7 @@ class fermi_dirac(unique_distribution):
         Integrated weight on top of the background [counts]
     """
     def __init__(self, temperature, hnuminphi, background=0,
-                 integrated_weight=1, name='fermi_dirac'):
+                 integrated_weight=1, name='FermiDirac'):
         super().__init__(name)
         self.temperature = temperature
         self.hnuminphi = hnuminphi
@@ -395,7 +395,7 @@ class fermi_dirac(unique_distribution):
 
         return fig
 
-class constant(unique_distribution):
+class Constant(UniqueDistribution):
     r"""Child class for constant distributions, used e.g., during MDC fitting.
     The constant class is unique, only one instance should be used per task.
 
@@ -404,7 +404,7 @@ class constant(unique_distribution):
     offset : float
         The value of the distribution for the abscissa equal to 0.
     """
-    def __init__(self, offset, name='constant'):
+    def __init__(self, offset, name='Constant'):
         super().__init__(name)
         self.offset = offset
 
@@ -440,7 +440,7 @@ class constant(unique_distribution):
         """
         return np.full(np.shape(angle_range), self.offset)
 
-class linear(unique_distribution):
+class Linear(UniqueDistribution):
     r"""Child cass for for linear distributions, used e.g., during MDC fitting.
     The linear class is unique, only one instance should be used per task.
 
@@ -451,7 +451,7 @@ class linear(unique_distribution):
     slope : float
         The linear slope of the distribution w.r.t. the abscissa.
     """
-    def __init__(self, slope, offset, name='linear'):
+    def __init__(self, slope, offset, name='Linear'):
         super().__init__(name)
         self.offset = offset
         self.slope = slope
@@ -510,7 +510,7 @@ class linear(unique_distribution):
         """
         return self.offset + self.slope * angle_range
 
-class non_unique_distribution(distribution):
+class NonUniqueDistribution(Distribution):
     r"""Parent class for unique distributions, to be used one at a time, e.g.,
     during the background of an MDC fit or the Fermi-Dirac distribution.
 
@@ -549,7 +549,7 @@ class non_unique_distribution(distribution):
         """
         return self._index
 
-class dispersion(non_unique_distribution):
+class Dispersion(NonUniqueDistribution):
     r"""Dispersions are assumed to be unique, so they need an index.
     """
     def __init__(self, amplitude, peak, broadening, name, index):
@@ -594,7 +594,7 @@ class dispersion(non_unique_distribution):
         """
         self._broadening = x
 
-class spectral_linear(dispersion):
+class SpectralLinear(Dispersion):
     r"""Class for the linear dispersion spectral function"""
     def __init__(self, amplitude, peak, broadening, name, index):
         super().__init__(amplitude=amplitude, peak=peak,
@@ -617,7 +617,7 @@ class spectral_linear(dispersion):
         angle_range * dtor) - np.sin(self.peak * dtor)) ** 2 +
         self.broadening ** 2)
 
-class spectral_quadratic(dispersion):
+class SpectralQuadratic(Dispersion):
     r"""Class for the quadratic dispersion spectral function"""
     def __init__(self, amplitude, peak, broadening, side, name, index,
                  center_wavevector=None, center_angle=None):

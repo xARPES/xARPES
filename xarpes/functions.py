@@ -13,16 +13,16 @@ def build_distributions(distributions, parameters):
     r"""TBD
     """
     for dist in distributions:
-        if dist.class_name == 'constant':
+        if dist.class_name == 'Constant':
             dist.offset = parameters['offset_' + dist.label].value
-        elif dist.class_name == 'linear':
+        elif dist.class_name == 'Linear':
             dist.offset = parameters['offset_' + dist.label].value
             dist.slope = parameters['slope_' + dist.label].value
-        elif dist.class_name == 'spectral_linear':
+        elif dist.class_name == 'SpectralLinear':
             dist.amplitude = parameters['amplitude_' + dist.label].value
             dist.peak = parameters['peak_' + dist.label].value
             dist.broadening = parameters['broadening_' + dist.label].value
-        elif dist.class_name == 'spectral_quadratic':
+        elif dist.class_name == 'SpectralQuadratic':
             dist.amplitude = parameters['amplitude_' + dist.label].value
             dist.peak = parameters['peak_' + dist.label].value
             dist.broadening = parameters['broadening_' + dist.label].value
@@ -36,18 +36,18 @@ def construct_parameters(distribution_list, matrix_args=None):
     parameters = Parameters()
 
     for dist in distribution_list:
-        if dist.class_name == 'constant':
+        if dist.class_name == 'Constant':
             parameters.add(name='offset_' + dist.label, value=dist.offset)
-        elif dist.class_name == 'linear':
+        elif dist.class_name == 'Linear':
             parameters.add(name='offset_' + dist.label, value=dist.offset)
             parameters.add(name='slope_' + dist.label, value=dist.slope)
-        elif dist.class_name == 'spectral_linear':
+        elif dist.class_name == 'SpectralLinear':
             parameters.add(name='amplitude_' + dist.label,
                            value=dist.amplitude, min=0)
             parameters.add(name='peak_' + dist.label, value=dist.peak)
             parameters.add(name='broadening_' + dist.label,
                            value=dist.broadening, min=0)
-        elif dist.class_name == 'spectral_quadratic':
+        elif dist.class_name == 'SpectralQuadratic':
             parameters.add(name='amplitude_' + dist.label,
                            value=dist.amplitude, min=0)
             parameters.add(name='peak_' + dist.label, value=dist.peak)
@@ -84,7 +84,7 @@ def residual(parameters, xdata, ydata, angle_resolution, new_distributions,
 
     for dist in new_distributions:
         if hasattr(dist, 'index') and matrix_element is not None:
-            if dist.class_name == 'spectral_quadratic':
+            if dist.class_name == 'SpectralQuadratic':
                 model += dist.evaluate(extend, kinetic_energy, hnuminphi) \
                 * matrix_element(extend, **matrix_parameters)
             else:

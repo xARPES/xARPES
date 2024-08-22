@@ -43,8 +43,8 @@ data_file_path = os.path.join(script_dir, dfld, flnm + extn)
 fig = plt.figure(figsize=(6, 5))
 ax = fig.gca()
 
-bmap = xarpes.band_map(data_file_path, energy_resolution=0.01,
-                       angle_resolution=0.1, temperature=80)
+bmap = xarpes.BandMap(data_file_path, energy_resolution=0.01,
+                      angle_resolution=0.1, temperature=80)
 
 fig = bmap.fit_fermi_edge(hnuminphi_guess=32, background_guess=1e5,
                           integrated_weight_guess=1.5e6, angle_min=-10,
@@ -84,10 +84,10 @@ new_range = mdcs.angles
 fig = plt.figure(figsize=(7, 5))
 ax = fig.gca()
 
-line1 = xarpes.spectral_linear(amplitude=500, peak=7.5, broadening=0.01, 
-                               name="Linear test", index="1")
-line2 = xarpes.spectral_linear(amplitude=600, peak=5.5, broadening=0.02, 
-                               name="Linear test", index="2")
+line1 = xarpes.SpectralLinear(amplitude=500, peak=7.5, broadening=0.01,
+                              name="Linear test", index="1")
+line2 = xarpes.SpectralLinear(amplitude=600, peak=5.5, broadening=0.02,
+                              name="Linear test", index="2")
 
 line1.plot(angle_range=new_range, angle_resolution=0.1, ax=ax, show=False, 
            fig_close=False)
@@ -100,13 +100,13 @@ fig = mdcs.plot(ax=ax)
 fig = plt.figure(figsize=(8, 6))
 ax = fig.gca()
 
-guess_dists = xarpes.create_distributions([
-xarpes.linear(offset=3.0e3, slope=-100),
-xarpes.spectral_linear(amplitude=450, peak=7.4, broadening=0.012, 
-                       name='Linear_test', index='1'),
-xarpes.spectral_linear(amplitude=60, peak=4.2, broadening=0.018, 
-                       name='Linear_test', index='2'),
-# xarpes.spectral_quadratic(amplitude=20, peak=4.5, center_wavevector=0, 
+guess_dists = xarpes.CreateDistributions([
+xarpes.Linear(offset=3.0e3, slope=-100),
+xarpes.SpectralLinear(amplitude=450, peak=7.4, broadening=0.012,
+                      name='Linear_test', index='1'),
+xarpes.SpectralLinear(amplitude=60, peak=4.2, broadening=0.018,
+                      name='Linear_test', index='2'),
+# xarpes.SpectralQuadratic(amplitude=20, peak=4.5, center_wavevector=0,
 #    broadening=0.005, side='right', name='Quadratic_test', index='1')
 ])
 
@@ -122,8 +122,8 @@ fig, new_distributions, covariance_matrix = mdcs.fit(\
 ```
 
 ```{python}
-change = xarpes.spectral_linear(amplitude=500, peak=7.5, broadening=0.01,
-                                name="Linear_test", index="1")
+change = xarpes.SpectralLinear(amplitude=500, peak=7.5, broadening=0.01,
+                               name="Linear_test", index="1")
 
 change.broadening = 0.02
 

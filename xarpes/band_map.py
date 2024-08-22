@@ -15,7 +15,7 @@ import igor2
 import numpy as np
 from .plotting import get_ax_fig_plt, add_fig_kwargs
 from .functions import fit_leastsq, extend_function
-from .distributions import fermi_dirac
+from .distributions import FermiDirac
 
 # Physical constants
 dtor = np.pi / 180 # Degrees to radians [rad/deg]
@@ -130,7 +130,7 @@ class MDCs():
         total_result = np.zeros(np.shape(extend))
 
         for dist in distributions:
-            if dist.class_name == 'spectral_quadratic':
+            if dist.class_name == 'SpectralQuadratic':
                 if (dist.center_angle is not None) and (kinetic_energy is
                     None or hnuminphi is None):
                     raise ValueError('Spectral quadratic function is ' +
@@ -222,7 +222,7 @@ class MDCs():
         total_result = np.zeros(np.shape(extend))
 
         for dist in new_distributions:
-            if dist.class_name == 'spectral_quadratic':
+            if dist.class_name == 'SpectralQuadratic':
                 if (dist.center_angle is not None) and (kinetic_energy is
                     None or hnuminphi is None):
                     raise ValueError('Spectral quadratic function is ' +
@@ -258,7 +258,7 @@ class MDCs():
         else:
             return fig, new_distributions, pcov
 
-class band_map():
+class BandMap():
     r"""Class for the band map from the ARPES experiment.
 
     Parameters
@@ -574,11 +574,11 @@ class band_map():
             self.intensities[min_ekin_index:max_ekin_index,
                 min_angle_index:max_angle_index], axis=1)
 
-        fdir_initial = fermi_dirac(temperature=self.temperature,
-                                   hnuminphi=hnuminphi_guess,
-                                   background=background_guess,
-                                   integrated_weight=integrated_weight_guess,
-                                   name='Initial guess')
+        fdir_initial = FermiDirac(temperature=self.temperature,
+                                  hnuminphi=hnuminphi_guess,
+                                  background=background_guess,
+                                  integrated_weight=integrated_weight_guess,
+                                  name='Initial guess')
 
         parameters = np.array(
             [hnuminphi_guess, background_guess, integrated_weight_guess])
@@ -589,10 +589,10 @@ class band_map():
                      integrated_intensity, fdir_initial,
                      self.energy_resolution, extra_args)
 
-        fdir_final = fermi_dirac(temperature=self.temperature,
-                                 hnuminphi=popt[0], background=popt[1],
-                                 integrated_weight=popt[2],
-                                 name='Fitted result')
+        fdir_final = FermiDirac(temperature=self.temperature,
+                                hnuminphi=popt[0], background=popt[1],
+                                integrated_weight=popt[2],
+                                name='Fitted result')
 
         self.hnuminphi = popt[0]
         self.hnuminphi_std = np.sqrt(np.diag(pcov))[0][0]
