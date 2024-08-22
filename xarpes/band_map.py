@@ -285,11 +285,15 @@ class band_map():
         Standard deviation of kinetic energy minus work function [eV]
     transpose : bool, False
         Are the energy and angle axes swapped (angle first) in the input file?
+    flip_ekin : bool, False
+        Reverse energy axis of ``wData`` in `datafile`?
+    flip_angles : bool, False
+        Reverse angle axis of ``wData`` in `datafile`?
     """
     def __init__(self, datafile=None, intensities=None, angles=None, ekin=None,
                  ebin=None, energy_resolution=None, angle_resolution=None,
                  temperature=None, hnuminphi=None, hnuminphi_std=None,
-                 transpose=False):
+                 transpose=False, flip_ekin=False, flip_angles=False):
 
         if datafile is not None:
             data = igor2.binarywave.load(datafile)
@@ -309,6 +313,12 @@ class band_map():
                 fnum, anum = anum, fnum
                 fstp, astp = astp, fstp
                 fmin, amin = amin, fmin
+
+            if flip_ekin:
+                self.intensities = self.intensities[::-1, :]
+
+            if flip_angles:
+                self.intensities = self.intensities[:, ::-1]
 
             self.angles = np.linspace(amin, amin + (anum - 1) * astp, anum)
             self.ekin = np.linspace(fmin, fmin + (fnum - 1) * fstp, fnum)
