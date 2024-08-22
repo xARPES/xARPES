@@ -302,12 +302,18 @@ class band_map():
 
         if intensities is not None:
             self.intensities = intensities
+        elif datafile is None:
+            raise ValueError('Please provide datafile or intensities.')
 
         if angles is not None:
             self.angles = angles
+        elif datafile is None:
+            raise ValueError('Please provide datafile or angles.')
 
         if ekin is not None:
             self.ekin = ekin
+        elif datafile is None:
+            raise ValueError('Please provide datafile or ekin.')
 
         self.ebin = ebin
         self.energy_resolution = energy_resolution
