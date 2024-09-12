@@ -25,3 +25,6 @@ dependencies = [
     "lmfit",
     "pyqt5",
 ]
+
+[project.scripts]
+xarpes_download_examples = "xarpes.functions:download_examples"

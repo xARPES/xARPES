@@ -82,9 +82,13 @@ Answer `y` to questions.
 
 # Examples
 
-Afer installation of xARPES, the `examples/` folder can be downloaded to the current directory with
+After installation of xARPES, the `examples/` folder can be downloaded to the current directory:
 
-    python3 -c "import xarpes; xarpes.download_examples()"
+	xarpes_download_examples
+
+Equivalently:
+
+	python3 -c "import xarpes; xarpes.download_examples()"
 
 # Execution
 
