@@ -1,0 +1,23 @@
+<?xml version='1.0'?>
+<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='349' height='102' viewBox='-0.871 -0.05 17.45 5.1'>
+    <defs>
+        <g id='exubi'>7.0
+            <path d='M7,5 h-1.25 l-2.85,-3.8 a0.5,0.5,0,0,0,-0.4,-0.2 h-1.5 v1 h2 v1 h-2 v1 h1.5 a0.5,0.5,0,0,0,0.4,-0.2 l2.85,-3.8 h1.25 l-3.3,4.4 a1.5,1.5,0,0,1,-1.2,0.6 h-2.5 v-5 h2.5 a1.5,1.5,0,0,1,1.2,0.6 z'/>
+            <path d='M8,0 v3.5 a0.5,0.5,0,0,0,1,0 v-3.5 h1 v3.5 a1.5,1.5,0,0,1,-3,0 v-3.5 h1 z'/>
+            <path d='M11,5 h1 v-5 h-1 z m0,-2 h1.5 a1.5,1.5,0,0,0,0,-3 h-1.5 v1 h1.5 a0.5,0.5,0,0,1,0,1 h-1.5 z m0,2 h1.5 a1.5,1.5,0,0,0,0,-3 h-1.5 v1 h1.5 a0.5,0.5,0,0,1,0,1 h-1.5 z'/>
+            <path d='M15,5 h1 v-5 h-1 z'/>
+        </g>
+    </defs>
+    <g transform='skewX(-9)'>
+        <path d='M8.5,5 h0.5' stroke='#6c665b' stroke-width='0.1'/>
+        <use xlink:href='#exubi' fill='#6c665b' stroke='#6c665b' stroke-width='0.1' transform='translate(0.5)'/>
+        <use xlink:href='#exubi' fill='#6c665b' stroke='#6c665b' stroke-width='0.1'/>
+        <use xlink:href='#exubi' fill='#cc0066'/>
+    </g>
+</svg>
+<!--
+    We choose a slope of 4/3 for the letter x since cos(arcsin(0.8)) = 0.6 (and vice versa) is rational.
+    We shift the bottom-left x coordinate -0.05 by -0.8 because of the skew: 5.05 tan(-9 degrees) = -0.7998.
+    We shift the top-right x coordinate 16.55 by 0.008 because of the skew: 0.05 tan(+9 degrees) = +0.0079.
+    We add a padding of 0.021 both on the left and on the right side to obtain an integer width and height.
+-->
