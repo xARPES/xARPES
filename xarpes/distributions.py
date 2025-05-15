@@ -7,9 +7,9 @@ import numpy as np
 from .plotting import get_ax_fig_plt, add_fig_kwargs
 
 # Physical constants
-k_B = 8.617e-5 # Boltzmann constant [eV/K]
-dtor = np.pi / 180 # Degrees to radians [rad/deg]
-pref = 3.80998211616 # hbar^2/(2m_e) [eV Angstrom^2]
+k_B = 8.617e-5 # Boltzmann constant [eV / K]
+dtor = np.pi / 180 # Degrees to radians [rad / deg]
+pref = 3.80998211616 # hbar^2 / (2 m_e) [eV Angstrom^2]
 fwhm_to_std = np.sqrt(8 * np.log(2)) # Convert FWHM to std [-]
 sigma_extend = 5 # Extend data range by "5 sigma"
 
@@ -430,13 +430,13 @@ class Constant(UniqueDistribution):
         """
         self._offset = x
 
-    def __call__(self, angle_range, angle_resolution, offset):
-        r"""For a constant, convolution changes nothing.
+    def __call__(self, angle_range, offset):
+        r"""TBD
         """
         return np.full(np.shape(angle_range), offset)
 
     def evaluate(self, angle_range):
-        r"""For a constant, convolution changes nothing.
+        r"""TBD
         """
         return np.full(np.shape(angle_range), self.offset)
 
@@ -500,13 +500,13 @@ class Linear(UniqueDistribution):
         """
         self._slope = x
 
-    def __call__(self, angle_range, angle_resolution, offset, slope):
-        r"""For a constant, convolution changes nothing.
+    def __call__(self, angle_range, offset, slope):
+        r"""For a linear slope, convolution changes something.
         """
         return offset + slope * angle_range
 
     def evaluate(self, angle_range):
-        r"""For a straight line, convolution changes nothing.
+        r"""No energy convolution is performed with evaluate.
         """
         return self.offset + self.slope * angle_range
 
@@ -611,12 +611,11 @@ class SpectralLinear(Dispersion):
     def evaluate(self, angle_range):
         r"""
         """
-        dtor = np.pi / 180
-
         return self.amplitude / np.pi * self.broadening / ((np.sin(
         angle_range * dtor) - np.sin(self.peak * dtor)) ** 2 +
         self.broadening ** 2)
 
+    
 class SpectralQuadratic(Dispersion):
     r"""Class for the quadratic dispersion spectral function"""
     def __init__(self, amplitude, peak, broadening, side, name, index,

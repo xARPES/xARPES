@@ -18,44 +18,66 @@ xarpes.plot_settings('default')
 script_dir = xarpes.set_script_dir()
 
 dfld = 'data_sets' # Folder containing the data
-flnm = 'graphene_raw_101' # Name of the file
+flnm = 'graphene_152' # Name of the file
 extn = '.ibw' # Extension of the file
 
 data_file_path = os.path.join(script_dir, dfld, flnm + extn)
 
+bmap = xarpes.BandMap(data_file_path, energy_resolution=0.01,
+                      angle_resolution=0.1, temperature=50)
+
+bmap.shift_angles(shift=-2.28)
+
+fig, ax = plt.subplots(2, 1, figsize=(6, 8))
+
+fig = bmap.correct_fermi_edge(
+      hnuminphi_guess=32, background_guess=1e2,
+      integrated_weight_guess=1e3, angle_min=-10, angle_max=10,
+      ekin_min=31.96, ekin_max=32.1, true_angle=0,
+      ax=ax[0], show=False, fig_close=False)
+
+fig = bmap.plot(ordinate='kinetic_energy', abscissa='angle',
+      ax=ax[1], show=False, fig_close=False)
+
+# Figure customization
+ax[0].set_xlabel(''); ax[0].set_xticklabels([])
+ax[0].set_title('Fermi correction fit')
+fig.subplots_adjust(top=0.92, hspace=0.1)
+plt.show()
+
+print('The optimised hnu - Phi=' + f'{bmap.hnuminphi:.4f}' + ' +/- '
+      + f'{1.96 * bmap.hnuminphi_std:.5f}' + ' eV.')
+
+fig = bmap.plot(ordinate='kinetic_energy', abscissa='angle')
+
 fig = plt.figure(figsize=(6, 5))
 ax = fig.gca()
 
-bmap = xarpes.BandMap(data_file_path, energy_resolution=0.01,
-                      angle_resolution=0.1, temperature=80)
-
 fig = bmap.fit_fermi_edge(hnuminphi_guess=32, background_guess=1e5,
                           integrated_weight_guess=1.5e6, angle_min=-10,
-                          angle_max=10, ekin_min=31.9, ekin_max=32.1,
+                          angle_max=10, ekin_min=31.96, ekin_max=32.1,
                           ax=ax, show=True, title='Fermi edge fit')
 
-print('The optimised h nu - phi=' + f'{bmap.hnuminphi:.4f}' + ' +/- '
-      + f'{bmap.hnuminphi_std:.4f}' + ' eV.')
+print('The optimised hnu - Phi=' + f'{bmap.hnuminphi:.4f}' + ' +/- '
+      + f'{1.96 * bmap.hnuminphi_std:.5f}' + ' eV.')
 
 angle_min = 0.1
 angle_max = 1e6
 en_val = 0
 energy_range = [-0.3, 0.05]
 
-mdcs = xarpes.MDCs(*bmap.slicing(angle_min, angle_max, energy_value=en_val))
+mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_value=en_val))
 
 fig = plt.figure(figsize=(5, 4))
 ax = fig.gca()
 
 fig = mdcs.plot(ax=ax, show=True)
 
-fig = bmap.plot(ordinate='binding_energy', abscissa='angle')
-
 angle_min = 0
 angle_max = 1e6
 en_val = 0
 
-mdcs = xarpes.MDCs(*bmap.slicing(angle_min, angle_max, energy_value=en_val))
+mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_value=en_val))
 new_range = mdcs.angles
 
 fig = plt.figure(figsize=(7, 5))
@@ -99,3 +121,5 @@ change = xarpes.SpectralLinear(amplitude=500, peak=7.5, broadening=0.01,
 change.broadening = 0.02
 
 print(change.broadening)
+
+

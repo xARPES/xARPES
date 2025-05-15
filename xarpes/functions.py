@@ -96,35 +96,6 @@ def residual(parameters, xdata, ydata, angle_resolution, new_distributions,
     model = gaussian_filter(model, sigma=step)[numb:-numb if numb else None]
     return model - ydata
 
-def error_function(p, xdata, ydata, function, resolution, extra_args):
-    r"""The error function used inside the fit_leastsq function.
-
-    Parameters
-    ----------
-    p : ndarray
-        Array of parameters during the optimization
-    xdata : ndarray
-        Array of abscissa values the function is evaluated on
-    ydata : ndarray
-        Outcomes on ordinate the evaluated function is compared to
-    function : function
-        Function or class with call method to be evaluated
-    extra_args :
-        Arguments provided to function that should not be optimized
-
-    Returns
-    -------
-    residual :
-        Residual between evaluated function and ydata
-    """
-    if resolution:
-        from scipy.ndimage import gaussian_filter
-        extend, step, numb = extend_function(xdata, resolution)
-        residual = gaussian_filter(function(extend, *p, *extra_args),
-                   sigma=step)[numb:-numb if numb else None] - ydata
-    else:
-        residual = function(xdata, *p, *extra_args) - ydata
-    return residual
 
 def extend_function(abscissa_range, abscissa_resolution):
     r"""TBD
@@ -137,52 +108,98 @@ def extend_function(abscissa_range, abscissa_resolution):
                          len(abscissa_range) + 2 * numb)
     return extend, step, numb
 
-def fit_leastsq(p0, xdata, ydata, function, resolution=None, *extra_args):
-    r"""Wrapper arround scipy.optimize.leastsq.
+
+def error_function(p, xdata, ydata, function, resolution, yerr, extra_args):
+    r"""The error function used inside the fit_leastsq function.
+
+    Parameters
+    ----------
+    p : ndarray
+        Array of parameters during the optimization.
+    xdata : ndarray
+        Abscissa values the function is evaluated on.
+    ydata : ndarray
+        Measured values to compare to.
+    function : callable
+        Function or class with __call__ method to evaluate.
+    resolution : float or None
+        Convolution resolution (sigma), if applicable.
+    yerr : ndarray
+        Standard deviations of ydata.
+    extra_args : tuple
+        Additional arguments passed to function.
+
+    Returns
+    -------
+    residual : ndarray
+        Normalized residuals between model and ydata.
+    """
+    if resolution:
+        from scipy.ndimage import gaussian_filter
+        extend, step, numb = extend_function(xdata, resolution)
+        model = gaussian_filter(function(extend, *p, *extra_args),
+                                sigma=step)
+        model = model[numb:-numb if numb else None]
+    else:
+        model = function(xdata, *p, *extra_args)
+
+    residual = (model - ydata) / yerr
+    return residual
+
+
+def fit_leastsq(p0, xdata, ydata, function, resolution=None,
+                yerr=None, *extra_args):
+    r"""Wrapper around scipy.optimize.leastsq.
 
     Parameters
     ----------
     p0 : ndarray
-        Initial guess for parameters to be optimized
+        Initial guess for parameters to be optimized.
     xdata : ndarray
-        Array of abscissa values the function is evaluated on
+        Abscissa values the function is evaluated on.
     ydata : ndarray
-        Outcomes on ordinate the evaluated function is compared to
-    function : function
-        Function or class with call method to be evaluated
-    extra_args :
-        Arguments provided to function that should not be optimized
+        Measured values to compare to.
+    function : callable
+        Function or class with __call__ method to evaluate.
+    resolution : float or None, optional
+        Convolution resolution (sigma), if applicable.
+    yerr : ndarray or None, optional
+        Standard deviations of ydata. Defaults to ones if None.
+    extra_args : tuple
+        Additional arguments passed to the function.
 
     Returns
     -------
     pfit_leastsq : ndarray
-        Array containing the optimized parameters
-    perr_leastsq : ndarray
-        Covariance matrix of the optimized parameters
+        Optimized parameters.
+    pcov : ndarray or float
+        Scaled covariance matrix of the optimized parameters.
+        If the covariance could not be estimated, returns np.inf.
     """
     from scipy.optimize import leastsq
+    import numpy as np
+
+    if yerr is None:
+        yerr = np.ones_like(ydata)
 
     pfit, pcov, infodict, errmsg, success = leastsq(
-        error_function, p0, args=(xdata, ydata, function, resolution,
-                            extra_args), full_output=1)
+        error_function,
+        p0,
+        args=(xdata, ydata, function, resolution, yerr, extra_args),
+        full_output=1
+    )
 
     if (len(ydata) > len(p0)) and pcov is not None:
-        s_sq = (error_function(pfit, xdata, ydata, function, resolution,
-                               extra_args) ** 2).sum() / (len(ydata) - len(p0))
-        pcov = pcov * s_sq
+        s_sq = (
+            error_function(pfit, xdata, ydata, function, resolution,
+                           yerr, extra_args) ** 2
+        ).sum() / (len(ydata) - len(p0))
+        pcov *= s_sq
     else:
         pcov = np.inf
 
-    error = []
-    for i in range(len(pfit)):
-        try:
-          error.append(np.absolute(pcov[i][i]) ** 0.5)
-        except:
-          error.append(0.00)
-    pfit_leastsq = pfit
-    perr_leastsq = np.array(error)
+    return pfit, pcov
 
-    return pfit_leastsq, perr_leastsq
 
 def download_examples():
     """Downloads the examples folder from the xARPES code only if it does not

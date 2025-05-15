@@ -11,39 +11,529 @@
 
 """The band map class and allowed operations on it."""
 
-import igor2
+from igor2 import packed, binarywave
 import numpy as np
 from .plotting import get_ax_fig_plt, add_fig_kwargs
 from .functions import fit_leastsq, extend_function
-from .distributions import FermiDirac
+from .distributions import FermiDirac, Linear
 
 # Physical constants
+# The first one can be generated with scipy.stats.norm.ppf(0.975)
+uncr = 1.95996398 # Standard deviation to 95 % confidence [-]
 dtor = np.pi / 180 # Degrees to radians [rad/deg]
 pref = 3.80998211616 # hbar^2/(2m_e) [eV Angstrom^2]
 
+class BandMap():
+    r"""Class for the band map from the ARPES experiment.
+
+    Parameters
+    ----------
+    datafile : str
+        Name of data file. Currently, only IGOR Binary Wave files are supported.
+        If absent, `intensities`, `angles`, and `ekin` are mandatory. Otherwise,
+        those arguments can be used to overwrite the contents of `datafile`.
+    intensities : ndarray
+        2D array of counts for given (E,k) or (E,angle) pairs [counts]
+    angles : ndarray
+        1D array of angle values for the abscissa [degrees]
+    ekin : ndarray
+        1D array of kinetic energy values for the ordinate [eV]
+    enel : ndarray
+        1D array of electron energy (E-\mu) values for the ordinate [eV]
+    angle_resolution : float, None
+        Angle resolution of the detector [degrees]
+    energy_resolution : float, None
+        Energy resolution of the detector [eV]
+    temperature : float, None
+        Temperature of the sample [K]
+    hnuminphi : float, None
+        Kinetic energy minus the work function [eV]
+    hnuminphi_std : float, None
+        Standard deviation of kinetic energy minus work function [eV]
+    transpose : bool, False
+        Are the energy and angle axes swapped (angle first) in the input file?
+    flip_ekin : bool, False
+        Reverse energy axis of ``wData`` in `datafile`?
+    flip_angles : bool, False
+        Reverse angle axis of ``wData`` in `datafile`?
+    """
+    def __init__(self, datafile=None, intensities=None, angles=None, ekin=None,
+                 enel=None, energy_resolution=None, angle_resolution=None,
+                 temperature=None, hnuminphi=None, hnuminphi_std=None,
+                 transpose=False, flip_ekin=False, flip_angles=False):
+        
+        if datafile is not None:
+            data = binarywave.load(datafile)
+
+            self.intensities = data['wave']['wData']
+
+            fnum, anum = data['wave']['wave_header']['nDim'][0:2]
+            fstp, astp = data['wave']['wave_header']['sfA'][0:2]
+            fmin, amin = data['wave']['wave_header']['sfB'][0:2]
+
+            if self.intensities.shape != (fnum, anum):
+                raise ValueError('nDim and shape of wData do not match.')
+
+            if transpose:
+                self.intensities = self.intensities.T
+
+                fnum, anum = anum, fnum
+                fstp, astp = astp, fstp
+                fmin, amin = amin, fmin
+
+            if flip_ekin:
+                self.intensities = self.intensities[::-1, :]
+
+            if flip_angles:
+                self.intensities = self.intensities[:, ::-1]
+
+            self.angles = np.linspace(amin, amin + (anum - 1) * astp, anum)
+            self.ekin = np.linspace(fmin, fmin + (fnum - 1) * fstp, fnum)
+
+        if intensities is not None:
+            self.intensities = intensities
+        elif datafile is None:
+            raise ValueError('Please provide datafile or intensities.')
+
+        if angles is not None:
+            self.angles = angles
+        elif datafile is None:
+            raise ValueError('Please provide datafile or angles.')
+
+        if ekin is not None:
+            self.ekin = ekin
+        elif datafile is None:
+            raise ValueError('Please provide datafile or ekin.')
+
+        self.energy_resolution = energy_resolution
+        self.angle_resolution = angle_resolution
+        self.temperature = temperature
+        self.hnuminphi = hnuminphi
+        self.hnuminphi_std = hnuminphi_std
+
+    # Band map is still missing a whole lot of properties and setters
+
+    @property
+    def ekin(self):
+        r"""
+        """
+        return self._ekin
+    
+    @ekin.setter
+    def ekin(self, x):
+        r"""
+        """
+        self._ekin = x
+    
+    @property
+    def enel(self):
+        r"""
+        """
+        return self._enel
+
+    @enel.setter
+    def enel(self, x):
+        r"""
+        """
+        self._enel = x
+
+    @property
+    def hnuminphi(self):
+        r"""Returns the photon energy minus the work function in eV if it has
+        been set, either during instantiation, with the setter, or by fitting
+        the Fermi-Dirac distribution to the integrated weight.
+
+        Returns
+        -------
+        hnuminphi : float, None
+            Kinetic energy minus the work function [eV]
+        """
+        return self._hnuminphi
+
+    @hnuminphi.setter
+    def hnuminphi(self, x):
+        r"""Manually sets the photon energy minus the work function in eV if it
+        has been set; otherwise returns None.
+
+        Parameters
+        ----------
+        hnuminphi : float, None
+            Kinetic energy minus the work function [eV]
+        """
+        self._hnuminphi = x
+
+    @property
+    def hnuminphi_std(self):
+        r"""Returns standard deviation of the photon energy minus the work
+        function in eV.
+
+        Returns
+        -------
+        hnuminphi_std : float
+            Standard deviation of energy minus the work function [eV]
+        """
+        return self._hnuminphi_std
+
+    @hnuminphi_std.setter
+    def hnuminphi_std(self, x):
+        r"""Manually sets the standard deviation of photon energy minus the
+        work function in eV.
+
+        Parameters
+        ----------
+        hnuminphi_std : float
+            Standard deviation of energy minus the work function [eV]
+        """
+        self._hnuminphi_std = x
+
+    def shift_angles(self, shift):
+        r"""
+        Shifts the angles by the specified amount in degrees. Used to shift
+        from the detector angle to the material angle.
+
+        Parameters
+        ----------
+        shift : float
+            Angular shift [degrees]
+        """
+        self.angles = self.angles + shift
+        
+        
+    def mdc_set(self, angle_min, angle_max, energy_value=None,
+                energy_range=None):
+        r"""Returns a set of MDCs. Documentation is to be further completed.
+        
+        Parameters
+        ----------
+        angle_min : float
+            Minimum angle of integration interval [degrees]
+        angle_max : float
+            Maximum angle of integration interval [degrees]
+
+        Returns
+        -------
+        angle_range : ndarray
+            Array of size n containing the angular values
+        energy_range : ndarray
+            Array of size m containing the energy values
+        mdcs :
+            Array of size nxm containing the MDC intensities
+        """
+
+        if (energy_value is None and energy_range is None) or \
+        (energy_value is not None and energy_range is not None):
+            raise ValueError('Please provide either energy_value or ' +
+            'energy_range.')
+
+        angle_min_index = np.abs(self.angles - angle_min).argmin()
+        angle_max_index = np.abs(self.angles - angle_max).argmin()
+        angle_range_out = self.angles[angle_min_index:angle_max_index + 1]
+
+        if energy_value is not None:
+            energy_index = np.abs(self.enel - energy_value).argmin()
+            enel_range_out = self.enel[energy_index]
+            mdcs = self.intensities[energy_index,
+                   angle_min_index:angle_max_index + 1]
+
+        if energy_range:
+            energy_indices = np.where((self.enel >= np.min(energy_range))
+                                      & (self.enel <= np.max(energy_range)))[0]
+            enel_range_out = self.enel[energy_indices]
+            mdcs = self.intensities[energy_indices,
+                                    angle_min_index:angle_max_index + 1]
+
+        return mdcs, angle_range_out, self.angle_resolution, \
+        enel_range_out, self.hnuminphi
+
+    @add_fig_kwargs
+    def plot(self, abscissa='momentum', ordinate='electron_energy', ax=None,
+             **kwargs):
+        r"""Plots the band map.
+
+        Parameters
+        ----------
+
+        Other parameters
+        ----------------
+        **kwargs : dict, optional
+            Additional arguments passed on to add_fig_kwargs.
+
+        Returns
+        -------
+        fig : Matplotlib-Figure
+            Figure containing the Fermi edge fit
+        """
+
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        Angl, Ekin = np.meshgrid(self.angles, self.ekin)
+
+        if abscissa == 'angle':
+            ax.set_xlabel('Angle ($\degree$)')
+            if ordinate == 'kinetic_energy':
+                mesh = ax.pcolormesh(Angl, Ekin, self.intensities,
+                       shading='auto', cmap=plt.get_cmap('bone').reversed())
+                ax.set_ylabel('$E_{\mathrm{kin}}$ (eV)')
+            elif ordinate == 'electron_energy':
+                Enel = Ekin - self.hnuminphi
+                mesh = ax.pcolormesh(Angl, Enel, self.intensities,
+                       shading='auto', cmap=plt.get_cmap('bone').reversed())
+                ax.set_ylabel('$E-\mu$ (eV)')
+        elif abscissa == 'momentum':
+            Mome = np.sqrt(Ekin / pref) * np.sin(Angl * dtor)
+            ax.set_xlabel(r'$k_{//}$ ($\mathrm{\AA}^{\endash1}$)')
+            if ordinate == 'kinetic_energy':
+                mesh = ax.pcolormesh(Mome, Ekin, self.intensities,
+                       shading='auto', cmap=plt.get_cmap('bone').reversed())
+                ax.set_ylabel('$E_{\mathrm{kin}}$ (eV)')
+            elif ordinate == 'electron_energy':
+                Enel = Ekin - self.hnuminphi
+                mesh = ax.pcolormesh(Mome, Enel, self.intensities,
+                       shading='auto', cmap=plt.get_cmap('bone').reversed())
+                ax.set_ylabel('$E-\mu$ (eV)')
+
+        cbar = plt.colorbar(mesh, ax=ax, label='counts (-)')
+
+        return fig
+
+    @add_fig_kwargs
+    def fit_fermi_edge(self, hnuminphi_guess, background_guess=0.0,
+                       integrated_weight_guess=1.0, angle_min=-np.inf,
+                       angle_max=np.inf, ekin_min=-np.inf,
+                       ekin_max=np.inf, ax=None, **kwargs):
+        r"""Fits the Fermi edge of the band map and plots the result.
+        Also sets hnuminphi, the kinetic energy minus the work function in eV.
+        The fitting includes an energy convolution with an abscissa range
+        expanded by 5 times the energy resolution standard deviation.
+
+        Parameters
+        ----------
+        hnuminphi_guess : float
+            Initial guess for kinetic energy minus the work function [eV]
+        background_guess : float
+            Initial guess for background intensity [counts]
+        integrated_weight_guess : float
+            Initial guess for integrated spectral intensity [counts]
+        angle_min : float
+            Minimum angle of integration interval [degrees]
+        angle_max : float
+            Maximum angle of integration interval [degrees]
+        ekin_min : float
+            Minimum kinetic energy of integration interval [eV]
+        ekin_max : float
+            Maximum kinetic energy of integration interval [eV]
+        ax : Matplotlib-Axes / NoneType
+            Axis for plotting the Fermi edge on. Created if not provided by
+            the user.
+
+        Other parameters
+        ----------------
+        **kwargs : dict, optional
+            Additional arguments passed on to add_fig_kwargs.
+
+        Returns
+        -------
+        fig : Matplotlib-Figure
+            Figure containing the Fermi edge fit
+        """
+        from scipy.ndimage import gaussian_filter
+
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        min_angle_index = np.argmin(np.abs(self.angles - angle_min))
+        max_angle_index = np.argmin(np.abs(self.angles - angle_max))
+
+        min_ekin_index = np.argmin(np.abs(self.ekin - ekin_min))
+        max_ekin_index = np.argmin(np.abs(self.ekin - ekin_max))
+
+        energy_range = self.ekin[min_ekin_index:max_ekin_index]
+
+        integrated_intensity = np.trapz(
+            self.intensities[min_ekin_index:max_ekin_index,
+                min_angle_index:max_angle_index], axis=1)
+
+        fdir_initial = FermiDirac(temperature=self.temperature,
+                                  hnuminphi=hnuminphi_guess,
+                                  background=background_guess,
+                                  integrated_weight=integrated_weight_guess,
+                                  name='Initial guess')
+
+        parameters = np.array(
+            [hnuminphi_guess, background_guess, integrated_weight_guess])
+
+        extra_args = (self.temperature,)
+
+        popt, pcov = fit_leastsq(
+        parameters, energy_range, integrated_intensity, fdir_initial,
+        self.energy_resolution, None, *extra_args)
+
+        self.hnuminphi = popt[0]
+        self.hnuminphi_std = np.sqrt(np.diag(pcov)[0])
+        self.enel = self.ekin - self.hnuminphi
+
+        fdir_final = FermiDirac(temperature=self.temperature,
+                                hnuminphi=self.hnuminphi, background=popt[1],
+                                integrated_weight=popt[2],
+                                name='Fitted result')
+
+        ax.set_xlabel(r'$E_{\mathrm{kin}}$ (-)')
+        ax.set_ylabel('Counts (-)')
+        ax.set_xlim([ekin_min, ekin_max])
+
+        ax.plot(energy_range, integrated_intensity, label='Data')
+
+        extend, step, numb = extend_function(energy_range,
+                                             self.energy_resolution)
+
+        initial_result = gaussian_filter(fdir_initial.evaluate(extend),
+                         sigma=step)[numb:-numb if numb else None]
+
+        final_result = gaussian_filter(fdir_final.evaluate(extend),
+                       sigma=step)[numb:-numb if numb else None]
+
+        ax.plot(energy_range, initial_result, label=fdir_initial.name)
+        ax.plot(energy_range, final_result, label=fdir_final.name)
+
+        ax.legend()
+
+        return fig
+
+
+    @add_fig_kwargs
+    def correct_fermi_edge(self, hnuminphi_guess=None, background_guess=0.0,
+                       integrated_weight_guess=1.0, angle_min=-np.inf,
+                       angle_max=np.inf, ekin_min=-np.inf, ekin_max=np.inf,
+                       slope_guess=0, offset_guess=None,
+                           true_angle=0, ax=None, **kwargs):
+        r"""TBD
+        hnuminphi_guess should be estimate at true angle
+
+        Parameters
+        ----------
+
+        Other parameters
+        ----------------
+        **kwargs : dict, optional
+            Additional arguments passed on to add_fig_kwargs.
+
+        Returns
+        -------
+        fig : Matplotlib-Figure
+            Figure containing the Fermi edge fit
+        """
+        from scipy.ndimage import map_coordinates
+        
+        if hnuminphi_guess is None:
+            raise ValueError('Please provide an initial guess for ' +
+                             'hnuminphi.')
+ 
+        # Here some loop where it fits all the Fermi edges
+        angle_min_index = np.abs(self.angles - angle_min).argmin()
+        angle_max_index = np.abs(self.angles - angle_max).argmin()
+        
+        ekin_min_index = np.abs(self.ekin - ekin_min).argmin()
+        ekin_max_index = np.abs(self.ekin - ekin_max).argmin()
+  
+        Intensities = self.intensities[ekin_min_index:ekin_max_index + 1,
+                                       angle_min_index:angle_max_index + 1]
+        angle_range = self.angles[angle_min_index:angle_max_index + 1]
+        energy_range = self.ekin[ekin_min_index:ekin_max_index + 1]
+        
+        angle_shape = angle_range.shape
+        nmps = np.zeros(angle_shape)
+        stds = np.zeros(angle_shape)
+        
+        hnuminphi_left = hnuminphi_guess - (true_angle - angle_min) \
+        * slope_guess
+  
+        fdir_initial = FermiDirac(temperature=self.temperature,
+                      hnuminphi=hnuminphi_left,
+                      background=background_guess,
+                      integrated_weight=integrated_weight_guess,
+                      name='Initial guess')
+        
+        parameters = np.array(
+                [hnuminphi_left, background_guess, integrated_weight_guess])
+        
+        extra_args = (self.temperature,)
+ 
+        for indx in range(angle_max_index - angle_min_index + 1):
+            edge = Intensities[:, indx]
+            
+            parameters, pcov = fit_leastsq(
+            parameters, energy_range, edge, fdir_initial,
+            self.energy_resolution, None, *extra_args)
+
+            nmps[indx] = parameters[0]
+            stds[indx] = np.sqrt(np.diag(pcov)[0])
+        
+        # Offset at true angle if not set before
+        if offset_guess is None:    
+            offset_guess = hnuminphi_guess - slope_guess * true_angle 
+            
+        parameters = np.array([offset_guess, slope_guess])
+        
+        lin_fun = Linear(offset_guess, slope_guess, 'Linear')
+                    
+        popt, pcov = fit_leastsq(parameters, angle_range, nmps, lin_fun, None,
+                                 stds)
+
+        linsp = lin_fun(angle_range, popt[0], popt[1])
+            
+        self.hnuminphi = lin_fun(true_angle, popt[0], popt[1])
+        self.hnuminphi_std = np.sqrt(true_angle**2 * pcov[1, 1] + pcov[0, 0] 
+                                     + 2 * true_angle * pcov[0, 1])
+        self.enel = self.ekin - self.hnuminphi
+                    
+        Angl, Ekin = np.meshgrid(self.angles, self.ekin)
+
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+        
+        ax.set_xlabel('Angle ($\degree$)')
+        ax.set_ylabel('$E_{\mathrm{kin}}$ (eV)')
+        mesh = ax.pcolormesh(Angl, Ekin, self.intensities,
+                       shading='auto', cmap=plt.get_cmap('bone').reversed(),
+                             zorder=1)
+
+        ax.errorbar(angle_range, nmps, yerr=uncr * stds, zorder=1)
+        ax.plot(angle_range, linsp, zorder=2)
+        
+        cbar = plt.colorbar(mesh, ax=ax, label='counts (-)')
+        
+        # Fermi-edge correction
+        rows, cols = self.intensities.shape
+        shift_values = popt[1] * self.angles / (self.ekin[0] - self.ekin[1])
+        row_coords = np.arange(rows).reshape(-1, 1) - shift_values
+        col_coords = np.arange(cols).reshape(1, -1).repeat(rows, axis=0)
+        self.intensities = map_coordinates(self.intensities, 
+                [row_coords, col_coords], order=1)
+                                  
+        return fig
+
+    
 class MDCs():
     r"""
-    Ebin is an attribute, not a parameter.
+    Enel is an attribute, not a parameter.
     """
-    def __init__(self, intensities, angles, angle_resolution, ebin, hnuminphi):
+    def __init__(self, intensities, angles, angle_resolution, enel, hnuminphi):
         self.intensities = intensities
         self.angles = angles
-        self.ebin = ebin
-        self.ekin = ebin + hnuminphi
+        self.enel = enel
+        self.ekin = enel + hnuminphi
         self.angle_resolution = angle_resolution
         self.hnuminphi = hnuminphi
 
     @property
-    def ebin(self):
+    def enel(self):
         r"""
         """
-        return self._ebin
+        return self._enel
 
-    @ebin.setter
-    def ebin(self, x):
+    @enel.setter
+    def enel(self, x):
         r"""
         """
-        self._ebin = x
+        self._enel = x
 
     @property
     def ekin(self):
@@ -77,7 +567,7 @@ class MDCs():
                          'energy value for which to plot an MDC.')
 
         if energy_value is not None and len(np.shape(self.intensities)) > 1:
-            energy_index = np.abs(self.ebin - energy_value).argmin()
+            energy_index = np.abs(self.enel - energy_value).argmin()
             counts = self.intensities[energy_index, :]
         else:
             counts = self.intensities
@@ -257,365 +747,3 @@ class MDCs():
             return fig, new_distributions, pcov, new_matrix_args
         else:
             return fig, new_distributions, pcov
-
-class BandMap():
-    r"""Class for the band map from the ARPES experiment.
-
-    Parameters
-    ----------
-    datafile : str
-        Name of data file. Currently, only IGOR Binary Wave files are supported.
-        If absent, `intensities`, `angles`, and `ekin` are mandatory. Otherwise,
-        those arguments can be used to overwrite the contents of `datafile`.
-    intensities : ndarray
-        2D array of counts for given (E,k) or (E,angle) pairs [counts]
-    angles : ndarray
-        1D array of angle values for the abscissa [degrees]
-    ekin : ndarray
-        1D array of kinetic energy values for the ordinate [eV]
-    angle_resolution : float, None
-        Angle resolution of the detector [degrees]
-    energy_resolution : float, None
-        Energy resolution of the detector [eV]
-    temperature : float, None
-        Temperature of the sample [K]
-    hnuminphi : float, None
-        Kinetic energy minus the work function [eV]
-    hnuminphi_std : float, None
-        Standard deviation of kinetic energy minus work function [eV]
-    transpose : bool, False
-        Are the energy and angle axes swapped (angle first) in the input file?
-    flip_ekin : bool, False
-        Reverse energy axis of ``wData`` in `datafile`?
-    flip_angles : bool, False
-        Reverse angle axis of ``wData`` in `datafile`?
-    """
-    def __init__(self, datafile=None, intensities=None, angles=None, ekin=None,
-                 ebin=None, energy_resolution=None, angle_resolution=None,
-                 temperature=None, hnuminphi=None, hnuminphi_std=None,
-                 transpose=False, flip_ekin=False, flip_angles=False):
-
-        if datafile is not None:
-            data = igor2.binarywave.load(datafile)
-
-            self.intensities = data['wave']['wData']
-
-            fnum, anum = data['wave']['wave_header']['nDim'][0:2]
-            fstp, astp = data['wave']['wave_header']['sfA'][0:2]
-            fmin, amin = data['wave']['wave_header']['sfB'][0:2]
-
-            if self.intensities.shape != (fnum, anum):
-                raise ValueError('nDim and shape of wData do not match.')
-
-            if transpose:
-                self.intensities = self.intensities.T
-
-                fnum, anum = anum, fnum
-                fstp, astp = astp, fstp
-                fmin, amin = amin, fmin
-
-            if flip_ekin:
-                self.intensities = self.intensities[::-1, :]
-
-            if flip_angles:
-                self.intensities = self.intensities[:, ::-1]
-
-            self.angles = np.linspace(amin, amin + (anum - 1) * astp, anum)
-            self.ekin = np.linspace(fmin, fmin + (fnum - 1) * fstp, fnum)
-
-        if intensities is not None:
-            self.intensities = intensities
-        elif datafile is None:
-            raise ValueError('Please provide datafile or intensities.')
-
-        if angles is not None:
-            self.angles = angles
-        elif datafile is None:
-            raise ValueError('Please provide datafile or angles.')
-
-        if ekin is not None:
-            self.ekin = ekin
-        elif datafile is None:
-            raise ValueError('Please provide datafile or ekin.')
-
-        self.ebin = ebin
-        self.energy_resolution = energy_resolution
-        self.angle_resolution = angle_resolution
-        self.temperature = temperature
-        self.hnuminphi = hnuminphi
-        self.hnuminphi_std = hnuminphi_std
-
-    # Band map is still missing a whole lot of properties and setters
-
-    @property
-    def ebin(self):
-        r"""
-        """
-        return self._ebin
-
-    @ebin.setter
-    def ebin(self, x):
-        r"""
-        """
-        self._ebin = x
-
-    @property
-    def hnuminphi(self):
-        r"""Returns the photon energy minus the work function in eV if it has
-        been set, either during instantiation, with the setter, or by fitting
-        the Fermi-Dirac distribution to the integrated weight.
-
-        Returns
-        -------
-        hnuminphi : float, None
-            Kinetic energy minus the work function [eV]
-        """
-        return self._hnuminphi
-
-    @hnuminphi.setter
-    def hnuminphi(self, x):
-        r"""Manually sets the photon energy minus the work function in eV if it
-        has been set; otherwise returns None.
-
-        Parameters
-        ----------
-        hnuminphi : float, None
-            Kinetic energy minus the work function [eV]
-        """
-        self._hnuminphi = x
-
-    @property
-    def hnuminphi_std(self):
-        r"""Returns standard deviation of the photon energy minus the work
-        function in eV.
-
-        Returns
-        -------
-        hnuminphi_std : float
-            Standard deviation of energy minus the work function [eV]
-        """
-        return self._hnuminphi_std
-
-    @hnuminphi_std.setter
-    def hnuminphi_std(self, x):
-        r"""Manually sets the standard deviation of photon energy minus the
-        work function in eV.
-
-        Parameters
-        ----------
-        hnuminphi_std : float
-            Standard deviation of energy minus the work function [eV]
-        """
-        self._hnuminphi_std = x
-
-    def shift_angles(self, shift):
-        r"""
-        Shifts the angles by the specified amount in degrees. Used to shift
-        from the detector angle to the material angle.
-
-        Parameters
-        ----------
-        shift : float
-            Angular shift [degrees]
-        """
-        self.angles = self.angles + shift
-
-    def slicing(self, angle_min, angle_max, energy_value=None,
-                energy_range=None):
-        r"""
-        Parameters
-        ----------
-        angle_min : float
-            Minimum angle of integration interval [degrees]
-        angle_max : float
-            Maximum angle of integration interval [degrees]
-
-        Returns
-        -------
-        angle_range : ndarray
-            Array of size n containing the angular values
-        energy_range : ndarray
-            Array of size m containing the energy values
-        mdcs :
-            Array of size nxm containing the MDC intensities
-        """
-
-        if (energy_value is None and energy_range is None) or \
-        (energy_value is not None and energy_range is not None):
-            raise ValueError('Please provide either energy_value or ' +
-            'energy_range.')
-
-        angle_min_index = np.abs(self.angles - angle_min).argmin()
-        angle_max_index = np.abs(self.angles - angle_max).argmin()
-        angle_range_out = self.angles[angle_min_index:angle_max_index + 1]
-
-        if energy_value is not None:
-            energy_index = np.abs(self.ebin - energy_value).argmin()
-            binding_range_out = self.ebin[energy_index]
-            mdcs = self.intensities[energy_index,
-                   angle_min_index:angle_max_index + 1]
-
-        if energy_range:
-            energy_indices = np.where((self.ebin >= np.min(energy_range))
-                                      & (self.ebin <= np.max(energy_range)))[0]
-            binding_range_out = self.ebin[energy_indices]
-            mdcs = self.intensities[energy_indices,
-                                    angle_min_index:angle_max_index + 1]
-
-        return mdcs, angle_range_out, self.angle_resolution, \
-        binding_range_out, self.hnuminphi
-
-    @add_fig_kwargs
-    def plot(self, abscissa='momentum', ordinate='binding_energy', ax=None,
-             **kwargs):
-        r"""Plots the band map.
-
-        Parameters
-        ----------
-
-        Other parameters
-        ----------------
-        **kwargs : dict, optional
-            Additional arguments passed on to add_fig_kwargs. See the keyword
-            table below.
-
-        Returns
-        -------
-        fig : Matplotlib-Figure
-            Figure containing the Fermi edge fit
-        """
-
-        ax, fig, plt = get_ax_fig_plt(ax=ax)
-
-        Angl, Ekin = np.meshgrid(self.angles, self.ekin)
-
-        if abscissa == 'angle':
-            ax.set_xlabel('Angle ($\degree$)')
-            if ordinate == 'kinetic_energy':
-                mesh = ax.pcolormesh(Angl, Ekin, self.intensities,
-                       shading='auto', cmap=plt.get_cmap('bone').reversed())
-                ax.set_ylabel('$E_{\mathrm{kin}}$ (eV)')
-            elif ordinate == 'binding_energy':
-                Ebin = Ekin - self.hnuminphi
-                mesh = ax.pcolormesh(Angl, Ebin, self.intensities,
-                       shading='auto', cmap=plt.get_cmap('bone').reversed())
-                ax.set_ylabel('$E_{\mathrm{bin}}$ (eV)')
-        elif abscissa == 'momentum':
-            Mome = np.sqrt(Ekin / pref) * np.sin(Angl * dtor)
-            ax.set_xlabel(r'$k_{//}$ ($\mathrm{\AA}^{\endash1}$)')
-            if ordinate == 'kinetic_energy':
-                mesh = ax.pcolormesh(Mome, Ekin, self.intensities,
-                       shading='auto', cmap=plt.get_cmap('bone').reversed())
-                ax.set_ylabel('$E_{\mathrm{kin}}$ (eV)')
-            elif ordinate == 'binding_energy':
-                Ebin = Ekin - self.hnuminphi
-                mesh = ax.pcolormesh(Mome, Ebin, self.intensities,
-                       shading='auto', cmap=plt.get_cmap('bone').reversed())
-                ax.set_ylabel('$E_{\mathrm{bin}}$ (eV)')
-
-        cbar = plt.colorbar(mesh, ax=ax, label='counts (-)')
-
-        return fig
-
-    @add_fig_kwargs
-    def fit_fermi_edge(self, hnuminphi_guess, background_guess=0.0,
-                       integrated_weight_guess=1.0, angle_min=-np.inf,
-                       angle_max=np.inf, ekin_min=-np.inf,
-                       ekin_max=np.inf, ax=None, **kwargs):
-        r"""Fits the Fermi edge of the band map and plots the result.
-        Also sets hnuminphi, the kinetic energy minus the work function in eV.
-        The fitting includes an energy convolution with an abscissa range
-        expanded by 5 times the energy resolution standard deviation.
-
-        Parameters
-        ----------
-        hnuminphi_guess : float
-            Initial guess for kinetic energy minus the work function [eV]
-        background_guess : float
-            Initial guess for background intensity [counts]
-        integrated_weight_guess : float
-            Initial guess for integrated spectral intensity [counts]
-        angle_min : float
-            Minimum angle of integration interval [degrees]
-        angle_max : float
-            Maximum angle of integration interval [degrees]
-        ekin_min : float
-            Minimum kinetic energy of integration interval [eV]
-        ekin_max : float
-            Maximum kinetic energy of integration interval [eV]
-        ax : Matplotlib-Axes / NoneType
-            Axis for plotting the Fermi edge on. Created if not provided by
-            the user.
-
-        Other parameters
-        ----------------
-        **kwargs : dict, optional
-            Additional arguments passed on to add_fig_kwargs. See the keyword
-            table below.
-
-        Returns
-        -------
-        fig : Matplotlib-Figure
-            Figure containing the Fermi edge fit
-        """
-        from scipy.ndimage import gaussian_filter
-
-        ax, fig, plt = get_ax_fig_plt(ax=ax)
-
-        min_angle_index = np.argmin(np.abs(self.angles - angle_min))
-        max_angle_index = np.argmin(np.abs(self.angles - angle_max))
-
-        min_ekin_index = np.argmin(np.abs(self.ekin - ekin_min))
-        max_ekin_index = np.argmin(np.abs(self.ekin - ekin_max))
-
-        energy_range = self.ekin[min_ekin_index:max_ekin_index]
-
-        integrated_intensity = np.trapz(
-            self.intensities[min_ekin_index:max_ekin_index,
-                min_angle_index:max_angle_index], axis=1)
-
-        fdir_initial = FermiDirac(temperature=self.temperature,
-                                  hnuminphi=hnuminphi_guess,
-                                  background=background_guess,
-                                  integrated_weight=integrated_weight_guess,
-                                  name='Initial guess')
-
-        parameters = np.array(
-            [hnuminphi_guess, background_guess, integrated_weight_guess])
-
-        extra_args = (self.temperature)
-
-        popt, pcov = fit_leastsq(parameters, energy_range,
-                     integrated_intensity, fdir_initial,
-                     self.energy_resolution, extra_args)
-
-        fdir_final = FermiDirac(temperature=self.temperature,
-                                hnuminphi=popt[0], background=popt[1],
-                                integrated_weight=popt[2],
-                                name='Fitted result')
-
-        self.hnuminphi = popt[0]
-        self.hnuminphi_std = np.sqrt(np.diag(pcov))[0][0]
-        self.ebin = self.ekin - self.hnuminphi
-
-        ax.set_xlabel(r'$E_{\mathrm{kin}}$ (-)')
-        ax.set_ylabel('Counts (-)')
-        ax.set_xlim([ekin_min, ekin_max])
-
-        ax.plot(energy_range, integrated_intensity, label='Data')
-
-        extend, step, numb = extend_function(energy_range,
-                                             self.energy_resolution)
-
-        initial_result = gaussian_filter(fdir_initial.evaluate(extend),
-                         sigma=step)[numb:-numb if numb else None]
-
-        final_result = gaussian_filter(fdir_final.evaluate(extend),
-                       sigma=step)[numb:-numb if numb else None]
-
-        ax.plot(energy_range, initial_result, label=fdir_initial.name)
-        ax.plot(energy_range, final_result, label=fdir_final.name)
-
-        ax.legend()
-
-        return fig

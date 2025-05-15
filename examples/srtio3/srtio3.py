@@ -42,7 +42,7 @@ angle_min = 0.6
 angle_max = 4.8
 en_val = 0.000
 
-mdcs = xarpes.MDCs(*bmap.slicing(angle_min, angle_max, energy_value=en_val))
+mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_value=en_val))
 
 fig = plt.figure(figsize=(6, 5))
 ax = fig.gca()
@@ -83,3 +83,5 @@ ax = fig.gca()
 fig, new_dists, covariance_matrix, new_mat_args = mdcs.fit(
     distributions=guess_dists, matrix_element=mat_el, matrix_args=mat_args,
     ax=ax, show=True)
+
+
