@@ -2,8 +2,6 @@
 
 Repository for the code xARPES &ndash; extraction from angle resolved photoemission spectra.
 
-This preliminary release can only be used to fit a Fermi edge. The complete functionality will be made available soon.
-
 # Installation
 
 xARPES can be installed with `pip`:
@@ -82,9 +80,13 @@ Answer `y` to questions.
 
 # Examples
 
-Afer installation of xARPES, the `examples/` folder can be downloaded to the current directory with
+After installation of xARPES, the `examples/` folder can be downloaded to the current directory:
 
-    python3 -c "import xarpes; xarpes.download_examples()"
+	xarpes_download_examples
+
+Equivalently:
+
+	python3 -c "import xarpes; xarpes.download_examples()"
 
 # Execution
 
@@ -94,7 +96,7 @@ It is recommended to use JupyterLab to analyse data. JupyterLab is launched usin
 
 # License
 
-Copyright (C) 2024 xARPES Developers
+Copyright (C) 2025 xARPES Developers
 
 This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License, version 3, as published by the Free Software Foundation.
 

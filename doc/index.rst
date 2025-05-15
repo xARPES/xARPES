@@ -1,20 +1,17 @@
-.. highlight:: bash
 .. include:: ../README.md
    :parser: myst_parser.sphinx_
 
-Modules
--------
-
 .. toctree::
-   :maxdepth: 1
+   :caption: Modules
+   :hidden:
 
    modules/band_map
    modules/distributions
    modules/functions
    modules/plotting
 
-Indices and tables
-------------------
+.. toctree::
+   :caption: More
+   :hidden:
 
-* :ref:`genindex`
-* :ref:`search`
+   genindex
