@@ -17,9 +17,9 @@ xarpes.plot_settings('default')
 
 script_dir = xarpes.set_script_dir()
 
-dfld = 'data_sets' # Folder containing the data
+dfld = 'data_sets'    # Folder containing the data
 flnm = 'graphene_152' # Name of the file
-extn = '.ibw' # Extension of the file
+extn = '.ibw'         # Extension of the file
 
 data_file_path = os.path.join(script_dir, dfld, flnm + extn)
 
@@ -36,7 +36,7 @@ fig = bmap.correct_fermi_edge(
       ekin_min=31.96, ekin_max=32.1, true_angle=0,
       ax=ax[0], show=False, fig_close=False)
 
-fig = bmap.plot(ordinate='kinetic_energy', abscissa='angle',
+fig = bmap.plot(ordinate='electron_energy', abscissa='momentum',
       ax=ax[1], show=False, fig_close=False)
 
 # Figure customization
