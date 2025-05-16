@@ -13,6 +13,7 @@
 
 from igor2 import packed, binarywave
 import numpy as np
+import matplotlib.widgets as wdg
 from .plotting import get_ax_fig_plt, add_fig_kwargs
 from .functions import fit_leastsq, extend_function
 from .distributions import FermiDirac, Linear
@@ -508,6 +509,102 @@ class BandMap():
         self.intensities = map_coordinates(self.intensities, 
                 [row_coords, col_coords], order=1)
                                   
+        return fig
+
+    @add_fig_kwargs
+    def show_fermi_edge_fits(self, hnuminphi_guess,
+            ekin_min=-np.inf, ekin_max=np.inf, ax=None, **kwargs):
+        r"""Shows the fitted Fermi edge for different angles interactively.
+
+        Parameters
+        ----------
+        hnuminphi_guess : float
+            Initial guess for kinetic energy minus work function (eV).
+        ekin_min, ekin_max : float
+            Bounds of kinetic-energy integration interval (eV).
+        ax : Matplotlib-Axes, default None
+            Axis for plotting. Created if not given.
+        **kwargs, optional
+            Additional arguments passed on to ``add_fig_kwargs``.
+
+        Returns
+        -------
+        fig : Matplotlib-Figure
+            Figure containing the Fermi edge fit.
+        """
+        from scipy.ndimage import gaussian_filter
+
+        min_ekin_index = np.argmin(abs(self.ekin - ekin_min))
+        max_ekin_index = np.argmin(abs(self.ekin - ekin_max))
+
+        energy_range = self.ekin[min_ekin_index:max_ekin_index]
+
+        extend, step, numb = extend_function(energy_range,
+            self.energy_resolution)
+
+        background_guess = self.intensities.min()
+        integrated_weight_guess = self.intensities.max()
+
+        fdir_initial = FermiDirac(temperature=self.temperature,
+            hnuminphi=hnuminphi_guess, background=background_guess,
+            integrated_weight=integrated_weight_guess)
+
+        initial_result = gaussian_filter(fdir_initial.evaluate(extend),
+            sigma=step)[numb:-numb if numb else None]
+
+        parameters = np.array([hnuminphi_guess, background_guess,
+            integrated_weight_guess])
+
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        lines = [ax.plot(energy_range, initial_result, label=label)[0]
+            for label in ['Data', 'Initial guess', 'Fitted result']]
+
+        def update(angle):
+            angle_index = np.argmin(np.abs(self.angles - angle))
+
+            edge = self.intensities[min_ekin_index:max_ekin_index, angle_index]
+
+            popt, pcov = fit_leastsq(parameters, energy_range, edge,
+                fdir_initial, self.energy_resolution, None, self.temperature)
+
+            fdir_final = FermiDirac(temperature=self.temperature,
+                hnuminphi=popt[0], background=popt[1],
+                integrated_weight=popt[2])
+
+            final_result = gaussian_filter(fdir_final.evaluate(extend),
+                sigma=step)[numb:-numb if numb else None]
+
+            lines[0].set_ydata(edge)
+            lines[2].set_ydata(final_result)
+
+            fig.canvas.draw_idle()
+
+        initial_angle = np.average(self.angles)
+
+        update(initial_angle)
+
+        fig.subplots_adjust(bottom=0.2)
+
+        global slider # otherwise it is garbage-collected during decoration
+
+        slider = wdg.Slider(
+            ax=fig.add_axes([0.25, 0.05, 0.5, 0.03]),
+            label=r'Angle ($\degree$)',
+            valmin=self.angles.min(),
+            valmax=self.angles.max(),
+            valinit=initial_angle,
+        )
+
+        slider.on_changed(update)
+
+        ax.set_xlabel(r'$E_{\mathrm{kin}}$ (-)')
+        ax.set_ylabel('Counts (-)')
+
+        ax.set_xlim([ekin_min, ekin_max])
+
+        ax.legend()
+
         return fig
 
     

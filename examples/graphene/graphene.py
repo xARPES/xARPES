@@ -28,6 +28,9 @@ bmap = xarpes.BandMap(data_file_path, energy_resolution=0.01,
 
 bmap.shift_angles(shift=-2.28)
 
+fig = bmap.show_fermi_edge_fits(hnuminphi_guess=32.0,
+    ekin_min=31.96, ekin_max=32.1, title='Fermi edge fit')
+
 fig, ax = plt.subplots(2, 1, figsize=(6, 8))
 
 fig = bmap.correct_fermi_edge(
