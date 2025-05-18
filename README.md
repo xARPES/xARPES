@@ -48,7 +48,7 @@ Start the installation:
 
 	bash Miniconda3-latest-Linux-x86_64.sh
 
-Then scroll down the license agreement and answer `yes` to the following question:
+Then press Enter to get to the end of the license agreement, and answer `yes` to the following question:
 
 	Do you accept the license terms? [yes|no]
 
@@ -72,9 +72,9 @@ Finally, the following steps are executed for the installation &ndash; the `<my_
 
 	git clone git@github.com:xARPES/xARPES.git
 	cd xARPES
-	conda create -n <my_env> -c defaults -c conda-forge --file requirements.txt
+	conda create -n <my_env> -c defaults -c conda-forge
 	conda activate <my_env>
-	conda develop .
+        pip install -e .
 
 Answer `y` to questions.
 

@@ -75,7 +75,7 @@ mat_args = {
 }
 
 fig = mdcs.visualize_guess(distributions=guess_dists, matrix_element=mat_el,
-                           ax=ax, matrix_args=mat_args)
+                           ax=ax, matrix_args=mat_args, show=False)
 
 fig = plt.figure(figsize=(7, 5))
 ax = fig.gca()

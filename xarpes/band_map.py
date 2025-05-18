@@ -669,9 +669,10 @@ class MDCs():
         Interactive test plot with synthetic data and slider.
         Stable in JupyterLab with %matplotlib widget.
         """
+        import numpy as np
+        import sys
         from matplotlib.widgets import Slider
         import matplotlib.pyplot as plt
-        import numpy as np
         from matplotlib import get_backend
 
         # Artificial data
@@ -729,6 +730,10 @@ class MDCs():
         self._slider = slider
         self._fig = fig
         self._line = line
+        
+        # Automatically show only outside of interactive environments
+        if not hasattr(sys, 'ps1') and get_backend() != 'module://matplotlib_inline.backend_inline':
+            plt.show()
 
         fig.canvas.draw()
         fig

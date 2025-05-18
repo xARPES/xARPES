@@ -9,6 +9,7 @@
 import matplotlib as mpl
 mpl.use('Qt5Agg')
 
+
 import xarpes
 import matplotlib.pyplot as plt
 import os
@@ -48,7 +49,7 @@ plt.show()
 print('The optimised hnu - Phi=' + f'{bmap.hnuminphi:.4f}' + ' +/- '
       + f'{1.96 * bmap.hnuminphi_std:.5f}' + ' eV.')
 
-fig = bmap.plot(ordinate='kinetic_energy', abscissa='angle')
+# fig = bmap.plot(ordinate='kinetic_energy', abscissa='angle')
 
 fig = plt.figure(figsize=(6, 5))
 ax = fig.gca()
@@ -61,17 +62,66 @@ fig = bmap.fit_fermi_edge(hnuminphi_guess=32, background_guess=1e5,
 print('The optimised hnu - Phi=' + f'{bmap.hnuminphi:.4f}' + ' +/- '
       + f'{1.96 * bmap.hnuminphi_std:.5f}' + ' eV.')
 
-angle_min = 0.1
-angle_max = 1e6
-en_val = 0
-energy_range = [-0.3, 0.05]
+# angle_min = 0.1
+# angle_max = 1e6
+# en_val = 0
+# energy_range = [-0.3, 0.05]
 
-mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_value=en_val))
+# mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_value=en_val))
 
-fig = plt.figure(figsize=(5, 4))
-ax = fig.gca()
+# fig = plt.figure(figsize=(5, 4))
+# ax = fig.gca()
 
-fig = mdcs.plot(ax=ax, show=True)
+# fig = mdcs.plot(ax=ax, show=True)
+
+# # change = xarpes.SpectralLinear(amplitude=500, peak=7.5, broadening=0.01,
+# #                                name='Linear_test', index='1')
+
+# # change.broadening = 0.02
+
+# # print(change.broadening)
+
+# angle_min = 0
+# angle_max = 1e6
+# en_val = 0
+
+# mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_value=en_val))
+# new_range = mdcs.angles
+
+# fig = plt.figure(figsize=(7, 5))
+# ax = fig.gca()
+
+# line1 = xarpes.SpectralLinear(amplitude=500, peak=7.5, broadening=0.01,
+#                               name='Linear test', index='1')
+# line2 = xarpes.SpectralLinear(amplitude=600, peak=5.5, broadening=0.02,
+#                               name='Linear test', index='2')
+
+# line1.plot(angle_range=new_range, angle_resolution=0.1, ax=ax, show=False,
+#            fig_close=False)
+# line2.plot(angle_range=new_range, angle_resolution=0.1, ax=ax, show=False,
+#            fig_close=False)
+# fig = mdcs.plot(ax=ax)
+
+# fig = plt.figure(figsize=(8, 6))
+# ax = fig.gca()
+
+# guess_dists = xarpes.CreateDistributions([
+# xarpes.Linear(offset=3.0e3, slope=-100),
+# xarpes.SpectralLinear(amplitude=450, peak=7.4, broadening=0.012,
+#                       name='Linear_test', index='1'),
+# xarpes.SpectralLinear(amplitude=60, peak=4.2, broadening=0.018,
+#                       name='Linear_test', index='2'),
+# # xarpes.SpectralQuadratic(amplitude=20, peak=4.5, center_wavevector=0,
+# #    broadening=0.005, side='right', name='Quadratic_test', index='1')
+# ])
+
+# fig = mdcs.visualize_guess(distributions=guess_dists, ax=ax, show=True)
+
+# fig = plt.figure(figsize=(8, 6))
+# ax = fig.gca()
+
+# fig, new_distributions, covariance_matrix = mdcs.fit(
+#      distributions=guess_dists, ax=ax, show=True)
 
 # change = xarpes.SpectralLinear(amplitude=500, peak=7.5, broadening=0.01,
 #                                name='Linear_test', index='1')
@@ -80,54 +130,10 @@ fig = mdcs.plot(ax=ax, show=True)
 
 # print(change.broadening)
 
-angle_min = 0
-angle_max = 1e6
-en_val = 0
+# from importlib import reload
+# import xarpes
+# reload(xarpes)
 
-mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_value=en_val))
-new_range = mdcs.angles
-
-fig = plt.figure(figsize=(7, 5))
-ax = fig.gca()
-
-line1 = xarpes.SpectralLinear(amplitude=500, peak=7.5, broadening=0.01,
-                              name='Linear test', index='1')
-line2 = xarpes.SpectralLinear(amplitude=600, peak=5.5, broadening=0.02,
-                              name='Linear test', index='2')
-
-line1.plot(angle_range=new_range, angle_resolution=0.1, ax=ax, show=False,
-           fig_close=False)
-line2.plot(angle_range=new_range, angle_resolution=0.1, ax=ax, show=False,
-           fig_close=False)
-fig = mdcs.plot(ax=ax)
-
-fig = plt.figure(figsize=(8, 6))
-ax = fig.gca()
-
-guess_dists = xarpes.CreateDistributions([
-xarpes.Linear(offset=3.0e3, slope=-100),
-xarpes.SpectralLinear(amplitude=450, peak=7.4, broadening=0.012,
-                      name='Linear_test', index='1'),
-xarpes.SpectralLinear(amplitude=60, peak=4.2, broadening=0.018,
-                      name='Linear_test', index='2'),
-# xarpes.SpectralQuadratic(amplitude=20, peak=4.5, center_wavevector=0,
-#    broadening=0.005, side='right', name='Quadratic_test', index='1')
-])
-
-fig = mdcs.visualize_guess(distributions=guess_dists, ax=ax, show=True)
-
-fig = plt.figure(figsize=(8, 6))
-ax = fig.gca()
-
-fig, new_distributions, covariance_matrix = mdcs.fit(
-     distributions=guess_dists, ax=ax, show=True)
-
-change = xarpes.SpectralLinear(amplitude=500, peak=7.5, broadening=0.01,
-                               name='Linear_test', index='1')
-
-change.broadening = 0.02
-
-print(change.broadening)
 
 angle_min = 0.
 angle_max = 12
@@ -136,27 +142,9 @@ energy_range = [-0.25, 0.01]
 
 mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_value=en_val))
 
-fig = plt.figure(figsize=(6, 5))
+fig = plt.figure(figsize=(5, 4))
 ax = fig.gca()
 
-fig = mdcs.plot(ax=ax, show=True)
-
-from importlib import reload
-reload(xarpes)
-
-
-angle_min = 0
-angle_max = 12
-en_val = 0.01
-energy_range = [-0.25, 0.01]
-
-mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range))
-
-
-# fig = plt.figure(figsize=(6, 5))
-# ax = fig.gca()
-
-fig = mdcs.plot()
-plt.show()
+fig = mdcs.plot(ax=ax)
 
 

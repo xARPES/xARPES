@@ -162,14 +162,14 @@ print('The optimised hnu - Phi=' + f'{bmap.hnuminphi:.4f}' + ' +/- '
 
 # print(change.broadening)
 
-# %matplotlib widget
-
 # from importlib import reload
 # import xarpes
 # reload(xarpes)
 ```
 
 ```{python}
+# %matplotlib widget
+
 angle_min = 0.
 angle_max = 12
 en_val = 0.01
@@ -184,19 +184,5 @@ fig = mdcs.plot(ax=ax)
 ```
 
 ```{python}
-from importlib import reload
-import matplotlib.pyplot as plt
-import xarpes
-reload(xarpes)
 
-angle_min = 0
-angle_max = 12
-en_val = 0.01
-energy_range = [-0.1, 0.01]
-
-mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range))
-```
-
-```{python}
-fig = mdcs.plot()
 ```
