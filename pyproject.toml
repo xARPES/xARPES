@@ -24,6 +24,7 @@ dependencies = [
     "scipy",
     "lmfit",
     "pyqt5",
+    "ipympl",
 ]
 
 [project.scripts]

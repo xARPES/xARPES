@@ -5,7 +5,7 @@ jupyter:
       extension: .Rmd
       format_name: rmarkdown
       format_version: '1.2'
-      jupytext_version: 1.15.2
+      jupytext_version: 1.16.2
   kernelspec:
     display_name: Python 3 (ipykernel)
     language: python
@@ -98,7 +98,7 @@ mat_args = {
 }
 
 fig = mdcs.visualize_guess(distributions=guess_dists, matrix_element=mat_el,
-                           ax=ax, matrix_args=mat_args)
+                           ax=ax, matrix_args=mat_args, show=False)
 ```
 
 ```{python}

@@ -17,9 +17,9 @@ xarpes.plot_settings('default')
 
 script_dir = xarpes.set_script_dir()
 
-dfld = 'data_sets' # Folder containing the data
+dfld = 'data_sets'    # Folder containing the data
 flnm = 'graphene_152' # Name of the file
-extn = '.ibw' # Extension of the file
+extn = '.ibw'         # Extension of the file
 
 data_file_path = os.path.join(script_dir, dfld, flnm + extn)
 
@@ -36,7 +36,7 @@ fig = bmap.correct_fermi_edge(
       ekin_min=31.96, ekin_max=32.1, true_angle=0,
       ax=ax[0], show=False, fig_close=False)
 
-fig = bmap.plot(ordinate='kinetic_energy', abscissa='angle',
+fig = bmap.plot(ordinate='electron_energy', abscissa='momentum',
       ax=ax[1], show=False, fig_close=False)
 
 # Figure customization
@@ -72,6 +72,13 @@ fig = plt.figure(figsize=(5, 4))
 ax = fig.gca()
 
 fig = mdcs.plot(ax=ax, show=True)
+
+# change = xarpes.SpectralLinear(amplitude=500, peak=7.5, broadening=0.01,
+#                                name='Linear_test', index='1')
+
+# change.broadening = 0.02
+
+# print(change.broadening)
 
 angle_min = 0
 angle_max = 1e6
@@ -121,5 +128,35 @@ change = xarpes.SpectralLinear(amplitude=500, peak=7.5, broadening=0.01,
 change.broadening = 0.02
 
 print(change.broadening)
+
+angle_min = 0.
+angle_max = 12
+en_val = 0.01
+energy_range = [-0.25, 0.01]
+
+mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_value=en_val))
+
+fig = plt.figure(figsize=(6, 5))
+ax = fig.gca()
+
+fig = mdcs.plot(ax=ax, show=True)
+
+from importlib import reload
+reload(xarpes)
+
+
+angle_min = 0
+angle_max = 12
+en_val = 0.01
+energy_range = [-0.25, 0.01]
+
+mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range))
+
+
+# fig = plt.figure(figsize=(6, 5))
+# ax = fig.gca()
+
+fig = mdcs.plot()
+plt.show()
 
 

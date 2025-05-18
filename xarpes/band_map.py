@@ -513,7 +513,7 @@ class BandMap():
     
 class MDCs():
     r"""
-    Enel is an attribute, not a parameter.
+    Enel should be a list or a single value
     """
     def __init__(self, intensities, angles, angle_resolution, enel, hnuminphi):
         self.intensities = intensities
@@ -522,7 +522,7 @@ class MDCs():
         self.ekin = enel + hnuminphi
         self.angle_resolution = angle_resolution
         self.hnuminphi = hnuminphi
-
+        
     @property
     def enel(self):
         r"""
@@ -572,37 +572,176 @@ class MDCs():
         else:
             counts = self.intensities
 
-        if energy_value is not None and len(np.shape(self.intensities)) == 1:
-            print('There is only a single MDC. The provided energy value ' +
-                  'will be ignored.')
         return counts
+
+#     @add_fig_kwargs
+#     def plot(self, energy_value=None, ax=None, **kwargs):
+#         r"""
+#         TBD
+#         """
+#         if energy_value is not None:
+#             energy_index = np.abs(self.enel - energy_value).argmin()
+#             counts = self.intensities[energy_index, :]
+#             plot_multiple = False
+#         elif len(np.shape(self.intensities)) == 1:
+#             counts = self.intensities
+#             plot_multiple = False
+#         else:
+#             plot_multiple = True
+           
+#         if plot_multiple:
+#             pass
+#         else: 
+#             ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+#             ax.scatter(self.angles, counts, label='Data')
+
+#             ax.set_xlabel('Angle ($\degree$)')
+#             ax.set_ylabel('Counts (-)')
+
+#             ax.legend()
+
+#             return fig
+
+
+#     def plot(self, energy_value=None, ax=None, **kwargs):
+#         """
+#         Test version using artificial data.
+#         - 1D: plots single curve
+#         - 2D: slider to browse curves
+#         """
+#         from matplotlib.widgets import Slider
+#         import matplotlib.pyplot as plt
+#         import numpy as np
+
+#         # Artificial setup
+#         x = np.linspace(-5, 5, 165)
+
+#         if kwargs.get("fake_1d", False):
+#             y = np.exp(-x**2)  # 1D case
+#         else:
+#             shifts = np.linspace(-2, 2, 30)
+#             y = np.array([np.exp(-(x - s)**2) * (1 + 0.1 * i)
+#                           for i, s in enumerate(shifts)])  # 2D case
+
+#         if ax is None:
+#             fig, ax = plt.subplots(figsize=(6, 5))
+#         else:
+#             fig = ax.get_figure()
+
+#         if y.ndim == 1:
+#             ax.plot(x, y, label="Static slice")
+#             ax.set_xlabel("Angle (°)")
+#             ax.set_ylabel("Counts (-)")
+#             ax.set_title("Fake static slice")
+#             ax.legend()
+#             return fig
+
+#         # 2D interactive case
+#         fig.subplots_adjust(bottom=0.25)
+#         idx = 0
+#         line, = ax.plot(x, y[idx], label=f"Slice {idx}")
+#         ax.set_xlabel("Angle (°)")
+#         ax.set_ylabel("Counts (-)")
+#         ax.set_title(f"Fake slice {idx}")
+#         ax.set_ylim(y.min(), y.max())
+#         ax.legend()
+
+#         slider_ax = fig.add_axes([0.2, 0.08, 0.6, 0.04])
+#         slider = Slider(slider_ax, "Index", 0, y.shape[0] - 1,
+#                         valinit=idx, valstep=1)
+
+#         def update(val):
+#             i = int(slider.val)
+#             line.set_ydata(y[i])
+#             line.set_label(f"Slice {i}")
+#             ax.set_title(f"Fake slice {i}")
+#             ax.legend()
+#             fig.canvas.draw_idle()
+
+#         slider.on_changed(update)
+#         fig.canvas.draw()
+#         return fig
 
     @add_fig_kwargs
     def plot(self, energy_value=None, ax=None, **kwargs):
-        r"""
-        TBD
         """
-        counts = self.energy_check(energy_value)
+        Interactive test plot with synthetic data and slider.
+        Stable in JupyterLab with %matplotlib widget.
+        """
+        from matplotlib.widgets import Slider
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from matplotlib import get_backend
+
+        # Artificial data
+        x = np.linspace(-5, 5, 165)
+        if kwargs.get("fake_1d", False):
+            y = np.exp(-x**2)
+        else:
+            shifts = np.linspace(-2, 2, 30)
+            y = np.array([np.exp(-(x - s)**2) * (1 + 0.1 * i)
+                          for i, s in enumerate(shifts)])
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
-        ax.scatter(self.angles, counts, label='Data')
+        if y.ndim == 1:
+            ax.plot(x, y, label="Static slice")
+            ax.set_xlabel("Angle (°)")
+            ax.set_ylabel("Counts (-)")
+            # ax.set_title("Fake static slice")
+            ax.legend()
+            return fig
 
-        ax.set_xlabel('Angle ($\degree$)')
-        ax.set_ylabel('Counts (-)')
+        # Ensure no overlapping slider axes
+        for other_ax in fig.axes:
+            if other_ax is not ax:
+                fig.delaxes(other_ax)
 
+        # Main plot
+        fig.subplots_adjust(bottom=0.25)
+        idx = 0
+        line, = ax.plot(x, y[idx], label=f"Slice {idx}")
+        ax.set_xlabel("Angle (°)")
+        ax.set_ylabel("Counts (-)")
+        ax.set_title(f"Fake slice {idx}")
+        ax.set_ylim(y.min(), y.max())
         ax.legend()
 
-        return fig
+        # Slider axes
+        slider_ax = fig.add_axes([0.2, 0.08, 0.6, 0.04])
+        slider = Slider(slider_ax, "Index", 0, y.shape[0] - 1,
+                        valinit=idx, valstep=1)
+
+        # Update function
+        def update(val):
+            i = int(slider.val)
+            line.set_ydata(y[i])
+            line.set_label(f"Slice {i}")
+            ax.set_title(f"Fake slice {i}")
+            ax.legend()
+            fig.canvas.draw_idle()
+            fig.canvas.flush_events()
+
+        slider.on_changed(update)
+
+        # Retain references to avoid GC
+        self._slider = slider
+        self._fig = fig
+        self._line = line
+
+        fig.canvas.draw()
+        fig
+
 
     @add_fig_kwargs
     def visualize_guess(self, distributions, energy_value=None,
-                        matrix_element=None, matrix_args=None, ax=None,
-                        **kwargs):
+                        matrix_element=None, matrix_args=None,
+                         ax=None, **kwargs):
         r"""
         """
         from scipy.ndimage import gaussian_filter
-
+        
         counts = self.energy_check(energy_value)
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
