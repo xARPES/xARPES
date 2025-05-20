@@ -623,23 +623,19 @@ class MDCs():
         ax_grid = kwargs.pop("ax_grid", None)
         ax_annotate = kwargs.pop("ax_annotate", False)
         size_kwargs = kwargs.pop("size_kwargs", None)
+        
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        if size_kwargs:
+            fig.set_size_inches(size_kwargs.pop("w"), size_kwargs.pop("h"), **size_kwargs)
+
+        fig.subplots_adjust(bottom=0.25)
 
         # Synthetic test data
         x = np.linspace(-5, 5, 165)
         shifts = np.linspace(-2, 2, 30)
         y = np.array([np.exp(-(x - s)**2) * (1 + 0.1 * i)
                       for i, s in enumerate(shifts)])
-
-        # Use provided ax or create new fig
-        if ax is None:
-            fig, ax = plt.subplots(figsize=(6, 5))
-        else:
-            fig = ax.figure
-
-        if size_kwargs:
-            fig.set_size_inches(size_kwargs.pop("w"), size_kwargs.pop("h"), **size_kwargs)
-
-        fig.subplots_adjust(bottom=0.25)
 
         # Initial plot
         idx = 0
