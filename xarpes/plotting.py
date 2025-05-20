@@ -58,9 +58,6 @@ def get_ax_fig_plt(ax=None, **kwargs):
 
     return ax, fig, plt
 
-from functools import wraps
-import matplotlib.pyplot as plt
-import string
 
 def add_fig_kwargs(func):
     """Decorator that adds keyword arguments for functions returning matplotlib
@@ -81,6 +78,8 @@ def add_fig_kwargs(func):
         ax_grid = kwargs.pop('ax_grid', None)
         ax_annotate = kwargs.pop('ax_annotate', None)
         fig_close = kwargs.pop('fig_close', True)
+        
+        import string
 
         # Call the original function
         result = func(*args, **kwargs)

@@ -604,103 +604,44 @@ class MDCs():
 #             return fig
 
 
-#     def plot(self, energy_value=None, ax=None, **kwargs):
-#         """
-#         Test version using artificial data.
-#         - 1D: plots single curve
-#         - 2D: slider to browse curves
-#         """
-#         from matplotlib.widgets import Slider
-#         import matplotlib.pyplot as plt
-#         import numpy as np
-
-#         # Artificial setup
-#         x = np.linspace(-5, 5, 165)
-
-#         if kwargs.get("fake_1d", False):
-#             y = np.exp(-x**2)  # 1D case
-#         else:
-#             shifts = np.linspace(-2, 2, 30)
-#             y = np.array([np.exp(-(x - s)**2) * (1 + 0.1 * i)
-#                           for i, s in enumerate(shifts)])  # 2D case
-
-#         if ax is None:
-#             fig, ax = plt.subplots(figsize=(6, 5))
-#         else:
-#             fig = ax.get_figure()
-
-#         if y.ndim == 1:
-#             ax.plot(x, y, label="Static slice")
-#             ax.set_xlabel("Angle (°)")
-#             ax.set_ylabel("Counts (-)")
-#             ax.set_title("Fake static slice")
-#             ax.legend()
-#             return fig
-
-#         # 2D interactive case
-#         fig.subplots_adjust(bottom=0.25)
-#         idx = 0
-#         line, = ax.plot(x, y[idx], label=f"Slice {idx}")
-#         ax.set_xlabel("Angle (°)")
-#         ax.set_ylabel("Counts (-)")
-#         ax.set_title(f"Fake slice {idx}")
-#         ax.set_ylim(y.min(), y.max())
-#         ax.legend()
-
-#         slider_ax = fig.add_axes([0.2, 0.08, 0.6, 0.04])
-#         slider = Slider(slider_ax, "Index", 0, y.shape[0] - 1,
-#                         valinit=idx, valstep=1)
-
-#         def update(val):
-#             i = int(slider.val)
-#             line.set_ydata(y[i])
-#             line.set_label(f"Slice {i}")
-#             ax.set_title(f"Fake slice {i}")
-#             ax.legend()
-#             fig.canvas.draw_idle()
-
-#         slider.on_changed(update)
-#         fig.canvas.draw()
-#         return fig
-
-    @add_fig_kwargs
     def plot(self, energy_value=None, ax=None, **kwargs):
         """
-        Interactive test plot with synthetic data and slider.
-        Stable in JupyterLab with %matplotlib widget.
+        Interactive or static plot with optional slider and full wrapper support.
+        Behavior consistent with Jupyter and CLI based on show / fig_close.
         """
-        import numpy as np
-        import sys
-        from matplotlib.widgets import Slider
         import matplotlib.pyplot as plt
-        from matplotlib import get_backend
+        from matplotlib.widgets import Slider
+        import string
+        import sys
 
-        # Artificial data
+        # Wrapper kwargs
+        title = kwargs.pop("title", None)
+        savefig = kwargs.pop("savefig", None)
+        show = kwargs.pop("show", True)
+        fig_close = kwargs.pop("fig_close", False)
+        tight_layout = kwargs.pop("tight_layout", False)
+        ax_grid = kwargs.pop("ax_grid", None)
+        ax_annotate = kwargs.pop("ax_annotate", False)
+        size_kwargs = kwargs.pop("size_kwargs", None)
+
+        # Synthetic test data
         x = np.linspace(-5, 5, 165)
-        if kwargs.get("fake_1d", False):
-            y = np.exp(-x**2)
+        shifts = np.linspace(-2, 2, 30)
+        y = np.array([np.exp(-(x - s)**2) * (1 + 0.1 * i)
+                      for i, s in enumerate(shifts)])
+
+        # Use provided ax or create new fig
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(6, 5))
         else:
-            shifts = np.linspace(-2, 2, 30)
-            y = np.array([np.exp(-(x - s)**2) * (1 + 0.1 * i)
-                          for i, s in enumerate(shifts)])
+            fig = ax.figure
 
-        ax, fig, plt = get_ax_fig_plt(ax=ax)
+        if size_kwargs:
+            fig.set_size_inches(size_kwargs.pop("w"), size_kwargs.pop("h"), **size_kwargs)
 
-        if y.ndim == 1:
-            ax.plot(x, y, label="Static slice")
-            ax.set_xlabel("Angle (°)")
-            ax.set_ylabel("Counts (-)")
-            # ax.set_title("Fake static slice")
-            ax.legend()
-            return fig
-
-        # Ensure no overlapping slider axes
-        for other_ax in fig.axes:
-            if other_ax is not ax:
-                fig.delaxes(other_ax)
-
-        # Main plot
         fig.subplots_adjust(bottom=0.25)
+
+        # Initial plot
         idx = 0
         line, = ax.plot(x, y[idx], label=f"Slice {idx}")
         ax.set_xlabel("Angle (°)")
@@ -709,12 +650,11 @@ class MDCs():
         ax.set_ylim(y.min(), y.max())
         ax.legend()
 
-        # Slider axes
+        # Slider
         slider_ax = fig.add_axes([0.2, 0.08, 0.6, 0.04])
         slider = Slider(slider_ax, "Index", 0, y.shape[0] - 1,
                         valinit=idx, valstep=1)
 
-        # Update function
         def update(val):
             i = int(slider.val)
             line.set_ydata(y[i])
@@ -722,21 +662,44 @@ class MDCs():
             ax.set_title(f"Fake slice {i}")
             ax.legend()
             fig.canvas.draw_idle()
-            fig.canvas.flush_events()
 
         slider.on_changed(update)
 
-        # Retain references to avoid GC
+        # Retain references to prevent GC
         self._slider = slider
         self._fig = fig
         self._line = line
-        
-        # Automatically show only outside of interactive environments
-        if not hasattr(sys, 'ps1') and get_backend() != 'module://matplotlib_inline.backend_inline':
-            plt.show()
 
-        fig.canvas.draw()
-        fig
+        # Post-plot styling
+        if title:
+            fig.suptitle(title)
+        if tight_layout:
+            fig.tight_layout()
+        if savefig:
+            fig.savefig(savefig)
+        if ax_grid is not None:
+            for axis in fig.axes:
+                axis.grid(bool(ax_grid))
+        if ax_annotate:
+            tags = string.ascii_lowercase
+            for i, axis in enumerate(fig.axes):
+                axis.annotate(f"({tags[i]})", xy=(0.05, 0.95),
+                              xycoords="axes fraction")
+
+        # Match your visibility matrix
+        is_interactive = hasattr(sys, 'ps1') or 'ipykernel' in sys.modules
+        is_cli = not is_interactive
+
+        if show:
+            if is_cli:
+                plt.show()
+
+        if fig_close:
+            plt.close(fig)
+
+        if not show and (fig_close or is_cli):
+            return None
+        return fig
 
 
     @add_fig_kwargs
@@ -796,6 +759,7 @@ class MDCs():
         ax.legend()
 
         return fig
+    
 
     @add_fig_kwargs
     def fit(self, distributions, energy_value=None, matrix_element=None,

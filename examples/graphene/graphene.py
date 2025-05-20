@@ -57,7 +57,7 @@ ax = fig.gca()
 fig = bmap.fit_fermi_edge(hnuminphi_guess=32, background_guess=1e5,
                           integrated_weight_guess=1.5e6, angle_min=-10,
                           angle_max=10, ekin_min=31.96, ekin_max=32.1,
-                          ax=ax, show=True, title='Fermi edge fit')
+                          ax=ax, show=True, fig_close=True, title='Fermi edge fit')
 
 print('The optimised hnu - Phi=' + f'{bmap.hnuminphi:.4f}' + ' +/- '
       + f'{1.96 * bmap.hnuminphi_std:.5f}' + ' eV.')
@@ -134,6 +134,11 @@ print('The optimised hnu - Phi=' + f'{bmap.hnuminphi:.4f}' + ' +/- '
 # import xarpes
 # reload(xarpes)
 
+from importlib import reload
+
+
+import xarpes
+reload(xarpes)
 
 angle_min = 0.
 angle_max = 12
@@ -142,9 +147,39 @@ energy_range = [-0.25, 0.01]
 
 mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_value=en_val))
 
-fig = plt.figure(figsize=(5, 4))
+fig = plt.figure(figsize=(6, 5))
 ax = fig.gca()
 
-fig = mdcs.plot(ax=ax)
+fig = mdcs.plot(ax=ax, show=False, fig_close=False)
 
+# # Implementation of matplotlib function
+# import matplotlib.pyplot as plt
+# import numpy as np
+# from matplotlib.colors import LogNorm
 
+# dx, dy = 0.015, 0.05
+# x = np.arange(-4.0, 4.0, dx)
+# y = np.arange(-4.0, 4.0, dy)
+# X, Y = np.meshgrid(x, y)
+
+# extent = np.min(x), np.max(x), np.min(y), np.max(y)
+
+# Z1 = np.add.outer(range(8), range(8)) % 2
+# plt.imshow(Z1, cmap="binary_r",
+#            interpolation='nearest',
+#            extent=extent,
+#            alpha=1)
+
+# def geeks(x, y):
+#     return (1 - x / 2 + x**5 + y**6) * np.exp(-(x**2 + y**2))
+
+# Z2 = geeks(X, Y)
+
+# x = plt.imshow(Z2, cmap="Greens",
+#                alpha=0.7,
+#                interpolation='bilinear',
+#                extent=extent)
+# plt.title('matplotlib.pyplot.close Example')
+
+# plt.show()
+# plt.close()
