@@ -11,8 +11,8 @@
 
 """The band map class and allowed operations on it."""
 
-from igor2 import packed, binarywave
 import numpy as np
+from igor2 import packed, binarywave
 from .plotting import get_ax_fig_plt, add_fig_kwargs
 from .functions import fit_leastsq, extend_function
 from .distributions import FermiDirac, Linear
@@ -29,9 +29,10 @@ class BandMap():
     Parameters
     ----------
     datafile : str
-        Name of data file. Currently, only IGOR Binary Wave files are supported.
-        If absent, `intensities`, `angles`, and `ekin` are mandatory. Otherwise,
-        those arguments can be used to overwrite the contents of `datafile`.
+        Name of data file. Currently, only IGOR Binary Wave files are
+        supported. If absent, `intensities`, `angles`, and `ekin` are
+        mandatory. Otherwise, those arguments can be used to overwrite the 
+        contents of `datafile`.
     intensities : ndarray
         2D array of counts for given (E,k) or (E,angle) pairs [counts]
     angles : ndarray
@@ -152,8 +153,8 @@ class BandMap():
 
     @hnuminphi.setter
     def hnuminphi(self, x):
-        r"""Manually sets the photon energy minus the work function in eV if it
-        has been set; otherwise returns None.
+        r"""Manually sets the photon energy minus the work function in eV if 
+        it has been set; otherwise returns None.
 
         Parameters
         ----------
@@ -217,7 +218,7 @@ class BandMap():
         energy_range : ndarray
             Array of size m containing the energy values
         mdcs :
-            Array of size nxm containing the MDC intensities
+            Array of size n x m containing the MDC intensities
         """
 
         if (energy_value is None and energy_range is None) or \
@@ -237,7 +238,8 @@ class BandMap():
 
         if energy_range:
             energy_indices = np.where((self.enel >= np.min(energy_range))
-                                      & (self.enel <= np.max(energy_range)))[0]
+                                      & (self.enel <= np.max(energy_range))) \
+                                        [0]
             enel_range_out = self.enel[energy_indices]
             mdcs = self.intensities[energy_indices,
                                     angle_min_index:angle_max_index + 1]
@@ -513,15 +515,15 @@ class BandMap():
     
 class MDCs():
     r"""
-    Enel should be a list or a single value
+    Enel can currently be a list for plotting, but not yet for fitting.
     """
-    def __init__(self, intensities, angles, angle_resolution, enel, hnuminphi):
+    def __init__(self, intensities, angles, angle_resolution, enel, 
+                 hnuminphi):
         self.intensities = intensities
         self.angles = angles
         self.enel = enel
-        self.ekin = enel + hnuminphi
-        self.angle_resolution = angle_resolution
         self.hnuminphi = hnuminphi
+        self.angle_resolution = angle_resolution
         
     @property
     def enel(self):
@@ -539,13 +541,13 @@ class MDCs():
     def ekin(self):
         r"""
         """
-        return self._ekin
+        return self._enel + self.hnuminphi
 
     @ekin.setter
     def ekin(self, x):
         r"""
         """
-        self._ekin = x
+        self._enel = x - self.hnuminphi
 
     @property
     def intensities(self):
@@ -577,8 +579,9 @@ class MDCs():
 
     def plot(self, energy_value=None, energy_range=None, ax=None, **kwargs):
         """
-        Interactive or static plot with optional slider and full wrapper support.
-        Behavior consistent with Jupyter and CLI based on show / fig_close.
+        Interactive or static plot with optional slider and full wrapper 
+        support. Behavior consistent with Jupyter and CLI based on show / 
+        fig_close.
         """
         import matplotlib.pyplot as plt
         from matplotlib.widgets import Slider
@@ -754,56 +757,28 @@ class MDCs():
     @add_fig_kwargs
     def visualize_guess(self, distributions, energy_value=None,
                         matrix_element=None, matrix_args=None,
-                         ax=None, **kwargs):
+                        ax=None, **kwargs):
         r"""
         """
-        from scipy.ndimage import gaussian_filter
-        
         counts = self.energy_check(energy_value)
-
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
-        ax.set_xlabel('Angle ($\degree$)')
+        ax.set_xlabel('Angle ($\\degree$)')
         ax.set_ylabel('Counts (-)')
-
         ax.scatter(self.angles, counts, label='Data')
 
-        # Modify this when mdcs is a larger collection
         kinetic_energy = self.ekin
 
-        extend, step, numb = extend_function(self.angles,
-                                             self.angle_resolution)
-        total_result = np.zeros(np.shape(extend))
-
-        for dist in distributions:
-            if dist.class_name == 'SpectralQuadratic':
-                if (dist.center_angle is not None) and (kinetic_energy is
-                    None or hnuminphi is None):
-                    raise ValueError('Spectral quadratic function is ' +
-                    'defined in terms of a center angle. Please provide ' +
-                    'a kinetic energy and hnuminphi.')
-                extended_result = dist.evaluate(extend,
-                                            kinetic_energy, self.hnuminphi)
-            else:
-                extended_result = dist.evaluate(extend)
-
-            if matrix_element is not None and hasattr(dist, 'index'):
-                extended_result *= matrix_element(extend, **matrix_args)
-
-            total_result += extended_result
-
-            individual_result = gaussian_filter(extended_result,
-                                    sigma=step)[numb:-numb if numb else None]
-
-            ax.plot(self.angles, individual_result, label=dist.label)
-
-        final_result = gaussian_filter(total_result,
-                                sigma=step)[numb:-numb if numb else None]
-
-        ax.plot(self.angles, final_result, label='Distribution sum')
+        final_result = self._merge_and_plot(
+            ax=ax,
+            distributions=distributions,
+            kinetic_energy=kinetic_energy,
+            matrix_element=matrix_element,
+            matrix_args=dict(matrix_args) if matrix_args else None,
+            plot_individual=True,
+        )
 
         residual = counts - final_result
-
         ax.scatter(self.angles, residual, label='Residual')
         ax.legend()
 
@@ -815,92 +790,121 @@ class MDCs():
             matrix_args=None, ax=None, **kwargs):
         r"""
         """
-        from .functions import construct_parameters, build_distributions, \
-        residual
-        from scipy.ndimage import gaussian_filter
-        from lmfit import Minimizer
         import copy
+        from lmfit import Minimizer
+        from .functions import construct_parameters, build_distributions, \
+            residual
 
         counts = self.energy_check(energy_value)
-
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
-        ax.set_xlabel('Angle ($\degree$)')
+        ax.set_xlabel('Angle ($\\degree$)')
         ax.set_ylabel('Counts (-)')
-
         ax.scatter(self.angles, counts, label='Data')
 
-        # Modify this when mdcs is a larger collection
         kinetic_energy = self.ekin
-
         new_distributions = copy.deepcopy(distributions)
 
         if matrix_element is not None:
-            parameters, element_names = construct_parameters(distributions,
+            parameters, element_names = construct_parameters(distributions, \
                                                              matrix_args)
-            new_distributions = build_distributions(new_distributions,
+            new_distributions = build_distributions(new_distributions, \
                                                     parameters)
-            mini = Minimizer(residual, parameters, fcn_args=(self.angles,
-            self.intensities, self.angle_resolution, new_distributions,
-                    kinetic_energy, self.hnuminphi, matrix_element,
-                                                             element_names))
+            mini = Minimizer(
+                residual, parameters,
+                fcn_args=(self.angles, self.intensities, self.angle_resolution,
+                          new_distributions, kinetic_energy, self.hnuminphi,
+                          matrix_element, element_names)
+            )
         else:
             parameters = construct_parameters(distributions)
-            new_distributions = build_distributions(new_distributions,
+            new_distributions = build_distributions(new_distributions, \
                                                     parameters)
-            mini = Minimizer(residual, parameters, fcn_args=(self.angles,
-            self.intensities, self.angle_resolution, new_distributions,
-                                kinetic_energy, self.hnuminphi))
+            mini = Minimizer(
+                residual, parameters,
+                fcn_args=(self.angles, self.intensities, self.angle_resolution,
+                          new_distributions, kinetic_energy, self.hnuminphi)
+            )
 
         outcome = mini.minimize('least_squares')
         pcov = outcome.covar
 
+        # If matrix params were fitted, pass the fitted values to plotting
         if matrix_element is not None:
-            new_matrix_args = {}
-            for key in matrix_args:
-                new_matrix_args[key] = outcome.params[key].value
+            new_matrix_args = {key: outcome.params[key].value for key in \
+                               matrix_args}
+        else:
+            new_matrix_args = None
 
-        # The following until the residual statement could probably be combined
-        # into a single method, such that visualize_guess() and fit() can both
-        # call it.
-        extend, step, numb = extend_function(self.angles,
-                                             self.angle_resolution)
+        final_result = self._merge_and_plot(
+            ax=ax,
+            distributions=new_distributions,
+            kinetic_energy=kinetic_energy,
+            matrix_element=matrix_element,
+            matrix_args=new_matrix_args,
+            plot_individual=True,
+        )
 
-        total_result = np.zeros(np.shape(extend))
-
-        for dist in new_distributions:
-            if dist.class_name == 'SpectralQuadratic':
-                if (dist.center_angle is not None) and (kinetic_energy is
-                    None or hnuminphi is None):
-                    raise ValueError('Spectral quadratic function is ' +
-                    'defined in terms of a center angle. Please provide ' +
-                    'a kinetic energy and hnuminphi.')
-                extended_result = dist.evaluate(extend,
-                                            kinetic_energy, self.hnuminphi)
-            else:
-                extended_result = dist.evaluate(extend)
-
-            if matrix_element is not None and hasattr(dist, 'index'):
-                extended_result *= matrix_element(extend, **matrix_args)
-
-            total_result += extended_result
-
-            individual_result = gaussian_filter(extended_result,
-                                    sigma=step)[numb:-numb if numb else None]
-
-            ax.plot(self.angles, individual_result, label=dist.label)
-
-        final_result = gaussian_filter(total_result,
-                                sigma=step)[numb:-numb if numb else None]
-
-        ax.plot(self.angles, final_result, label='Distribution sum')
-
-        residual = counts - final_result
-
-        ax.scatter(self.angles, residual, label='Residual')
+        residual_vals = counts - final_result
+        ax.scatter(self.angles, residual_vals, label='Residual')
         ax.legend()
 
         if matrix_element is not None:
             return fig, new_distributions, pcov, new_matrix_args
         else:
             return fig, new_distributions, pcov
+        
+
+    def _merge_and_plot(self, ax, distributions, kinetic_energy,
+                        matrix_element=None, matrix_args=None,
+                        plot_individual=True):
+        r"""
+        Evaluate distributions on the extended grid, apply optional matrix
+        element, smooth, plot individuals and the summed curve.
+
+        Returns
+        -------
+        final_result : np.ndarray
+            Smoothed, cropped total distribution aligned with self.angles.
+        """
+        from scipy.ndimage import gaussian_filter
+
+        # Build extended grid
+        extend, step, numb = extend_function(self.angles, self.angle_resolution)
+        total_result = np.zeros_like(extend)
+
+        for dist in distributions:
+            # Special handling for SpectralQuadratic
+            if getattr(dist, 'class_name', None) == 'SpectralQuadratic':
+                if (getattr(dist, 'center_angle', None) is not None) and (
+                    kinetic_energy is None or self.hnuminphi is None
+                ):
+                    raise ValueError(
+                        'Spectral quadratic function is defined in terms '
+                        'of a center angle. Please provide a kinetic energy '
+                        'and hnuminphi.'
+                    )
+                extended_result = dist.evaluate(extend, kinetic_energy, \
+                                                self.hnuminphi)
+            else:
+                extended_result = dist.evaluate(extend)
+
+            # Optional matrix element (only for components that advertise an index)
+            if matrix_element is not None and hasattr(dist, 'index'):
+                args = matrix_args or {}
+                extended_result *= matrix_element(extend, **args)
+
+            total_result += extended_result
+
+            if plot_individual:
+                individual = gaussian_filter(extended_result, sigma=step)\
+                    [numb:-numb if numb else None]
+                ax.plot(self.angles, individual, label=getattr(dist, \
+                                                        'label', str(dist)))
+
+        # Smoothed, cropped total curve aligned to self.angles
+        final_result = gaussian_filter(total_result, sigma=step)[numb:-numb \
+                                                            if numb else None]
+        ax.plot(self.angles, final_result, label='Distribution sum')
+
+        return final_result

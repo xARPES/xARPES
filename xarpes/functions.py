@@ -288,4 +288,5 @@ def set_script_dir():
     except:
         # If __file__ isn't defined, fall back to current working directory
         script_dir = os.getcwd()
+
     return script_dir

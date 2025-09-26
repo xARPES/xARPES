@@ -7,6 +7,7 @@
 import matplotlib as mpl
 mpl.use('Qt5Agg')
 
+
 import xarpes
 import matplotlib.pyplot as plt
 import numpy as np
@@ -35,12 +36,12 @@ fig = bmap.fit_fermi_edge(hnuminphi_guess=42.24, background_guess=1e4,
                           angle_max=5, ekin_min=42.22, ekin_max=42.3,
                           show=True, title='Fermi edge fit')
 
-print('The optimised h nu - phi=' + f'{bmap.hnuminphi:.4f}' + ' +/- '
+print('The optimised h nu - Phi = ' + f'{bmap.hnuminphi:.4f}' + ' +/- '
       + f'{bmap.hnuminphi_std:.4f}' + ' eV.')
 
 angle_min = 0.6
 angle_max = 4.8
-en_val = 0.000
+en_val = 0.0
 
 mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_value=en_val))
 
@@ -75,7 +76,7 @@ mat_args = {
 }
 
 fig = mdcs.visualize_guess(distributions=guess_dists, matrix_element=mat_el,
-                           ax=ax, matrix_args=mat_args, show=False)
+                           ax=ax, matrix_args=mat_args, show=True)
 
 fig = plt.figure(figsize=(7, 5))
 ax = fig.gca()
@@ -83,5 +84,31 @@ ax = fig.gca()
 fig, new_dists, covariance_matrix, new_mat_args = mdcs.fit(
     distributions=guess_dists, matrix_element=mat_el, matrix_args=mat_args,
     ax=ax, show=True)
+
+
+energy_range = [-0.2, 0.01]
+
+angle_min = 0.6
+angle_max = 4.8
+
+mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range))
+
+# print(mdcs.ekin)
+
+fig = plt.figure(figsize=(6, 5))
+ax = fig.gca()
+
+# mdcs.plot(angle_range=mdcs.angles, angle_resolution=0.2, ax=ax, show=False,
+#            fig_close=False)
+
+fig = mdcs.plot(ax=ax)
+
+
+# fig = plt.figure(figsize=(7, 5))
+# ax = fig.gca()
+
+# fig, new_dists, covariance_matrix, new_mat_args = mdcs.fit(
+#     distributions=guess_dists, matrix_element=mat_el, matrix_args=mat_args,
+#     ax=ax, show=False)
 
 

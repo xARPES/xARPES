@@ -74,8 +74,8 @@ class CreateDistributions:
             if dist.class_name == 'SpectralQuadratic':
                 if (dist.center_angle is not None) and (kinetic_energy is
                     None or hnuminphi is None):
-                    raise ValueError('Spectral quadratic function is ' +
-                    'defined in terms of a center angle. Please provide ' +
+                    raise ValueError('Spectral quadratic function is '
+                    'defined in terms of a center angle. Please provide '
                     'a kinetic energy and hnuminphi.')
                 extended_result = dist.evaluate(extend,
                                             kinetic_energy, hnuminphi)
@@ -197,9 +197,9 @@ class UniqueDistribution(Distribution):
         return self._label
 
 class FermiDirac(UniqueDistribution):
-    r"""Child class for Fermi-Dirac (FD) distributions, used e.g., during Fermi
-    edge fitting. The FD class is unique, only one instance should be used
-    per task.
+    r"""Child class for Fermi-Dirac (FD) distributions, used e.g., during 
+    Fermi-edge fitting. The FD class is unique, only one instance should be
+    used per task.
 
     The Fermi-Dirac distribution is described by the following formula:
 
@@ -382,7 +382,8 @@ class FermiDirac(UniqueDistribution):
         ax.set_xlabel(r'$E_{\mathrm{kin}}$ (-)')
         ax.set_ylabel('Counts (-)')
 
-        extend, step, numb = self.extend_range(energy_range, energy_resolution)
+        extend, step, numb = self.extend_range(energy_range, \
+                                               energy_resolution)
 
         extended_result = self.evaluate(extend)
 
@@ -441,8 +442,9 @@ class Constant(UniqueDistribution):
         return np.full(np.shape(angle_range), self.offset)
 
 class Linear(UniqueDistribution):
-    r"""Child cass for for linear distributions, used e.g., during MDC fitting.
-    The linear class is unique, only one instance should be used per task.
+    r"""Child cass for for linear distributions, used e.g., during MDC 
+    fitting. The linear class is unique, only one instance should be used per 
+    task.
 
     Parameters
     ----------
@@ -545,7 +547,8 @@ class NonUniqueDistribution(Distribution):
         Returns
         -------
         index : str
-            Unique index for instances. Not to be modified after instantiation.
+            Unique index for instances. Not to be modified after 
+            instantiation.
         """
         return self._index
 
@@ -604,8 +607,8 @@ class SpectralLinear(Dispersion):
                 peak):
         r"""
         """
-        result = amplitude / np.pi * broadening / ((np.sin(angle_range * dtor) -
-              np.sin(peak * dtor)) ** 2 + broadening ** 2)
+        result = amplitude / np.pi * broadening / ((np.sin(angle_range * dtor)
+                            - np.sin(peak * dtor)) ** 2 + broadening ** 2)
         return result
 
     def evaluate(self, angle_range):
@@ -668,15 +671,15 @@ class SpectralQuadratic(Dispersion):
         """
         if (center_wavevector is None and center_angle is None) \
         or (center_wavevector is not None and center_angle is not None):
-            raise ValueError('Please specify exactly one of ' +
+            raise ValueError('Please specify exactly one of '
                              'center_wavevector and center_angle.')
 
     def check_binding_angle(self, binding_angle):
         r"""TBD
         """
         if np.isnan(binding_angle):
-            raise ValueError('The provided wavevector cannot be reached ' +
-                             'with the available range of kinetic ' +
+            raise ValueError('The provided wavevector cannot be reached '
+                             'with the available range of kinetic '
                              'energies. Please check again.')
 
     def __call__(self, angle_range, amplitude, broadening,

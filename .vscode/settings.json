@@ -1,0 +1,11 @@
+{
+  "python.defaultInterpreterPath": "/home/tvanwaas/venvs/3.7_env/bin/python",
+  "python.terminal.activateEnvironment": true,
+
+  "remote.autoForwardPorts": false,
+  "remote.portsAttributes": { "0-65535": { "onAutoForward": "ignore" } },
+
+  "jupyter.jupytext.enabled": true,
+  "jupyter.jupytext.formats": "ipynb,Rmd",
+  "jupyter.jupytext.syncOnSave": true
+}
