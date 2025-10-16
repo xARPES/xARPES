@@ -5,7 +5,7 @@
    :caption: Modules
    :hidden:
 
-   modules/band_map
+   modules/spectral
    modules/distributions
    modules/functions
    modules/plotting

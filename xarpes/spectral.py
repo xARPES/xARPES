@@ -9,7 +9,7 @@
 # Copyright (C) 2021 Matteo Giantomassi and the AbiPy Group
 # AbiPy is free software under the terms of the GNU GPLv2 license.
 
-"""The band map class and allowed operations on it."""
+"""File containing all the spectral quantities."""
 
 import numpy as np
 from igor2 import packed, binarywave
