@@ -1,4 +1,4 @@
-# Copyright (C) 2024 xARPES Developers
+# Copyright (C) 2025 xARPES Developers
 # This program is free software under the terms of the GNU GPLv3 license.
 
 # get_ax_fig_plt and add_fig_kwargs originate from pymatgen/util/plotting.py.

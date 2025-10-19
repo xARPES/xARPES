@@ -1,4 +1,4 @@
-# Copyright (C) 2024 xARPES Developers
+# Copyright (C) 2025 xARPES Developers
 # This program is free software under the terms of the GNU GPLv3 license.
 
 """Separate functions mostly used in conjunction with various classes."""
@@ -8,6 +8,7 @@ import numpy as np
 # Physical constants, default parameters
 fwhm_to_std = np.sqrt(8 * np.log(2)) # Convert FWHM to std [-]
 sigma_extend = 5 # Extend data range by "5 sigma"
+
 
 def build_distributions(distributions, parameters):
     r"""TBD
@@ -28,10 +29,11 @@ def build_distributions(distributions, parameters):
             dist.broadening = parameters['broadening_' + dist.label].value
     return distributions
 
+
 def construct_parameters(distribution_list, matrix_args=None):
     r"""TBD
     """
-    from lmfit import Minimizer, Parameters
+    from lmfit import Parameters
 
     parameters = Parameters()
 
@@ -62,6 +64,7 @@ def construct_parameters(distribution_list, matrix_args=None):
         return parameters, element_names
     else:
         return parameters
+
 
 def residual(parameters, xdata, ydata, angle_resolution, new_distributions,
              kinetic_energy, hnuminphi, matrix_element=None,

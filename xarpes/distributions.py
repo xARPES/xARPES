@@ -1,9 +1,10 @@
-# Copyright (C) 2024 xARPES Developers
+# Copyright (C) 2025 xARPES Developers
 # This program is free software under the terms of the GNU GPLv3 license.
 
 """The distributions used throughout the code."""
 
 import numpy as np
+from .functions import fit_leastsq, extend_function
 from .plotting import get_ax_fig_plt, add_fig_kwargs
 
 # Physical constants
@@ -28,17 +29,6 @@ class CreateDistributions:
         r"""
         """
         return self.distributions
-    
-    def extend_range(self, abscissa_range, abscissa_resolution):
-        r"""
-        """
-        step_size = np.abs(abscissa_range[1] - abscissa_range[0])
-        step = abscissa_resolution / (step_size * fwhm_to_std)
-        numb = int(sigma_extend * step)
-        extend = np.linspace(abscissa_range[0] - numb * step_size,
-                             abscissa_range[-1] + numb * step_size,
-                             len(abscissa_range) + 2 * numb)
-        return extend, step, numb
 
     @property
     def distributions(self):
@@ -128,7 +118,7 @@ class CreateDistributions:
         ax.set_ylabel('Counts (-)')
 
 
-        extend, step, numb = self.extend_range(angle_range, angle_resolution)
+        extend, step, numb = extend_function(angle_range, angle_resolution)
 
         total_result = np.zeros(np.shape(extend))
 
@@ -180,17 +170,6 @@ class Distribution:
         """
         return self._name
 
-    def extend_range(self, abscissa_range, abscissa_resolution):
-        r"""
-        """
-        step_size = np.abs(abscissa_range[1] - abscissa_range[0])
-        step = abscissa_resolution / (step_size * fwhm_to_std)
-        numb = int(sigma_extend * step)
-        extend = np.linspace(abscissa_range[0] - numb * step_size,
-                             abscissa_range[-1] + numb * step_size,
-                             len(abscissa_range) + 2 * numb)
-        return extend, step, numb
-
     @property
     def class_name(self):
         r"""TBD
@@ -213,7 +192,7 @@ class Distribution:
         ax.set_xlabel('Angle ($\degree$)')
         ax.set_ylabel('Counts (-)')
 
-        extend, step, numb = self.extend_range(angle_range, angle_resolution)
+        extend, step, numb = extend_function(angle_range, angle_resolution)
 
         if self.class_name == 'SpectralQuadratic':
             extended_result = self.evaluate(extend, kinetic_energy, hnuminphi)
@@ -444,7 +423,7 @@ class FermiDirac(UniqueDistribution):
         ax.set_xlabel(r'$E_{\mathrm{kin}}$ (-)')
         ax.set_ylabel('Counts (-)')
 
-        extend, step, numb = self.extend_range(energy_range, \
+        extend, step, numb = extend_function(energy_range, \
                                                energy_resolution)
 
         extended_result = self.evaluate(extend)
@@ -777,7 +756,7 @@ class SpectralQuadratic(Dispersion):
         ax.set_xlabel('Angle ($\degree$)')
         ax.set_ylabel('Counts (-)')
 
-        extend, step, numb = self.extend_range(angle_range, angle_resolution)
+        extend, step, numb = extend_function(angle_range, angle_resolution)
 
         extended_result = self.evaluate(extend, kinetic_energy, hnuminphi)
 

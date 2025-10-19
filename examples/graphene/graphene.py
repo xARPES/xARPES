@@ -137,10 +137,20 @@ energy_range = [-0.1, 0.01]
 mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range))
 
 
+
+guess_dists = xarpes.CreateDistributions([
+xarpes.Linear(offset=3.0e3, slope=-100),
+xarpes.SpectralLinear(amplitude=450, peak=7.4, broadening=0.012,
+                      name='Linear_test', index='1'),
+# xarpes.SpectralQuadratic(amplitude=20, peak=4.5, center_wavevector=0,
+#    broadening=0.005, name='Quadratic_test', index='1')
+])
+
+
 fig = plt.figure(figsize=(7, 5))
 ax = fig.gca()
 
-energy_range = [-0.01, 0.01]
+energy_range = [-0.1, 0.02]
 energy_value = 0.01
 
 mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range))
@@ -152,7 +162,6 @@ self_energy = xarpes.SelfEnergy(*mdcs.fit_parameters(select_label='Linear_test_2
 print(self_energy.enel_range)
 print(self_energy.label)
 print(self_energy.properties)
-
 
 # change = xarpes.SpectralLinear(amplitude=500, peak=7.5, broadening=0.01,
 #                                name='Linear_test', index='1')

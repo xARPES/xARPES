@@ -79,7 +79,6 @@ mat_args = {
 }
 
 
-
 fig = mdcs.visualize_guess(distributions=guess_dists, matrix_element=mat_el,
                            ax=ax, matrix_args=mat_args, show=True)
 
@@ -100,7 +99,7 @@ mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range
 
 # print(mdcs.ekin)
 
-fig = plt.figure(figsize=(6, 5))
+fig = plt.figure(figsize=(8, 5))
 ax = fig.gca()
 
 # mdcs.plot(angle_range=mdcs.angles, angle_resolution=0.2, ax=ax, show=False,

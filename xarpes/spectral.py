@@ -1,4 +1,4 @@
-# Copyright (C) 2024 xARPES Developers
+# Copyright (C) 2025 xARPES Developers
 # This program is free software under the terms of the GNU GPLv3 license.
 
 # get_ax_fig_plt and add_fig_kwargs originate from pymatgen/util/plotting.py.
@@ -22,6 +22,7 @@ from .distributions import FermiDirac, Linear
 uncr = 1.95996398 # Standard deviation to 95 % confidence [-]
 dtor = np.pi / 180 # Degrees to radians [rad/deg]
 pref = 3.80998211616 # hbar^2/(2m_e) [eV Angstrom^2]
+kilo = 1e3 # 1000 [-]
 
 class BandMap():
     r"""Class for the band map from the ARPES experiment.
@@ -657,7 +658,7 @@ class MDCs():
                 )
             intensities = self.intensities
             ax.scatter(angles, intensities, label="Data")
-            ax.set_title(f"Energy slice: {energies:.3f} eV")
+            ax.set_title(f"Energy slice: {energies * kilo:.3f} meV")
             combined_ymin = min(existing_ymin, intensities.min())
             combined_ymax = max(existing_ymax, intensities.max())
             ax.set_ylim(combined_ymin, combined_ymax)
@@ -680,7 +681,7 @@ class MDCs():
                 idx = int(np.abs(energies - energy_value).argmin())
                 intensities = self.intensities[idx]
                 ax.scatter(angles, intensities, label="Data")
-                ax.set_title(f"Energy slice: {energies[idx]:.3f} eV")
+                ax.set_title(f"Energy slice: {energies[idx] * mevs:.3f} meV")
                 combined_ymin = min(existing_ymin, intensities.min())
                 combined_ymax = max(existing_ymax, intensities.max())
                 ax.set_ylim(combined_ymin, combined_ymax)
@@ -703,7 +704,7 @@ class MDCs():
                 fig.subplots_adjust(bottom=0.25)
                 idx = 0
                 scatter = ax.scatter(angles, intensities[idx], label="Data")
-                ax.set_title(f"Energy slice: {energies[indices[idx]]:.3f} eV")
+                ax.set_title(f"Energy slice: {energies[indices[idx]] * kilo:.3f} meV")
 
                 combined_ymin = min(existing_ymin, intensities.min())
                 combined_ymax = max(existing_ymax, intensities.max())
@@ -711,14 +712,14 @@ class MDCs():
 
                 slider_ax = fig.add_axes([0.2, 0.08, 0.6, 0.04])
                 slider = Slider(
-                    slider_ax, "Energy index", 0, len(indices) - 1,
+                    slider_ax, "Index", 0, len(indices) - 1,
                     valinit=idx, valstep=1
                 )
 
                 def update(val):
                     i = int(slider.val)
                     scatter.set_offsets(np.c_[angles, intensities[i]])
-                    ax.set_title(f"Energy slice: {energies[indices[i]]:.3f} eV")
+                    ax.set_title(f"Energy slice: {energies[indices[i]] * kilo:.3f} meV")
                     fig.canvas.draw_idle()
 
                 slider.on_changed(update)
@@ -997,7 +998,7 @@ class MDCs():
             ax.plot(self.angles, yfit, label="Fit")
             ax.scatter(self.angles, yres, label="Residual")
 
-            ax.set_title(f"Energy slice: {energies:.3f} eV")
+            ax.set_title(f"Energy slice: {energies * kilo:.3f} meV")
             ymin_candidates = [ydata.min(), yres.min()]
             ymax_candidates = [ydata.max(), yres.max()]
             if yind.size:
@@ -1043,7 +1044,7 @@ class MDCs():
             resid_scatter = ax.scatter(self.angles, all_residuals[idx], label="Residual")
 
             # Title + limits
-            ax.set_title(f"Energy slice: {energies_sel[idx]:.3f} eV")
+            ax.set_title(f"Energy slice: {energies_sel[idx] * kilo:.3f} meV")
             ymin_candidates = [intensities.min(), np.min(all_residuals)]
             ymax_candidates = [intensities.max(), np.max(all_residuals)]
             if n_individuals:
@@ -1054,7 +1055,7 @@ class MDCs():
             # Slider over slice index (0..n_slices-1)
             slider_ax = fig.add_axes([0.2, 0.08, 0.6, 0.04])
             slider = Slider(
-                slider_ax, "Energy index", 0, n_slices - 1,
+                slider_ax, "Index", 0, n_slices - 1,
                 valinit=idx, valstep=1
             )
 
@@ -1074,7 +1075,7 @@ class MDCs():
                 resid_scatter.set_offsets(np.c_[self.angles, all_residuals[i]])
 
                 # Update title
-                ax.set_title(f"Energy slice: {energies_sel[i]:.3f} eV")
+                ax.set_title(f"Energy slice: {energies_sel[i] * kilo:.3f} meV")
 
                 # Redraw
                 fig.canvas.draw_idle()
