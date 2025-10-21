@@ -72,6 +72,7 @@ def residual(parameters, xdata, ydata, angle_resolution, new_distributions,
     r"""
     """
     from scipy.ndimage import gaussian_filter
+    from xarpes.distributions import Dispersion
 
     if matrix_element is not None:
         matrix_parameters = {}
@@ -86,15 +87,16 @@ def residual(parameters, xdata, ydata, angle_resolution, new_distributions,
     model = np.zeros_like(extend)
 
     for dist in new_distributions:
-        if hasattr(dist, 'index') and matrix_element is not None:
-            if dist.class_name == 'SpectralQuadratic':
-                model += dist.evaluate(extend, kinetic_energy, hnuminphi) \
-                * matrix_element(extend, **matrix_parameters)
-            else:
-                model += dist.evaluate(extend) * matrix_element(extend,
-                                                 **matrix_parameters)
+        if getattr(dist, 'class_name', type(dist).__name__) == 'SpectralQuadratic':
+            part = dist.evaluate(extend, kinetic_energy, hnuminphi)
         else:
-            model += dist.evaluate(extend)
+            part = dist.evaluate(extend)
+
+        if (matrix_element is not None) and isinstance(dist, Dispersion):
+            part *= matrix_element(extend, **matrix_parameters)
+
+
+        model += part
 
     model = gaussian_filter(model, sigma=step)[numb:-numb if numb else None]
     return model - ydata

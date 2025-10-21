@@ -606,17 +606,24 @@ class MDCs():
     def energy_check(self, energy_value):
         r"""
         """
-        if energy_value is None and len(np.shape(self.intensities)) > 1:
-            raise ValueError('Multiple MDCs. Please provide the nearest ' +
-                         'energy value for which to plot an MDC.')
-
-        if energy_value is not None and len(np.shape(self.intensities)) > 1:
-            energy_index = np.abs(self.enel - energy_value).argmin()
-            counts = self.intensities[energy_index, :]
+        if np.isscalar(self.ekin):
+            if  energy_value is not None:
+                raise ValueError("This dataset contains only one " \
+                "momentum-distribution curve; do not provide energy_value.")
+            else: 
+                kinergy = self.ekin
+                counts = self.intensities
         else:
-            counts = self.intensities
+            if energy_value is None:
+                raise ValueError("This dataset contains multiple " \
+                "momentum-distribution curves. Please provide an energy_value "
+                "for which to plot the MDCs.")
+            else: 
+                energy_index = np.abs(self.enel - energy_value).argmin()
+                kinergy = self.ekin[energy_index]
+                counts = self.intensities[energy_index, :]
 
-        return counts
+        return counts, kinergy
 
 
     def plot(self, energy_value=None, energy_range=None, ax=None, **kwargs):
@@ -764,26 +771,24 @@ class MDCs():
             return None
         return fig
 
-    
+
     @add_fig_kwargs
     def visualize_guess(self, distributions, energy_value=None,
                         matrix_element=None, matrix_args=None,
                         ax=None, **kwargs):
         r"""
         """
-        counts = self.energy_check(energy_value)
+        
+        counts, kinergy = self.energy_check(energy_value)
+
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
         ax.set_xlabel('Angle ($\\degree$)')
         ax.set_ylabel('Counts (-)')
         ax.scatter(self.angles, counts, label='Data')
 
-        kinetic_energy = self.ekin
-
-        final_result = self._merge_and_plot(
-            ax=ax,
-            distributions=distributions,
-            kinetic_energy=kinetic_energy,
+        final_result = self._merge_and_plot(ax=ax, 
+            distributions=distributions, kinetic_energy=kinergy,
             matrix_element=matrix_element,
             matrix_args=dict(matrix_args) if matrix_args else None,
             plot_individual=True,
@@ -1127,23 +1132,23 @@ class MDCs():
     
 
     @add_fig_kwargs
-    def fit(self, distributions, energy_value=None, matrix_element=None,
+    def fit(self, distributions, energy_value=None, matrix_element=None, 
             matrix_args=None, ax=None, **kwargs):
         r"""
-        """
+        """      
         from copy import deepcopy
         from lmfit import Minimizer
         from .functions import construct_parameters, build_distributions, \
             residual
+        
+        counts, kinergy = self.energy_check(energy_value)
 
-        counts = self.energy_check(energy_value)
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
         ax.set_xlabel('Angle ($\\degree$)')
         ax.set_ylabel('Counts (-)')
         ax.scatter(self.angles, counts, label='Data')
 
-        kinetic_energy = self.ekin
         new_distributions = deepcopy(distributions)
 
         if matrix_element is not None:
@@ -1153,16 +1158,16 @@ class MDCs():
                                                     parameters)
             mini = Minimizer(
                 residual, parameters,
-                fcn_args=(self.angles, self.intensities, self.angle_resolution,
-                          new_distributions, kinetic_energy, self.hnuminphi,
+                fcn_args=(self.angles, counts, self.angle_resolution,
+                          new_distributions, kinergy, self.hnuminphi,
                           matrix_element, element_names))
         else:
             parameters = construct_parameters(distributions)
             new_distributions = build_distributions(new_distributions,
                                                     parameters)
             mini = Minimizer(residual, parameters,
-                fcn_args=(self.angles, self.intensities, self.angle_resolution,
-                          new_distributions, kinetic_energy, self.hnuminphi))
+                fcn_args=(self.angles, counts, self.angle_resolution,
+                          new_distributions, kinergy, self.hnuminphi))
 
         outcome = mini.minimize('least_squares')
         pcov = outcome.covar
@@ -1175,9 +1180,10 @@ class MDCs():
             new_matrix_args = None
 
         final_result = self._merge_and_plot(ax=ax, 
-            distributions=new_distributions, kinetic_energy=kinetic_energy,
+            distributions=new_distributions, kinetic_energy=kinergy,
             matrix_element=matrix_element, matrix_args=new_matrix_args,
             plot_individual=True)
+        
         residual_vals = counts - final_result
         ax.scatter(self.angles, residual_vals, label='Residual')
         ax.legend()

@@ -117,8 +117,8 @@ angle_min = 0
 angle_max = 1e6
 en_val = 0
 
-mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_value=en_val))
-new_range = mdcs.angles
+mdc = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_value=en_val))
+new_range = mdc.angles
 
 # %matplotlib inline
 
@@ -134,7 +134,7 @@ line1.plot(angle_range=new_range, angle_resolution=0.1, ax=ax, show=False,
            fig_close=False)
 line2.plot(angle_range=new_range, angle_resolution=0.1, ax=ax, show=False,
            fig_close=False)
-fig = mdcs.plot(ax=ax)
+fig = mdc.plot(ax=ax)
 ```
 
 ```{python}
@@ -147,18 +147,19 @@ xarpes.SpectralLinear(amplitude=450, peak=7.4, broadening=0.012,
                       name='Linear_test', index='1'),
 xarpes.SpectralLinear(amplitude=60, peak=4.2, broadening=0.018,
                       name='Linear_test', index='2'),
-# xarpes.SpectralQuadratic(amplitude=20, peak=4.5, center_wavevector=0,
-#    broadening=0.005, name='Quadratic_test', index='1')
+xarpes.SpectralQuadratic(amplitude=20, peak=4.5, center_wavevector=0,
+                            broadening=0.005, name='Quadratic_test', index='1')
 ])
 
-fig = mdcs.visualize_guess(distributions=guess_dists, ax=ax, show=True)
+
+fig = mdc.visualize_guess(distributions=guess_dists, ax=ax, show=True)
 ```
 
 ```{python}
 fig = plt.figure(figsize=(8, 6))
 ax = fig.gca()
 
-fig, new_distributions, covariance_matrix = mdcs.fit(
+fig, new_distributions, covariance_matrix = mdc.fit(
      distributions=guess_dists, ax=ax, show=True)
 ```
 
@@ -178,9 +179,26 @@ guess_dists = xarpes.CreateDistributions([
 xarpes.Linear(offset=3.0e3, slope=-100),
 xarpes.SpectralLinear(amplitude=450, peak=7.4, broadening=0.012,
                       name='Linear_test', index='1'),
-# xarpes.SpectralQuadratic(amplitude=20, peak=4.5, center_wavevector=0,
-#    broadening=0.005, name='Quadratic_test', index='1')
+xarpes.SpectralQuadratic(amplitude=20, peak=4.5, center_wavevector=0,
+   broadening=0.005, name='Quadratic_test', index='1')
 ])
+
+```
+
+```{python}
+fig = plt.figure(figsize=(8, 6))
+ax = fig.gca()
+
+fig = mdcs.visualize_guess(distributions=guess_dists, energy_value=-0.01, ax=ax, show=True)
+```
+
+```{python}
+fig = plt.figure(figsize=(8, 6))
+ax = fig.gca()
+
+fig, new_distributions, covariance_matrix = mdcs.fit(
+     distributions=guess_dists, energy_value=0, ax=ax, show=True)
+
 ```
 
 ```{python}
@@ -189,7 +207,7 @@ xarpes.SpectralLinear(amplitude=450, peak=7.4, broadening=0.012,
 fig = plt.figure(figsize=(7, 5))
 ax = fig.gca()
 
-energy_range = [-0.1, 0.02]
+energy_range = [-0.005, 0.01]
 energy_value = 0.01
 
 mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range))
@@ -198,7 +216,7 @@ fig = mdcs.fit_selection(distributions=guess_dists, ax=ax)
 ```
 
 ```{python}
-self_energy = xarpes.SelfEnergy(*mdcs.fit_parameters(select_label='Linear_test_2'))
+self_energy = xarpes.SelfEnergy(*mdcs.fit_parameters(select_label='Linear_test_1'))
 
 print(self_energy.enel_range)
 print(self_energy.label)

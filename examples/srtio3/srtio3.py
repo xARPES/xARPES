@@ -43,12 +43,12 @@ angle_min = 0.6
 angle_max = 4.8
 en_val = 0.0
 
-mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_value=en_val))
+mdc = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_value=en_val))
 
 fig = plt.figure(figsize=(6, 5))
 ax = fig.gca()
 
-fig = mdcs.plot(ax=ax)
+fig = mdc.plot(ax=ax)
 
 fig = plt.figure(figsize=(7, 5))
 ax = fig.gca()
@@ -79,13 +79,13 @@ mat_args = {
 }
 
 
-fig = mdcs.visualize_guess(distributions=guess_dists, matrix_element=mat_el,
+fig = mdc.visualize_guess(distributions=guess_dists, matrix_element=mat_el,
                            ax=ax, matrix_args=mat_args, show=True)
 
 fig = plt.figure(figsize=(7, 5))
 ax = fig.gca()
 
-fig, new_dists, covariance_matrix, new_mat_args = mdcs.fit(
+fig, new_dists, covariance_matrix, new_mat_args = mdc.fit(
     distributions=guess_dists, matrix_element=mat_el, matrix_args=mat_args,
     ax=ax, show=True)
 
@@ -95,24 +95,26 @@ energy_range = [-0.2, 0.01]
 angle_min = 0.6
 angle_max = 4.8
 
-mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range))
+mdc = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range))
 
-# print(mdcs.ekin)
+# print(mdc.ekin)
 
 fig = plt.figure(figsize=(8, 5))
 ax = fig.gca()
 
-# mdcs.plot(angle_range=mdcs.angles, angle_resolution=0.2, ax=ax, show=False,
+# mdc.plot(angle_range=mdc.angles, angle_resolution=0.2, ax=ax, show=False,
 #            fig_close=False)
 
-fig = mdcs.plot(ax=ax)
+fig = mdc.plot(ax=ax)
 
 
-# fig = plt.figure(figsize=(7, 5))
-# ax = fig.gca()
 
-# fig, new_dists, covariance_matrix, new_mat_args = mdcs.fit(
-#     distributions=guess_dists, matrix_element=mat_el, matrix_args=mat_args,
-#     ax=ax, show=False)
+fig = plt.figure(figsize=(7, 5))
+ax = fig.gca()
+
+fig, new_dists, covariance_matrix, new_mat_args = mdc.fit(
+    distributions=guess_dists, matrix_element=mat_el, matrix_args=mat_args,
+    energy_value=0, ax=ax, show=True)
+
 
 
