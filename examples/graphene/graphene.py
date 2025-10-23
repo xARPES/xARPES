@@ -54,7 +54,7 @@ plt.show()
 print('The optimised hnu - Phi=' + f'{bmap.hnuminphi:.4f}' + ' +/- '
       + f'{1.96 * bmap.hnuminphi_std:.5f}' + ' eV.')
 
-fig = bmap.plot(ordinate='kinetic_energy', abscissa='angle')
+# fig = bmap.plot(ordinate='kinetic_energy', abscissa='angle')
 
 fig = plt.figure(figsize=(6, 5))
 ax = fig.gca()
@@ -86,13 +86,13 @@ fig = mdcs.plot(ax=ax)
 
 # print(change.broadening)
 
+
 angle_min = 0
 angle_max = 1e6
 en_val = 0
 
 mdc = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_value=en_val))
 new_range = mdc.angles
-
 
 line1 = xarpes.SpectralLinear(amplitude=500, peak=7.5, broadening=0.01,
                               name='Linear test', index='1')
@@ -115,12 +115,9 @@ guess_dists = xarpes.CreateDistributions([
 xarpes.Linear(offset=3.0e3, slope=-100),
 xarpes.SpectralLinear(amplitude=450, peak=7.4, broadening=0.012,
                       name='Linear_test', index='1'),
-xarpes.SpectralLinear(amplitude=60, peak=4.2, broadening=0.018,
-                      name='Linear_test', index='2'),
 xarpes.SpectralQuadratic(amplitude=20, peak=4.5, center_wavevector=0,
                             broadening=0.005, name='Quadratic_test', index='1')
 ])
-
 
 fig = mdc.visualize_guess(distributions=guess_dists, ax=ax, show=True)
 
@@ -137,8 +134,6 @@ energy_range = [-0.1, 0.01]
 
 mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range))
 
-
-
 guess_dists = xarpes.CreateDistributions([
 xarpes.Linear(offset=3.0e3, slope=-100),
 xarpes.SpectralLinear(amplitude=450, peak=7.4, broadening=0.012,
@@ -147,18 +142,35 @@ xarpes.SpectralQuadratic(amplitude=20, peak=4.5, center_wavevector=0,
    broadening=0.005, name='Quadratic_test', index='1')
 ])
 
-
 fig = plt.figure(figsize=(8, 6))
 ax = fig.gca()
 
-fig = mdcs.visualize_guess(distributions=guess_dists, energy_value=-0.01, ax=ax, show=True)
+fig = mdcs.visualize_guess(distributions=guess_dists, energy_value=0, ax=ax)
 
 fig = plt.figure(figsize=(8, 6))
 ax = fig.gca()
 
 fig, new_distributions, covariance_matrix = mdcs.fit(
-     distributions=guess_dists, energy_value=0, ax=ax, show=True)
+     distributions=guess_dists, energy_value=0.001, ax=ax)
 
+
+fig = plt.figure(figsize=(7, 5))
+ax = fig.gca()
+
+energy_range = [-0.005, 0.01]
+energy_value = 0.01
+
+mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range))
+
+fig = mdcs.fit_selection(distributions=guess_dists, ax=ax, energy_value=-0.003)
+
+
+
+
+fig = plt.figure(figsize=(7, 5))
+ax = fig.gca()
+
+fig = mdcs.plot(distributions=guess_dists, ax=ax, energy_value=-0.003)
 
 
 fig = plt.figure(figsize=(7, 5))
