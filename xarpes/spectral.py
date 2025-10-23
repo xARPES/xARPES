@@ -618,10 +618,19 @@ class MDCs():
                 raise ValueError("This dataset contains multiple " \
                 "momentum-distribution curves. Please provide an energy_value "
                 "for which to plot the MDCs.")
-            else: 
+            else:
                 energy_index = np.abs(self.enel - energy_value).argmin()
                 kinergy = self.ekin[energy_index]
                 counts = self.intensities[energy_index, :]
+
+                if not (self.enel.min() <= energy_value <= self.enel.max()):
+                    raise ValueError(
+                        f"Selected energy_value={energy_value:.3f} "
+                        f"is outside the available energy range "
+                        f"({self.enel.min():.3f} – {self.enel.max():.3f}) "
+                        "of the MDC collection."
+                    )
+
 
         return counts, kinergy
 
@@ -636,6 +645,7 @@ class MDCs():
         from matplotlib.widgets import Slider
         import string
         import sys
+        import warnings
 
         # Wrapper kwargs
         title = kwargs.pop("title", None)
@@ -688,7 +698,7 @@ class MDCs():
                 idx = int(np.abs(energies - energy_value).argmin())
                 intensities = self.intensities[idx]
                 ax.scatter(angles, intensities, label="Data")
-                ax.set_title(f"Energy slice: {energies[idx] * mevs:.3f} meV")
+                ax.set_title(f"Energy slice: {energies[idx] * kilo:.3f} meV")
                 combined_ymin = min(existing_ymin, intensities.min())
                 combined_ymax = max(existing_ymax, intensities.max())
                 ax.set_ylim(combined_ymin, combined_ymax)
@@ -716,6 +726,12 @@ class MDCs():
                 combined_ymin = min(existing_ymin, intensities.min())
                 combined_ymax = max(existing_ymax, intensities.max())
                 ax.set_ylim(combined_ymin, combined_ymax)
+
+                # Suppress warning when a single MDC is plotted
+                warnings.filterwarnings("ignore",
+                message="Attempting to set identical left == right",
+                category=UserWarning
+                )
 
                 slider_ax = fig.add_axes([0.2, 0.08, 0.6, 0.04])
                 slider = Slider(
@@ -785,6 +801,7 @@ class MDCs():
 
         ax.set_xlabel('Angle ($\\degree$)')
         ax.set_ylabel('Counts (-)')
+        ax.set_title(f"Energy slice: {(kinergy - self.hnuminphi) * kilo:.3f} meV")
         ax.scatter(self.angles, counts, label='Data')
 
         final_result = self._merge_and_plot(ax=ax, 
@@ -810,6 +827,7 @@ class MDCs():
         from copy import deepcopy
         import string
         import sys
+        import warnings
         from lmfit import Minimizer
         from .functions import construct_parameters, build_distributions, \
             residual
@@ -1012,8 +1030,6 @@ class MDCs():
             ax.set_ylim(min(ymin_candidates), max(ymax_candidates))
 
         else:
-            # Build the selected energy list to show in titles 
-            # (no indices needed)
             if energy_value is not None:
                 _idx = int(np.abs(energies - energy_value).argmin())
                 energies_sel = np.atleast_1d(energies[_idx])
@@ -1023,8 +1039,7 @@ class MDCs():
             else:
                 energies_sel = energies
 
-            # Number of slices must match between data, fits, residuals, 
-            # and individuals
+            # Number of slices must match
             n_slices = len(all_final_results)
             assert intensities.shape[0] == n_slices == len(all_residuals) == len(all_individual_results), (
                 f"Mismatch: data {intensities.shape[0]}, fits {len(all_final_results)}, "
@@ -1056,6 +1071,12 @@ class MDCs():
                 ymin_candidates.append(np.min(all_individual_results))
                 ymax_candidates.append(np.max(all_individual_results))
             ax.set_ylim(min(ymin_candidates), max(ymax_candidates))
+
+            # Suppress warning when a single MDC is plotted
+            warnings.filterwarnings("ignore",
+            message="Attempting to set identical left == right",
+            category=UserWarning
+            )
 
             # Slider over slice index (0..n_slices-1)
             slider_ax = fig.add_axes([0.2, 0.08, 0.6, 0.04])
@@ -1147,6 +1168,8 @@ class MDCs():
 
         ax.set_xlabel('Angle ($\\degree$)')
         ax.set_ylabel('Counts (-)')
+        ax.set_title(f"Energy slice: {(kinergy - self.hnuminphi) * kilo:.3f} meV")
+        
         ax.scatter(self.angles, counts, label='Data')
 
         new_distributions = deepcopy(distributions)
