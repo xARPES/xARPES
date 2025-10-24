@@ -18,6 +18,7 @@ import matplotlib as mpl
 def plot_settings(name='default'):
     mpl.rc('xtick', labelsize=10, direction='in')
     mpl.rc('ytick', labelsize=10, direction='in')
+    plt.rcParams['legend.frameon'] = False
     lw = dict(default=2.0, large=4.0)[name]
     mpl.rcParams.update({
         'lines.linewidth': lw,
@@ -26,8 +27,8 @@ def plot_settings(name='default'):
         'xtick.minor.size': 2,
         'xtick.major.width': 0.8,
         'font.size': 16,
+        'axes.ymargin': 0.15,
     })
-    plt.rcParams['legend.frameon'] = False
 
 def get_ax_fig_plt(ax=None, **kwargs):
     r"""Helper function used in plot functions supporting an optional `Axes`

@@ -16,7 +16,7 @@ from igor2 import binarywave
 from .plotting import get_ax_fig_plt, add_fig_kwargs
 from .functions import fit_leastsq, extend_function
 from .distributions import FermiDirac, Linear
-from .constants import uncr, pref, dtor, kilo, plot_margin
+from .constants import uncr, pref, dtor, kilo
 
 class BandMap():
     r"""Class for the band map from the ARPES experiment.
@@ -659,7 +659,6 @@ class MDCs():
 
         angles = self.angles
         energies = self.enel
-        existing_ymin, existing_ymax = ax.get_ylim()
 
         if np.isscalar(energies):
             if energy_value is not None or energy_range is not None:
@@ -667,14 +666,16 @@ class MDCs():
                     "This dataset contains only one momentum-distribution "
                     "curve; do not provide energy_value or energy_range."
                 )
+
             intensities = self.intensities
             ax.scatter(angles, intensities, label="Data")
             ax.set_title(f"Energy slice: {energies * kilo:.3f} meV")
 
-            # y-lims use plot_margin * data-extrema, combined with existing limits
-            combined_ymin = min(existing_ymin, plot_margin * float(intensities.min()))
-            combined_ymax = max(existing_ymax, plot_margin * float(intensities.max()))
-            ax.set_ylim(combined_ymin, combined_ymax)
+            # --- y-only autoscale, preserve x ---
+            x0, x1 = ax.get_xlim()                 # keep current x-range
+            ax.relim(visible_only=True)            # recompute data limits
+            ax.autoscale_view(scalex=False, scaley=True)
+            ax.set_xlim(x0, x1)                    # restore x (belt-and-suspenders)
 
         else:
             if (energy_value is not None) and (energy_range is not None):
@@ -695,9 +696,11 @@ class MDCs():
                 ax.scatter(angles, intensities, label="Data")
                 ax.set_title(f"Energy slice: {energies[idx] * kilo:.3f} meV")
 
-                combined_ymin = min(existing_ymin, plot_margin * float(intensities.min()))
-                combined_ymax = max(existing_ymax, plot_margin * float(intensities.max()))
-                ax.set_ylim(combined_ymin, combined_ymax)
+                # --- y-only autoscale, preserve x ---
+                x0, x1 = ax.get_xlim()                 # keep current x-range
+                ax.relim(visible_only=True)            # recompute data limits
+                ax.autoscale_view(scalex=False, scaley=True)
+                ax.set_xlim(x0, x1)                    # restore x (belt-and-suspenders)
 
             # ---- Multi-slice path (slider) ----
             else:
@@ -718,12 +721,6 @@ class MDCs():
                 scatter = ax.scatter(angles, intensities[idx], label="Data")
                 ax.set_title(f"Energy slice: {energies[indices[idx]] * kilo:.3f} meV")
 
-                # Initial y-lims from the currently shown slice ONLY
-                y0 = intensities[idx]
-                combined_ymin = min(existing_ymin, plot_margin * float(y0.min()))
-                combined_ymax = max(existing_ymax, plot_margin * float(y0.max()))
-                ax.set_ylim(combined_ymin, combined_ymax)
-
                 # Suppress single-point slider warning (when len(indices) == 1)
                 warnings.filterwarnings(
                     "ignore",
@@ -741,13 +738,28 @@ class MDCs():
                     i = int(slider.val)
                     yi = intensities[i]
 
-                    # Update data points
                     scatter.set_offsets(np.c_[angles, yi])
 
-                    # Adaptive y-lims to the shown slice (with plot_margin)
-                    ymin = min(existing_ymin, plot_margin * float(yi.min()))
-                    ymax = max(existing_ymax, plot_margin * float(yi.max()))
-                    ax.set_ylim(ymin, ymax)
+                    x0, x1 = ax.get_xlim()
+
+                    yv = np.asarray(yi, dtype=float).ravel()
+                    mask = np.isfinite(yv)
+                    if mask.any():
+                        y_min = float(yv[mask].min())
+                        y_max = float(yv[mask].max())
+                        span  = y_max - y_min
+                        frac  = plt.rcParams['axes.ymargin']
+
+                        if span <= 0 or not np.isfinite(span):
+                            scale = max(abs(y_max), 1.0)
+                            pad = frac * scale
+                        else:
+                            pad = frac * span
+
+                        ax.set_ylim(y_min - pad, y_max + pad)
+
+                    # Keep x unchanged
+                    ax.set_xlim(x0, x1)
 
                     # Update title and redraw
                     ax.set_title(f"Energy slice: {energies[indices[i]] * kilo:.3f} meV")
@@ -1026,16 +1038,8 @@ class MDCs():
             ax.scatter(self.angles, yres, label="Residual")
 
             ax.set_title(f"Energy slice: {energies * kilo:.3f} meV")
-
-            # y-lims from currently shown slice, scaled by plot_margin
-            ymin_candidates = [ydata.min(), yres.min()]
-            ymax_candidates = [ydata.max(), yres.max()]
-            if yind.size:
-                ymin_candidates.append(yind.min())
-                ymax_candidates.append(yind.max())
-            ymin = plot_margin * float(min(ymin_candidates))
-            ymax = plot_margin * float(max(ymax_candidates))
-            ax.set_ylim(ymin, ymax)
+            ax.relim()             # recompute data limits from all artists in the Axes
+            ax.autoscale_view()    # apply autoscaling + axes.ymargin padding
 
         else:
             if energy_value is not None:
@@ -1073,14 +1077,8 @@ class MDCs():
 
             # Title + limits (use only the currently shown slice, scaled by plot_margin)
             ax.set_title(f"Energy slice: {energies_sel[idx] * kilo:.3f} meV")
-            ymin_candidates = [intensities[idx].min(), all_residuals[idx].min()]
-            ymax_candidates = [intensities[idx].max(), all_residuals[idx].max()]
-            if n_individuals:
-                ymin_candidates.append(all_individual_results[idx].min())
-                ymax_candidates.append(all_individual_results[idx].max())
-            ymin = plot_margin * float(min(ymin_candidates))
-            ymax = plot_margin * float(max(ymax_candidates))
-            ax.set_ylim(ymin, ymax)
+            ax.relim()             # recompute data limits from all artists in the Axes
+            ax.autoscale_view()    # apply autoscaling + axes.ymargin padding
 
             # Suppress warning when a single MDC is plotted
             warnings.filterwarnings(
@@ -1111,15 +1109,8 @@ class MDCs():
                 result_line.set_ydata(all_final_results[i])
                 resid_scatter.set_offsets(np.c_[self.angles, all_residuals[i]])
 
-                # Adaptive y-lims for the shown slice (scaled by plot_margin)
-                ymin_candidates = [intensities[i].min(), all_residuals[i].min()]
-                ymax_candidates = [intensities[i].max(), all_residuals[i].max()]
-                if n_individuals:
-                    ymin_candidates.append(all_individual_results[i].min())
-                    ymax_candidates.append(all_individual_results[i].max())
-                ymin = plot_margin * float(min(ymin_candidates))
-                ymax = plot_margin * float(max(ymax_candidates))
-                ax.set_ylim(ymin, ymax)
+                ax.relim()             # recompute data limits from all artists in the Axes
+                ax.autoscale_view()    # apply autoscaling + axes.ymargin padding
 
                 # Update title and redraw
                 ax.set_title(f"Energy slice: {energies_sel[i] * kilo:.3f} meV")

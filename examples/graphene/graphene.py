@@ -165,7 +165,7 @@ fig, new_distributions, covariance_matrix = mdcs.fit(
      distributions=guess_dists, energy_value=0.001, ax=ax)
 
 
-fig = plt.figure(figsize=(9, 7))
+fig = plt.figure(figsize=(8, 6))
 ax = fig.gca()
 
 energy_range = [-0.005, 0.015]
@@ -194,24 +194,6 @@ print(self_energy.properties)
 
 # print(change.broadening)
 
-# from importlib import reload
-# import xarpes
-# reload(xarpes)
-
-# angle_min = 0.
-# angle_max = 12
-# en_val = 0.015
-# energy_range = [-0.25, 0.01]
-
-# mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range))
-
-# fig = plt.figure(figsize=(6, 5))
-# ax = fig.gca()
-
-# energy_range = [-0.15, 0.1]
-
-# fig = mdcs.plot(ax=ax, show=False, fig_close=False, energy_range=energy_range)
-
 # angle_min = 0
 # angle_max = 1e6
 
@@ -228,10 +210,9 @@ print(self_energy.properties)
 # fig = plt.figure(figsize=(7, 5))
 # ax = fig.gca()
 
+# # In case the lines are plotted on top, they may exceed the auto scaling
 # line1.plot(angle_range=new_range, angle_resolution=0.1, ax=ax, show=False,
 #            fig_close=False)
 # line2.plot(angle_range=new_range, angle_resolution=0.1, ax=ax, show=False,
 #            fig_close=False)
 # fig = mdcs.plot(ax=ax)
-
-

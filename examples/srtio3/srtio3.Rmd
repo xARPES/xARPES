@@ -154,7 +154,3 @@ fig, new_dists, covariance_matrix, new_mat_args = mdc.fit(
     energy_value=0, ax=ax, show=True)
 
 ```
-
-```{python}
-
-```

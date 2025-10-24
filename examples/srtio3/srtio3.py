@@ -116,3 +116,4 @@ ax = fig.gca()
 fig, new_dists, covariance_matrix, new_mat_args = mdc.fit(
     distributions=guess_dists, matrix_element=mat_el, matrix_args=mat_args,
     energy_value=0, ax=ax, show=True)
+

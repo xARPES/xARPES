@@ -9,6 +9,3 @@ pref = 3.80998211616 # hbar^2 / (2 m_e) [eV Angstrom^2]
 dtor = 3.1415926535897932 / 180 # Degrees to radians [rad / deg]
 fwhm_to_std = 2.35482004503 # Convert FWHM to std, sqrt[8 \times ln(2)] [-]
 sigma_extend = 5 # Extend data range by "5 sigma"
-
-# Settings
-plot_margin = 1.1
