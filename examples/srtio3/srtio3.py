@@ -51,8 +51,6 @@ ax = fig.gca()
 
 fig = mdc.plot(ax=ax)
 
-import numpy as np
-
 
 fig = plt.figure(figsize=(7, 5))
 ax = fig.gca()
@@ -73,6 +71,8 @@ xarpes.SpectralQuadratic(amplitude=3800, peak=2.45, broadening=0.00024,
 xarpes.SpectralQuadratic(amplitude=1800, peak=3.6, broadening=0.0004,
             center_wavevector=k_0, name='Outer_band', index='3')
 ])
+
+import numpy as np
 
 mat_el = lambda x: np.sin((x - theta_0) * dtor) ** 2
 
@@ -116,4 +116,6 @@ ax = fig.gca()
 fig, new_dists, covariance_matrix, new_mat_args = mdc.fit(
     distributions=guess_dists, matrix_element=mat_el, matrix_args=mat_args,
     energy_value=0, ax=ax, show=True)
+
+
 

@@ -18,49 +18,18 @@ from .functions import fit_leastsq, extend_function
 from .distributions import FermiDirac, Linear
 from .constants import uncr, pref, dtor, kilo
 
-class BandMap():
-    r"""Class for the band map from the ARPES experiment.
+class BandMap:
+    r"""Class for the band map from the ARPES experiment."""
 
-    Parameters
-    ----------
-    datafile : str
-        Name of data file. Currently, only IGOR Binary Wave files are
-        supported. If absent, `intensities`, `angles`, and `ekin` are
-        mandatory. Otherwise, those arguments can be used to overwrite the 
-        contents of `datafile`.
-    intensities : ndarray
-        2D array of counts for given (E,k) or (E,angle) pairs [counts]
-    angles : ndarray
-        1D array of angle values for the abscissa [degrees]
-    ekin : ndarray
-        1D array of kinetic energy values for the ordinate [eV]
-    enel : ndarray
-        1D array of electron energy (E-\mu) values for the ordinate [eV]
-    angle_resolution : float, None
-        Angle resolution of the detector [degrees]
-    energy_resolution : float, None
-        Energy resolution of the detector [eV]
-    temperature : float, None
-        Temperature of the sample [K]
-    hnuminphi : float, None
-        Kinetic energy minus the work function [eV]
-    hnuminphi_std : float, None
-        Standard deviation of kinetic energy minus work function [eV]
-    transpose : bool, False
-        Are the energy and angle axes swapped (angle first) in the input file?
-    flip_ekin : bool, False
-        Reverse energy axis of ``wData`` in `datafile`?
-    flip_angles : bool, False
-        Reverse angle axis of ``wData`` in `datafile`?
-    """
-    def __init__(self, datafile=None, intensities=None, angles=None, ekin=None,
-                 enel=None, energy_resolution=None, angle_resolution=None,
-                 temperature=None, hnuminphi=None, hnuminphi_std=None,
-                 transpose=False, flip_ekin=False, flip_angles=False):
-        
+    def __init__(self, datafile=None, intensities=None, angles=None,
+                 ekin=None, enel=None, energy_resolution=None,
+                 angle_resolution=None, temperature=None, hnuminphi=None,
+                 hnuminphi_std=None, transpose=False, flip_ekin=False,
+                 flip_angles=False):
+
+        # --- IO / file load -------------------------------------------------
         if datafile is not None:
             data = binarywave.load(datafile)
-
             self.intensities = data['wave']['wData']
 
             fnum, anum = data['wave']['wave_header']['nDim'][0:2]
@@ -72,7 +41,6 @@ class BandMap():
 
             if transpose:
                 self.intensities = self.intensities.T
-
                 fnum, anum = anum, fnum
                 fstp, astp = astp, fstp
                 fmin, amin = amin, fmin
@@ -84,8 +52,11 @@ class BandMap():
                 self.intensities = self.intensities[:, ::-1]
 
             self.angles = np.linspace(amin, amin + (anum - 1) * astp, anum)
-            self.ekin = np.linspace(fmin, fmin + (fnum - 1) * fstp, fnum)
+            file_ekin = np.linspace(fmin, fmin + (fnum - 1) * fstp, fnum)
+        else:
+            file_ekin = None
 
+        # --- Required arrays if not using datafile -------------------------
         if intensities is not None:
             self.intensities = intensities
         elif datafile is None:
@@ -96,43 +67,124 @@ class BandMap():
         elif datafile is None:
             raise ValueError('Please provide datafile or angles.')
 
-        if ekin is not None:
-            self.ekin = ekin
-        elif datafile is None:
-            raise ValueError('Please provide datafile or ekin.')
+        # --- Initialize energy axes (raw slots) ----------------------------
+        self._ekin = None
+        self._enel = None
 
+        # Apply user overrides or file ekin
+        if ekin is not None and enel is not None:
+            raise ValueError('Provide only one of ekin or enel, not both.')
+
+        if ekin is not None:
+            self._ekin = ekin
+        elif enel is not None:
+            self._enel = enel
+        elif file_ekin is not None:
+            self._ekin = file_ekin
+        else:
+            raise ValueError('Please provide datafile, ekin, or enel.')
+
+        # Scalars / metadata
         self.energy_resolution = energy_resolution
         self.angle_resolution = angle_resolution
         self.temperature = temperature
+
+        # Work-function combo and its std
+        self._hnuminphi = None
+        self._hnuminphi_std = None
         self.hnuminphi = hnuminphi
         self.hnuminphi_std = hnuminphi_std
 
-    # Band map is still missing some properties and setters
+        # --- 1) Track which axis is authoritative --------------------------
+        self._ekin_explicit = ekin is not None or (file_ekin is not None
+                                                   and enel is None)
+        self._enel_explicit = enel is not None
+
+        # --- 2) Derive missing axis if possible ----------------------------
+        if self._ekin is None and self._enel is not None \
+                and self._hnuminphi is not None:
+            self._ekin = self._enel + self._hnuminphi
+        if self._enel is None and self._ekin is not None \
+                and self._hnuminphi is not None:
+            self._enel = self._ekin - self._hnuminphi
+
+    # -------------------- Properties: data arrays ---------------------------
+    @property
+    def intensities(self):
+        return self._intensities
+
+    @intensities.setter
+    def intensities(self, x):
+        self._intensities = x
 
     @property
+    def angles(self):
+        return self._angles
+
+    @angles.setter
+    def angles(self, x):
+        self._angles = x
+
+    # -------------------- 3) Resolution / temperature ----------------------
+    @property
+    def angle_resolution(self):
+        return self._angle_resolution
+
+    @angle_resolution.setter
+    def angle_resolution(self, x):
+        self._angle_resolution = x
+
+    @property
+    def energy_resolution(self):
+        return self._energy_resolution
+
+    @energy_resolution.setter
+    def energy_resolution(self, x):
+        self._energy_resolution = x
+
+    @property
+    def temperature(self):
+        return self._temperature
+
+    @temperature.setter
+    def temperature(self, x):
+        self._temperature = x
+
+    # -------------------- 4) Sync ekin / enel / hnuminphi ------------------
+    @property
     def ekin(self):
-        r"""
-        """
+        if self._ekin is None and self._enel is not None \
+                and self._hnuminphi is not None:
+            return self._enel + self._hnuminphi
         return self._ekin
-    
+
     @ekin.setter
     def ekin(self, x):
-        r"""
-        """
+        if getattr(self, "_enel_explicit", False):
+            raise AttributeError('enel is explicit; set hnuminphi instead.')
         self._ekin = x
-    
+        self._ekin_explicit = True
+        if not getattr(self, "_enel_explicit", False) \
+                and self._hnuminphi is not None and x is not None:
+            self._enel = x - self._hnuminphi
+
     @property
     def enel(self):
-        r"""
-        """
+        if self._enel is None and self._ekin is not None \
+                and self._hnuminphi is not None:
+            return self._ekin - self._hnuminphi
         return self._enel
 
     @enel.setter
     def enel(self, x):
-        r"""
-        """
+        if getattr(self, "_ekin_explicit", False):
+            raise AttributeError('ekin is explicit; set hnuminphi instead.')
         self._enel = x
-
+        self._enel_explicit = True
+        if not getattr(self, "_ekin_explicit", False) \
+                and self._hnuminphi is not None and x is not None:
+            self._ekin = x + self._hnuminphi
+            
     @property
     def hnuminphi(self):
         r"""Returns the photon energy minus the work function in eV if it has
@@ -148,15 +200,16 @@ class BandMap():
 
     @hnuminphi.setter
     def hnuminphi(self, x):
-        r"""Manually sets the photon energy minus the work function in eV if 
-        it has been set; otherwise returns None.
-
-        Parameters
-        ----------
-        hnuminphi : float, None
-            Kinetic energy minus the work function [eV]
+        r"""TBD
         """
         self._hnuminphi = x
+        # Re-derive the non-explicit axis if possible
+        if not getattr(self, "_ekin_explicit", False) \
+                and self._enel is not None and x is not None:
+            self._ekin = self._enel + x
+        if not getattr(self, "_enel_explicit", False) \
+                and self._ekin is not None and x is not None:
+            self._enel = self._ekin - x
 
     @property
     def hnuminphi_std(self):
@@ -242,56 +295,76 @@ class BandMap():
         return mdcs, angle_range_out, self.angle_resolution, \
         enel_range_out, self.hnuminphi
 
+
     @add_fig_kwargs
     def plot(self, abscissa='momentum', ordinate='electron_energy', ax=None,
-             **kwargs):
-        r"""Plots the band map.
+            **kwargs):
+        
+        # Validate options early
+        valid_abscissa = ('angle', 'momentum')
+        valid_ordinate = ('kinetic_energy', 'electron_energy')
 
-        Parameters
-        ----------
-
-        Other parameters
-        ----------------
-        **kwargs : dict, optional
-            Additional arguments passed on to add_fig_kwargs.
-
-        Returns
-        -------
-        fig : Matplotlib-Figure
-            Figure containing the Fermi edge fit
-        """
+        if abscissa not in valid_abscissa:
+            raise ValueError(
+                f"Invalid abscissa '{abscissa}'. "
+                f"Valid options: {valid_abscissa}"
+            )
+        if ordinate not in valid_ordinate:
+            raise ValueError(
+                f"Invalid ordinate '{ordinate}'. "
+                f"Valid options: {valid_ordinate}"
+            )
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
         Angl, Ekin = np.meshgrid(self.angles, self.ekin)
+        mesh = None  # sentinel to detect missing branch
 
         if abscissa == 'angle':
-            ax.set_xlabel('Angle ($\degree$)')
+            ax.set_xlabel('Angle ($\\degree$)')
             if ordinate == 'kinetic_energy':
-                mesh = ax.pcolormesh(Angl, Ekin, self.intensities,
-                       shading='auto', cmap=plt.get_cmap('bone').reversed())
-                ax.set_ylabel('$E_{\mathrm{kin}}$ (eV)')
+                mesh = ax.pcolormesh(
+                    Angl, Ekin, self.intensities, shading='auto',
+                    cmap=plt.get_cmap('bone').reversed(), **kwargs
+                )
+                ax.set_ylabel('$E_{\\mathrm{kin}}$ (eV)')
             elif ordinate == 'electron_energy':
                 Enel = Ekin - self.hnuminphi
-                mesh = ax.pcolormesh(Angl, Enel, self.intensities,
-                       shading='auto', cmap=plt.get_cmap('bone').reversed())
-                ax.set_ylabel('$E-\mu$ (eV)')
+                mesh = ax.pcolormesh(
+                    Angl, Enel, self.intensities, shading='auto',
+                    cmap=plt.get_cmap('bone').reversed(), **kwargs
+                )
+                ax.set_ylabel('$E-\\mu$ (eV)')
+
         elif abscissa == 'momentum':
             Mome = np.sqrt(Ekin / pref) * np.sin(Angl * dtor)
-            ax.set_xlabel(r'$k_{//}$ ($\mathrm{\AA}^{\endash1}$)')
+            ax.set_xlabel(r'$k_{//}$ ($\mathrm{\AA}^{-1}$)')
             if ordinate == 'kinetic_energy':
-                mesh = ax.pcolormesh(Mome, Ekin, self.intensities,
-                       shading='auto', cmap=plt.get_cmap('bone').reversed())
-                ax.set_ylabel('$E_{\mathrm{kin}}$ (eV)')
+                mesh = ax.pcolormesh(
+                    Mome, Ekin, self.intensities, shading='auto',
+                    cmap=plt.get_cmap('bone').reversed(), **kwargs
+                )
+                ax.set_ylabel('$E_{\\mathrm{kin}}$ (eV)')
             elif ordinate == 'electron_energy':
                 Enel = Ekin - self.hnuminphi
-                mesh = ax.pcolormesh(Mome, Enel, self.intensities,
-                       shading='auto', cmap=plt.get_cmap('bone').reversed())
-                ax.set_ylabel('$E-\mu$ (eV)')
+                mesh = ax.pcolormesh(
+                    Mome, Enel, self.intensities, shading='auto',
+                    cmap=plt.get_cmap('bone').reversed(), **kwargs
+                )
+                ax.set_ylabel('$E-\\mu$ (eV)')
 
-        cbar = plt.colorbar(mesh, ax=ax, label='counts (-)')
+        # If no branch set 'mesh', fail with a clear message
+        if mesh is None:
+            raise RuntimeError(
+                "No plot produced for the combination: "
+                f"abscissa='{abscissa}', ordinate='{ordinate}'. "
+                f"Valid abscissa: {valid_abscissa}; "
+                f"valid ordinate: {valid_ordinate}."
+            )
 
+        plt.colorbar(mesh, ax=ax, label='counts (-)')
         return fig
+
 
     @add_fig_kwargs
     def fit_fermi_edge(self, hnuminphi_guess, background_guess=0.0,
@@ -364,9 +437,9 @@ class BandMap():
         parameters, energy_range, integrated_intensity, fdir_initial,
         self.energy_resolution, None, *extra_args)
 
+        # Update hnuminphi; automatically sets self.enel
         self.hnuminphi = popt[0]
         self.hnuminphi_std = np.sqrt(np.diag(pcov)[0])
-        self.enel = self.ekin - self.hnuminphi
 
         fdir_final = FermiDirac(temperature=self.temperature,
                                 hnuminphi=self.hnuminphi, background=popt[1],
@@ -477,10 +550,10 @@ class BandMap():
 
         linsp = lin_fun(angle_range, popt[0], popt[1])
             
+        # Update hnuminphi; automatically sets self.enel
         self.hnuminphi = lin_fun(true_angle, popt[0], popt[1])
         self.hnuminphi_std = np.sqrt(true_angle**2 * pcov[1, 1] + pcov[0, 0] 
                                      + 2 * true_angle * pcov[0, 1])
-        self.enel = self.ekin - self.hnuminphi
                     
         Angl, Ekin = np.meshgrid(self.angles, self.ekin)
 
@@ -517,10 +590,12 @@ class MDCs():
         self.intensities = intensities
         self.angles = angles
         self.enel = enel
-        self.hnuminphi = hnuminphi
         self.angle_resolution = angle_resolution
 
-        self._enel_range= None
+        self._hnuminphi = hnuminphi
+        self._ekin = self._enel + self._hnuminphi
+
+        self._enel_range = None
         self._individual_properties = None
         
     @property
@@ -536,16 +611,24 @@ class MDCs():
         self._enel = x
 
     @property
+    def hnuminphi(self):
+        r"""
+        """
+        return self._hnuminphi
+    
+    @hnuminphi.setter
+    def hnuminphi(self, _):
+        raise AttributeError("hnuminphi is derived from the band map.")
+
+    @property
     def ekin(self):
         r"""
         """
-        return self._enel + self.hnuminphi
+        return self._enel + self._hnuminphi
 
     @ekin.setter
-    def ekin(self, x):
-        r"""
-        """
-        self._enel = x - self.hnuminphi
+    def ekin(self, _):
+        raise AttributeError("ekin is derived from enel + hnuminphi.")
 
     @property
     def intensities(self):
@@ -719,7 +802,8 @@ class MDCs():
                 fig.subplots_adjust(bottom=0.25)
                 idx = 0
                 scatter = ax.scatter(angles, intensities[idx], label="Data")
-                ax.set_title(f"Energy slice: {energies[indices[idx]] * kilo:.3f} meV")
+                ax.set_title(f"Energy slice: "
+                             f"{energies[indices[idx]] * kilo:.3f} meV")
 
                 # Suppress single-point slider warning (when len(indices) == 1)
                 warnings.filterwarnings(
@@ -762,7 +846,8 @@ class MDCs():
                     ax.set_xlim(x0, x1)
 
                     # Update title and redraw
-                    ax.set_title(f"Energy slice: {energies[indices[i]] * kilo:.3f} meV")
+                    ax.set_title(f"Energy slice: "
+                                 f"{energies[indices[i]] * kilo:.3f} meV")
                     fig.canvas.draw_idle()
 
                 slider.on_changed(update)
@@ -819,7 +904,8 @@ class MDCs():
 
         ax.set_xlabel('Angle ($\\degree$)')
         ax.set_ylabel('Counts (-)')
-        ax.set_title(f"Energy slice: {(kinergy - self.hnuminphi) * kilo:.3f} meV")
+        ax.set_title(f"Energy slice: "
+                     f"{(kinergy - self.hnuminphi) * kilo:.3f} meV")
         ax.scatter(self.angles, counts, label='Data')
 
         final_result = self._merge_and_plot(ax=ax, 
@@ -907,9 +993,12 @@ class MDCs():
 
         all_final_results = []
         all_residuals = []
-        all_individual_results = []    # List of (n_individuals, n_angles)
-        all_individual_properties = [] # List of per-slice [ [label, {params}], ... ]
-        individual_labels = None       # List of (n_individuals) labels
+        all_individual_results = [] # List of (n_individuals, n_angles)
+
+
+        aggregated_properties = {}
+
+        individual_labels = None # List of (n_individuals) labels
 
         # map class_name -> parameter names to extract
         param_spec = {
@@ -921,7 +1010,8 @@ class MDCs():
 
         for kinergy, intensity in zip(kinergies, intensities):
             if matrix_element is not None:
-                parameters, element_names = construct_parameters(new_distributions, matrix_args)
+                parameters, element_names = construct_parameters(
+                    new_distributions, matrix_args)
                 new_distributions = build_distributions(new_distributions, parameters)
                 mini = Minimizer(
                     residual, parameters,
@@ -950,13 +1040,12 @@ class MDCs():
             else:
                 new_matrix_args = None
 
-            # ---- Compute individual curves (smoothed, cropped) and final sum (no plotting here)
+            # individual curves (smoothed, cropped) and final sum (no plotting here)
             from scipy.ndimage import gaussian_filter
             extend, step, numb = extend_function(self.angles, self.angle_resolution)
 
             total_result_ext = np.zeros_like(extend)
             indiv_rows = []   # (n_individuals, n_angles)
-            indiv_params = [] # list of [label, {params}] per distribution
             individual_labels = []
 
             for dist in fitted_distributions:
@@ -990,19 +1079,23 @@ class MDCs():
                 label = getattr(dist, 'label', str(dist))
                 individual_labels.append(label)
 
-                # ---- collect parameters for this distribution
+                # ---- collect parameters for this distribution (AGGREGATED over slices)
                 cls = getattr(dist, 'class_name', None)
                 wanted = param_spec.get(cls, ())
-                pvals = {}
+
+                # ensure dicts exist
+                label_bucket = aggregated_properties.setdefault(label, {})
+                class_bucket = label_bucket.setdefault(cls, {'label': label, '_class': cls})
+                # ensure keys exist
+                for pname in wanted:
+                    class_bucket.setdefault(pname, [])
+
+                # append values in the order of slices
                 for pname in wanted:
                     if pname in outcome.params:
-                        pvals[pname] = outcome.params[pname].value
+                        class_bucket[pname].append(outcome.params[pname].value)
                     else:
-                        pvals[pname] = getattr(dist, pname, None)
-                pvals['_class'] = cls
-
-                # combine label + parameter dict in same element
-                indiv_params.append([label, pvals])
+                        class_bucket[pname].append(getattr(dist, pname, None))
 
             # final (sum) curve, smoothed & cropped
             final_result_i = gaussian_filter(total_result_ext, sigma=step)[
@@ -1017,11 +1110,13 @@ class MDCs():
             all_final_results.append(final_result_i)
             all_residuals.append(residual_i)
             all_individual_results.append(np.vstack(indiv_rows))
-            all_individual_properties.append(indiv_params)
 
         # Set the enel_range variable
         self._enel_range = kinergies - self.hnuminphi
-        self._individual_properties = all_individual_properties
+
+        # NEW: store aggregated dict instead of per-slice lists
+        # (accessor will expose arrays)
+        self._individual_properties = aggregated_properties
 
         if np.isscalar(energies):
             # One slice only: plot MDC, Fit, Residual, and Individuals
@@ -1038,8 +1133,8 @@ class MDCs():
             ax.scatter(self.angles, yres, label="Residual")
 
             ax.set_title(f"Energy slice: {energies * kilo:.3f} meV")
-            ax.relim()             # recompute data limits from all artists in the Axes
-            ax.autoscale_view()    # apply autoscaling + axes.ymargin padding
+            ax.relim()          # recompute data limits from all artists
+            ax.autoscale_view() # apply autoscaling + axes.ymargin padding
 
         else:
             if energy_value is not None:
@@ -1047,17 +1142,21 @@ class MDCs():
                 energies_sel = np.atleast_1d(energies[_idx])
             elif energy_range is not None:
                 e_min, e_max = energy_range
-                energies_sel = energies[(energies >= e_min) & (energies <= e_max)]
+                energies_sel = energies[(energies >= e_min) 
+                                        & (energies <= e_max)]
             else:
                 energies_sel = energies
 
             # Number of slices must match
             n_slices = len(all_final_results)
-            assert intensities.shape[0] == n_slices == len(all_residuals) == len(all_individual_results), (
-                f"Mismatch: data {intensities.shape[0]}, fits {len(all_final_results)}, "
-                f"residuals {len(all_residuals)}, individuals {len(all_individual_results)}."
+            assert intensities.shape[0] == n_slices == len(all_residuals) \
+                == len(all_individual_results), (f"Mismatch: data \
+                {intensities.shape[0]}, fits {len(all_final_results)}, "
+                f"residuals {len(all_residuals)}, \
+                individuals {len(all_individual_results)}."
             )
-            n_individuals = all_individual_results[0].shape[0] if n_slices else 0
+            n_individuals = all_individual_results[0].shape[0] \
+                if n_slices else 0
 
             fig.subplots_adjust(bottom=0.25)
             idx = 0
@@ -1068,16 +1167,23 @@ class MDCs():
             individual_lines = []
             if n_individuals:
                 for j in range(n_individuals):
-                    lab = individual_labels[j] if individual_labels and j < len(individual_labels) else f"Comp {j}"
-                    ln, = ax.plot(self.angles, all_individual_results[idx][j], label=str(lab))
-                    individual_lines.append(ln)
+                    if individual_labels and j < len(individual_labels):
+                        label = str(individual_labels[j])
+                    else:
+                        label = f"Comp {j}"
 
-            result_line, = ax.plot(self.angles, all_final_results[idx], label="Fit")
-            resid_scatter = ax.scatter(self.angles, all_residuals[idx], label="Residual")
+                    yvals = all_individual_results[idx][j]
+                    line, = ax.plot(self.angles, yvals, label=label)
+                    individual_lines.append(line)
 
-            # Title + limits (use only the currently shown slice, scaled by plot_margin)
+            result_line, = ax.plot(self.angles, all_final_results[idx], 
+                                   label="Fit")
+            resid_scatter = ax.scatter(self.angles, all_residuals[idx], 
+                                       label="Residual")
+
+            # Title + limits (use only the currently shown slice)
             ax.set_title(f"Energy slice: {energies_sel[idx] * kilo:.3f} meV")
-            ax.relim()             # recompute data limits from all artists in the Axes
+            ax.relim()             # recompute data limits from all artists
             ax.autoscale_view()    # apply autoscaling + axes.ymargin padding
 
             # Suppress warning when a single MDC is plotted
@@ -1101,7 +1207,7 @@ class MDCs():
 
                 # Update individuals
                 if n_individuals:
-                    Yi = all_individual_results[i]  # (n_individuals, n_angles)
+                    Yi = all_individual_results[i] # (n_individuals, n_angles)
                     for j, ln in enumerate(individual_lines):
                         ln.set_ydata(Yi[j])
 
@@ -1109,11 +1215,12 @@ class MDCs():
                 result_line.set_ydata(all_final_results[i])
                 resid_scatter.set_offsets(np.c_[self.angles, all_residuals[i]])
 
-                ax.relim()             # recompute data limits from all artists in the Axes
-                ax.autoscale_view()    # apply autoscaling + axes.ymargin padding
+                ax.relim()
+                ax.autoscale_view()
 
                 # Update title and redraw
-                ax.set_title(f"Energy slice: {energies_sel[i] * kilo:.3f} meV")
+                ax.set_title(f"Energy slice: "
+                             f"{energies_sel[i] * kilo:.3f} meV")
                 fig.canvas.draw_idle()
 
             slider.on_changed(update)
@@ -1176,7 +1283,8 @@ class MDCs():
 
         ax.set_xlabel('Angle ($\\degree$)')
         ax.set_ylabel('Counts (-)')
-        ax.set_title(f"Energy slice: {(kinergy - self.hnuminphi) * kilo:.3f} meV")
+        ax.set_title(f"Energy slice: "
+                     f"{(kinergy - self.hnuminphi) * kilo:.3f} meV")
         
         ax.scatter(self.angles, counts, label='Data')
 
@@ -1280,21 +1388,28 @@ class MDCs():
         return final_result
     
 
-    def fit_parameters(self, select_label):
+    def expose_parameters(self, select_label,fermi_wavevector=None, fermi_velocity=None):
         r"""
-        Selects and returns the energy range together with the label
-        and its corresponding parameter subsets from
-        `self._individual_properties`.
+        Selects and returns the energy range together with the label and its
+        corresponding parameter subsets from `self._individual_properties`.
 
         Parameters
         ----------
         select_label : str
             Label to look for among the fitted distributions.
+        fermi_wavevector : float, optional
+            Optional Fermi wave vector to export to the self-energy constructor.
+        fermi_velocity : float, optional
+            Optional Fermi velocity to export to the self-energy constructor.
 
         Returns
         -------
         tuple
-            (self._enel_range, selected_label, selected_properties)
+            (self._enel_range, self.hnuminphi, selected_label,
+            selected_properties, exported_parameters)
+
+            where `exported_parameters` is always a 2-tuple
+            (fermi_wavevector, fermi_velocity), possibly containing None.
 
         Raises
         ------
@@ -1303,74 +1418,153 @@ class MDCs():
         ValueError
             If the given label is not found in any of the fitted distributions.
         """
+        import numpy as np
+
         if self._enel_range is None:
             raise AttributeError(
                 "enel_range not yet set. Run `.fit_selection()` first."
             )
 
-        if not hasattr(self, "_individual_properties") or self._individual_properties is None:
-            raise AttributeError(
-                "individual_properties not yet set. Run `.fit_selection()` first."
-            )
-
-        # Collect all parameter dicts for the requested label
-        selected_properties = []
-        for slice_props in self._individual_properties:
-            for label, params in slice_props:
-                if label == select_label:
-                    selected_properties.append(params)
-                    break  # move to next slice once found
-
-        if not selected_properties:
-            # gather all labels for error reporting
-            all_labels = [lbl for sl in self._individual_properties for lbl, _ in sl]
+        store = getattr(self, "_individual_properties", None)
+        if not store or select_label not in store:
+            if isinstance(store, dict):
+                all_labels = sorted(store.keys())
+            else:
+                all_labels = []
             raise ValueError(
-                f"Label '{select_label}' not found in available labels: {sorted(set(all_labels))}"
+                f"Label '{select_label}' not found in available labels: {all_labels}"
             )
 
-        return self._enel_range, select_label, selected_properties
+        # Convert lists → numpy arrays
+        per_class_dicts = []
+        for cls, bucket in store[select_label].items():
+            dct = {}
+            for k, v in bucket.items():
+                dct[k] = v if k in ("label", "_class") else np.asarray(v)
+            per_class_dicts.append(dct)
+
+        selected_properties = (
+            per_class_dicts[0] if len(per_class_dicts) == 1 else per_class_dicts
+        )
+
+        # Always define exported_parameters as a fixed-length tuple
+        exported_parameters = (fermi_wavevector, fermi_velocity)
+
+        return (
+            self._enel_range,
+            self.hnuminphi,
+            select_label,
+            selected_properties,
+            exported_parameters,
+        )
 
 
-class SelfEnergy():
+class SelfEnergy:
     r"""Class for the self-energy.
     """
-    def __init__(self, enel_range, label, properties):
-        self.enel_range = enel_range
-        self.label = label
-        self.properties = properties
 
+    def __init__(self, enel_range, hnuminphi, label, properties, tupol):
+        self.enel_range = enel_range
+        self.hnuminphi = hnuminphi
+        self.label = label
+
+        # Extract parameters automatically if they exist
+        self.amplitude = properties.get("amplitude")
+        self.peak = properties.get("peak")
+        self.broadening = properties.get("broadening")
+
+        # Storing the kinetic energy range
+        self._ekin_range = self._enel_range + self._hnuminphi
+
+        # Store class name (optional but informative)
+        self._class = properties.get("_class", None)
+
+        # Potentially parameter-dependent output
+        self._peak_positions = None
+
+    # --- enel_range ---------------------------------------------------------
     @property
     def enel_range(self):
-        r"""
-        """
+        r"""Energy range associated with this self-energy."""
         return self._enel_range
-    
+
     @enel_range.setter
     def enel_range(self, x):
-        r"""
-        """
         self._enel_range = x
 
+    # --- ekin_range ---------------------------------------------------------
+    @property
+    def ekin_range(self):
+        r"""Kinetic-energy range = enel_range + hnuminphi (read-only)."""
+        import numpy as np
+        enel = np.asarray(self._enel_range)
+        hnp = 0.0 if self._hnuminphi is None else self._hnuminphi
+        return enel + hnp
+
+    @ekin_range.setter
+    def ekin_range(self, _):
+        raise AttributeError("ekin_range is derived from enel_range + "
+                             "hnuminphi.")
+
+    # --- hnuminphi ----------------------------------------------------------
+    @property
+    def hnuminphi(self):
+        r"""
+        """
+        return self._hnuminphi
+
+    @hnuminphi.setter
+    def hnuminphi(self, x):
+        self._hnuminphi= x
+
+    # --- label --------------------------------------------------------------
     @property
     def label(self):
-        r"""
-        """
+        r"""Label identifying this self-energy instance."""
         return self._label
-    
+
     @label.setter
     def label(self, x):
-        r"""
-        """
         self._label = x
 
+    # --- amplitude ----------------------------------------------------------
     @property
-    def properties(self):
-        r"""
-        """
-        return self._properties
+    def amplitude(self):
+        r"""Amplitude array (optional)."""
+        return getattr(self, "_amplitude", None)
+
+    @amplitude.setter
+    def amplitude(self, x):
+        self._amplitude = x
+
+    # --- peak ---------------------------------------------------------------
+    @property
+    def peak(self):
+        r"""Peak positions array (optional)."""
+        return getattr(self, "_peak", None)
+
+    @peak.setter
+    def peak(self, x):
+        self._peak = x
+
+    # --- broadening ---------------------------------------------------------
+    @property
+    def broadening(self):
+        r"""Broadening array (optional)."""
+        return getattr(self, "_broadening", None)
+
+    @broadening.setter
+    def broadening(self, x):
+        self._broadening = x
+
+    # --- representation helper ---------------------------------------------
+    def __repr__(self):
+        return (f"<SelfEnergy(label='{self.label}', class='{self._class}', "
+                f"n={len(self.enel_range) if self.enel_range is not None else 0})>")
     
-    @properties.setter
-    def properties(self, x):
-        r"""
-        """
-        self._properties = x
+    @property
+    def peak_positions(self):
+        r"""Elementwise product: ekin_range * peak (lazy, cached)."""
+        if getattr(self, "_peak_positions", None) is None:
+            self._peak_positions = self.peak * dtor * np.sqrt(self._ekin_range / pref)
+        return self._peak_positions
