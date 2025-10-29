@@ -230,11 +230,19 @@ fig = mdcs.fit_selection(distributions=guess_dists, ax=ax)
 self_energy = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Linear_test_1',
                                 fermi_velocity=2.85, fermi_wavevector=0.358))
 
+prct = self_energy.fermi_velocity * np.sqrt(self_energy.ekin_range / 3.81)
+
+import numpy as np
+uncs = np.array(mdcs.individual_uncertainties['Linear_test_1']['SpectralLinear']['broadening'])
+```
+
+```{python}
+
 fig = plt.figure(figsize=(7, 5))
 ax = fig.gca()
 
-ax.scatter(self_energy.enel_range, self_energy.real, label =r"$\Sigma'(E)$")
-ax.scatter(self_energy.enel_range, self_energy.imag, label =r"$-\Sigma''(E)$")
+# ax.scatter(self_energy.enel_range, self_energy.real, label =r"$\Sigma'(E)$")
+ax.errorbar(self_energy.enel_range, self_energy.imag, yerr=1.96 * prct * uncs, label =r"$-\Sigma''(E)$")
 ax.set_xlabel(r'$E-\mu$ (eV)')
 ax.set_ylabel(r'$\Sigma(E)$ (eV)')
 

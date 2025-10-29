@@ -581,102 +581,131 @@ class BandMap:
         return fig
 
     
-class MDCs():
+class MDCs:
     r"""
+    Momentum Distribution Curves (MDC) container for fitted ARPES data.
+
+    Holds the raw intensity maps, angular and energy grids, and the
+    post-fit aggregated parameters and uncertainties produced by
+    `.fit_selection()`.
     """
-    def __init__(self, intensities, angles, angle_resolution, enel, 
-                 hnuminphi):
-        self.intensities = intensities
-        self.angles = angles
-        self.enel = enel
-        self.angle_resolution = angle_resolution
 
+    def __init__(self, intensities, angles, angle_resolution, enel, hnuminphi):
+        # Core input data (read-only)
+        self._intensities = intensities
+        self._angles = angles
+        self._angle_resolution = angle_resolution
+        self._enel = enel
         self._hnuminphi = hnuminphi
-        self._ekin = self._enel + self._hnuminphi
 
+        # Derived attributes
         self._ekin_range = None
+
+        # Aggregated results (populated by fit_selection)
         self._individual_properties = None
-        
+        self._individual_uncertainties = None
+
+    # -------------------- Immutable physics inputs --------------------
+
+    @property
+    def angles(self):
+        """Angular axis for the MDCs."""
+        return self._angles
+
+    @property
+    def angle_resolution(self):
+        """Angular step size (float)."""
+        return self._angle_resolution
+
     @property
     def enel(self):
-        r"""
-        """
+        """Photoelectron binding energies (array-like). Read-only."""
         return self._enel
 
     @enel.setter
-    def enel(self, x):
-        r"""
-        """
-        self._enel = x
+    def enel(self, _):
+        raise AttributeError("`enel` is read-only; set it via the constructor.")
 
     @property
     def hnuminphi(self):
-        r"""
-        """
+        """Work-function/photon-energy offset. Read-only."""
         return self._hnuminphi
-    
+
     @hnuminphi.setter
     def hnuminphi(self, _):
-        raise AttributeError("hnuminphi is derived from the band map.")
+        raise AttributeError("`hnuminphi` is read-only; set it via the constructor.")
 
     @property
     def ekin(self):
-        r"""
-        """
+        """Kinetic energy array: enel + hnuminphi (computed on the fly)."""
         return self._enel + self._hnuminphi
 
     @ekin.setter
     def ekin(self, _):
-        raise AttributeError("ekin is derived from enel + hnuminphi.")
+        raise AttributeError("`ekin` is derived and read-only.")
+
+    # -------------------- Data arrays --------------------
 
     @property
     def intensities(self):
-        r"""
-        """
+        """2D or 3D intensity map (energy × angle)."""
         return self._intensities
 
     @intensities.setter
     def intensities(self, x):
-        r"""
-        """
         self._intensities = x
+
+    # -------------------- Results populated by fit_selection --------------------
 
     @property
     def ekin_range(self):
+        """Kinetic-energy slices that were fitted."""
         if self._ekin_range is None:
-            raise AttributeError(
-                "ekin_range not yet set. Run `.fit_selection()` first."
-            )
+            raise AttributeError("`ekin_range` not yet set. Run `.fit_selection()` first.")
         return self._ekin_range
-    
-    @property
-    def individual_labels(self):
-        if self._individual_labels is None:
-            raise AttributeError(
-                "individual_labels not yet set. Run `.fit_selection()` first."
-            )
-        return self._individual_labels
-    
+
     @property
     def individual_properties(self):
         """
-        Returns the list of per-slice, per-distribution labels and parameters.
+        Aggregated fitted parameter values per distribution component.
 
         Returns
         -------
-        list of list of dict
-            Each element corresponds to one kinetic-energy slice and contains
-            a list of dictionaries (one per distribution) with keys such as
-            'amplitude', 'peak', 'broadening', etc., depending on the
-            distribution type.
+        dict
+            Nested mapping:
+            {
+                label: {
+                    class_name: {
+                        'label': label,
+                        '_class': class_name,
+                        <param_name>: [values per slice],
+                        ...
+                    }
+                }
+            }
         """
-        if not hasattr(self, "_individual_properties") or \
-        self._individual_properties is None:
+        if self._individual_properties is None:
             raise AttributeError(
-                "individual_properties not yet set. Run `.fit_selection()` or" \
-                " the fitting routine first."
+                "`individual_properties` not yet set. Run `.fit_selection()` first."
             )
         return self._individual_properties
+
+    @property
+    def individual_uncertainties(self):
+        """
+        Aggregated 1σ uncertainties aligned with `individual_properties`.
+
+        Returns
+        -------
+        dict
+            Same nested structure as `individual_properties`, but with
+            lists of uncertainty values (or None for fixed parameters).
+        """
+        if self._individual_uncertainties is None:
+            raise AttributeError(
+                "`individual_uncertainties` not yet set. Run `.fit_selection()` first."
+            )
+        return self._individual_uncertainties
 
 
     def energy_check(self, energy_value):
@@ -931,9 +960,46 @@ class MDCs():
         import string
         import sys
         import warnings
+        import re
         from lmfit import Minimizer
+        from scipy.ndimage import gaussian_filter
         from .functions import construct_parameters, build_distributions, \
             residual
+        
+        def _resolve_param_name(params, label, pname):
+            """
+            Try to find the lmfit param key corresponding to this component `label`
+            and bare parameter name `pname` (e.g., 'amplitude', 'peak', 'broadening').
+            Works with common token separators.
+            """
+            names = list(params.keys())
+            # Fast exact candidates
+            candidates = (
+                f"{pname}_{label}", f"{label}_{pname}",
+                f"{pname}:{label}", f"{label}:{pname}",
+                f"{label}.{pname}", f"{label}|{pname}",
+                f"{label}-{pname}", f"{pname}-{label}",
+            )
+            for c in candidates:
+                if c in params:
+                    return c
+
+            # Regex fallback: label and pname as tokens in any order
+            esc_l = re.escape(str(label))
+            esc_p = re.escape(str(pname))
+            tok = r"[.:/_\-]"  # common separators
+            pat = re.compile(rf"(^|{tok}){esc_l}({tok}|$).*({tok}){esc_p}({tok}|$)")
+            for n in names:
+                if pat.search(n):
+                    return n
+
+            # Last resort: unique tail match on pname that also contains the label somewhere
+            tails = [n for n in names if n.endswith(pname) and str(label) in n]
+            if len(tails) == 1:
+                return tails[0]
+
+            # Give up
+            return None
 
         # Wrapper kwargs
         title = kwargs.pop("title", None)
@@ -994,10 +1060,8 @@ class MDCs():
         all_residuals = []
         all_individual_results = [] # List of (n_individuals, n_angles)
 
-
         aggregated_properties = {}
-
-        individual_labels = None # List of (n_individuals) labels
+        aggregated_uncertainties = {}
 
         # map class_name -> parameter names to extract
         param_spec = {
@@ -1028,7 +1092,29 @@ class MDCs():
                 )
 
             outcome = mini.minimize('least_squares')
+
             pcov = outcome.covar
+
+            # lmfit gives var_names for the covariance order (varying params only)
+            var_names = getattr(outcome, 'var_names', None)
+            if not var_names:
+                var_names = [n for n, p in outcome.params.items() if p.vary]
+
+            var_idx = {n: i for i, n in enumerate(var_names)}
+
+            # Build a FULL map: every param name -> sigma (sqrt diag if available, 
+            # else stderr, else None)
+            param_sigma_full = {}
+            for name, par in outcome.params.items():
+                sigma = None
+                if pcov is not None and name in var_idx:
+                    d = pcov[var_idx[name], var_idx[name]]
+                    if np.isfinite(d) and d >= 0:
+                        sigma = float(np.sqrt(d))
+                if sigma is None:
+                    s = getattr(par, 'stderr', None)
+                    sigma = float(s) if s is not None else None
+                param_sigma_full[name] = sigma
 
             # Rebuild the *fitted* distributions from optimized params
             fitted_distributions = build_distributions(new_distributions, outcome.params)
@@ -1040,11 +1126,10 @@ class MDCs():
                 new_matrix_args = None
 
             # individual curves (smoothed, cropped) and final sum (no plotting here)
-            from scipy.ndimage import gaussian_filter
             extend, step, numb = extend_function(self.angles, self.angle_resolution)
 
             total_result_ext = np.zeros_like(extend)
-            indiv_rows = []   # (n_individuals, n_angles)
+            indiv_rows = [] # (n_individuals, n_angles)
             individual_labels = []
 
             for dist in fitted_distributions:
@@ -1078,28 +1163,36 @@ class MDCs():
                 label = getattr(dist, 'label', str(dist))
                 individual_labels.append(label)
 
-                # ---- collect parameters for this distribution (AGGREGATED over slices)
+                # ---- collect parameters for this distribution 
+                # (Aggregated over slices)
                 cls = getattr(dist, 'class_name', None)
                 wanted = param_spec.get(cls, ())
 
                 # ensure dicts exist
                 label_bucket = aggregated_properties.setdefault(label, {})
                 class_bucket = label_bucket.setdefault(cls, {'label': label, '_class': cls})
+                unc_label_bucket = aggregated_uncertainties.setdefault(label, {})
+                unc_class_bucket = unc_label_bucket.setdefault(cls, {'label': label, '_class': cls})
                 # ensure keys exist
+
                 for pname in wanted:
                     class_bucket.setdefault(pname, [])
+                    unc_class_bucket.setdefault(pname, [])
 
-                # append values in the order of slices
                 for pname in wanted:
-                    if pname in outcome.params:
-                        class_bucket[pname].append(outcome.params[pname].value)
+                    param_key = _resolve_param_name(outcome.params, label, pname)
+
+                    if param_key is not None and param_key in outcome.params:
+                        class_bucket[pname].append(outcome.params[param_key].value)
+                        unc_class_bucket[pname].append(param_sigma_full.get(param_key, None))
                     else:
+                        # Fallback to attribute on the distribution (not fitted this slice)
                         class_bucket[pname].append(getattr(dist, pname, None))
+                        unc_class_bucket[pname].append(None)
 
             # final (sum) curve, smoothed & cropped
             final_result_i = gaussian_filter(total_result_ext, sigma=step)[
-                numb:-numb if numb else None
-            ]
+                numb:-numb if numb else None]
             final_result_i = np.asarray(final_result_i)
 
             # Residual for this slice
@@ -1110,12 +1203,9 @@ class MDCs():
             all_residuals.append(residual_i)
             all_individual_results.append(np.vstack(indiv_rows))
 
-        # Set the ekin_range variable
         self._ekin_range = kinergies
-
-        # NEW: store aggregated dict instead of per-slice lists
-        # (accessor will expose arrays)
         self._individual_properties = aggregated_properties
+        self._individual_uncertainties = aggregated_uncertainties
 
         if np.isscalar(energies):
             # One slice only: plot MDC, Fit, Residual, and Individuals
@@ -1387,8 +1477,8 @@ class MDCs():
         return final_result
     
 
-    def expose_parameters(self, select_label,
-                        fermi_wavevector=None, fermi_velocity=None):
+    def expose_parameters(self, select_label, fermi_wavevector=None, 
+                          fermi_velocity=None):
         r"""
         Selects and returns the fitted parameters for a given label, together
         with optional user-specified physical parameters (as a dictionary).
@@ -1444,13 +1534,8 @@ class MDCs():
             "fermi_velocity": fermi_velocity,
         }
 
-        return (
-            self._ekin_range,
-            self.hnuminphi,
-            select_label,
-            selected_properties,
-            exported_parameters,
-        )
+        return self._ekin_range, self.hnuminphi, select_label, \
+            selected_properties, exported_parameters
 
 
 class SelfEnergy:
