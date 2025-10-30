@@ -123,7 +123,7 @@ ax = fig.gca()
 
 fig, new_dists, covariance_matrix, new_mat_args = mdc.fit(
     distributions=guess_dists, matrix_element=mat_el, matrix_args=mat_args,
-    ax=ax, show=True)
+    ax=ax)
 ```
 
 ```{python}
@@ -136,7 +136,7 @@ angle_max = 4.8
 
 mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range))
 
-fig = plt.figure(figsize=(8, 5))
+fig = plt.figure(figsize=(7, 5))
 ax = fig.gca()
 
 fig = mdcs.plot(angle_range=mdcs.angles, angle_resolution=0.2, ax=ax)
@@ -158,11 +158,9 @@ fig, new_dists, covariance_matrix, new_mat_args = mdcs.fit(
 
 guess_dists = xarpes.CreateDistributions([
 xarpes.Constant(offset=600),
-
-xarpes.SpectralQuadratic(amplitude=3800, peak=2.45, broadening=0.00024,
+xarpes.SpectralQuadratic(amplitude=3800, peak=-2.45, broadening=0.00024,
             center_wavevector=k_0, name='Inner_band', index='1'),
-
-xarpes.SpectralQuadratic(amplitude=1800, peak=3.6, broadening=0.0004,
+xarpes.SpectralQuadratic(amplitude=1800, peak=-3.6, broadening=0.0004,
             center_wavevector=k_0, name='Outer_band', index='2')
 ])
 
@@ -208,12 +206,17 @@ fig = mdcs.fit_selection(distributions=new_dists, matrix_element=mat_el,
 #                          matrix_args=mat_args, ax=ax)
 ```
 
-```{python}
-self_energy = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Inner_band_1',
-                                fermi_wavevector=10))
+For quadratic bands, the user has to explicitly assign the peaks as left-hand or right-hand side.
+In theory, one could incorporate such information in a minus sign of the peak position.
+However, this would also require setting boundaries for the fitting range.
+Instead, the user is advised to carefully check correspondence of peak maxima with MDC fitting results.
 
-self_two = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Outer_band_2',
-                                fermi_wavevector=10))
+```{python}
+self_energy = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Inner_band_1', side='right'))
+
+self_two = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Outer_band_2'))
+
+self_two.side='right'
 ```
 
 ```{python}
@@ -231,7 +234,7 @@ ax.errorbar(self_two.peak_positions, self_two.enel_range,
             xerr=stdv * self_two.peak_positions_sigma,
            markersize=2, color='tab:purple', label=self_two.label)
 
-ax.set_xlim([0, 0.25])
+ax.set_xlim([-0.25, 0.25])
 ax.set_ylim([-0.3, 0.1])
 
 plt.legend()
@@ -284,10 +287,10 @@ fig = mdcs.fit_selection(distributions=new_dists, ax=ax)
 ```
 
 ```{python}
-self_three = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Inner_nm_1',
+self_three = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Inner_nm_1', side='right',
                                 fermi_wavevector=10))
 
-self_four = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Outer_nm_2',
+self_four = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Outer_nm_2', side='right',
                                 fermi_wavevector=10))
 ```
 

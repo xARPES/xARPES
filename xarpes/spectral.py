@@ -1448,7 +1448,7 @@ class MDCs:
     
 
     def expose_parameters(self, select_label, fermi_wavevector=None, 
-                        fermi_velocity=None):
+                        fermi_velocity=None, side=None):
         r"""
         Select and return fitted parameters for a given component label, plus a
         flat export dictionary containing values **and** 1σ uncertainties.
@@ -1461,6 +1461,8 @@ class MDCs:
             Optional Fermi wave vector to include.
         fermi_velocity : float, optional
             Optional Fermi velocity to include.
+        side : {'left','right'}, optional
+            Optional side selector for SpectralQuadratic dispersions.
 
         Returns
         -------
@@ -1475,7 +1477,7 @@ class MDCs:
             <param>_sigma arrays.
         exported_parameters : dict
             Flat dictionary of parameters and their uncertainties, plus optional
-            Fermi quantities. Each key may be of the form "<class>.<param>"
+            Fermi quantities and `side`. Each key may be of the form "<class>.<param>"
         """
 
         if self._ekin_range is None:
@@ -1507,6 +1509,7 @@ class MDCs:
         exported_parameters = {
             "fermi_wavevector": fermi_wavevector,
             "fermi_velocity": fermi_velocity,
+            "side": side,
         }
 
         # Iterate the per-class dict(s) and namespace keys as "<class>.<param>"
@@ -1524,7 +1527,7 @@ class MDCs:
                 _pack(cls_bucket)
 
         return self._ekin_range, self.hnuminphi, select_label, \
-            selected_properties,exported_parameters,
+            selected_properties, exported_parameters
 
 
 class SelfEnergy:
@@ -1553,6 +1556,13 @@ class SelfEnergy:
         self._fermi_wavevector = self._parameters.get("fermi_wavevector")
         self._fermi_velocity  = self._parameters.get("fermi_velocity")
 
+        # Side ('left' or 'right'), optional
+        self._side = self._parameters.get("side", None)
+        if self._side is not None and self._side not in ("left", "right"):
+            raise ValueError("`side` must be 'left' or 'right' if provided.")
+        if self._side is not None:
+            self._parameters["side"] = self._side
+
         # convenience attributes (read from properties)
         self._amplitude        = self._properties.get("amplitude")
         self._amplitude_sigma  = self._properties.get("amplitude_sigma")
@@ -1570,7 +1580,6 @@ class SelfEnergy:
         self._imag_sigma = None
 
     # ---------------- core read-only axes ----------------
-
     @property
     def ekin_range(self):
         return self._ekin_range
@@ -1600,6 +1609,25 @@ class SelfEnergy:
     def parameters(self):
         """Dictionary with user-supplied parameters (read-only view)."""
         return self._parameters
+
+    @property
+    def side(self):
+        """Optional side selector: 'left' or 'right'."""
+        return self._side
+
+    @side.setter
+    def side(self, x):
+        if x is not None and x not in ("left", "right"):
+            raise ValueError("`side` must be 'left' or 'right' if provided.")
+        self._side = x
+        if x is not None:
+            self._parameters["side"] = x
+        else:
+            self._parameters.pop("side", None)
+        # affects sign of peak_positions and thus `real`
+        self._peak_positions = None
+        self._real = None
+        self._real_sigma = None
 
     @property
     def fermi_wavevector(self):
@@ -1692,12 +1720,38 @@ class SelfEnergy:
     # ---------------- derived outputs ----------------
     @property
     def peak_positions(self):
-        r"""k_parallel = peak * dtor * sqrt(ekin_range / pref) (lazy)."""
+        r"""k_parallel = peak * dtor * sqrt(ekin_range / pref) (lazy).
+        If _class is 'SpectralQuadratic':
+          - requires `side` ('left' or 'right');
+          - side='left'  → negative k_parallel
+          - side='right' → positive k_parallel.
+        For other classes: uses the signed peak directly.
+        Uncertainties are not modified.
+        """
         if getattr(self, "_peak_positions", None) is None:
             if self._peak is None or self._ekin_range is None:
                 return None
-            self._peak_positions = np.sqrt(self._ekin_range / pref) * \
-                np.sin(self._peak * dtor)
+
+            # --- SpectralQuadratic requires an explicit side
+            if self._class == "SpectralQuadratic":
+                if self._side is None:
+                    raise ValueError(
+                        "For SpectralQuadratic self-energies, you must define "
+                        "`side` ('left'/'right') to accessing peak_positions."
+                    )
+
+                # magnitude (always positive)
+                kpar_mag = np.sqrt(self._ekin_range / pref) * \
+                           np.sin(np.abs(self._peak) * dtor)
+
+                sign = -1.0 if self._side == "left" else 1.0
+                self._peak_positions = sign * kpar_mag
+
+            # --- all other classes: direct signed peak
+            else:
+                self._peak_positions = np.sqrt(self._ekin_range / pref) * \
+                                       np.sin(self._peak * dtor)
+
         return self._peak_positions
 
     @property
@@ -1707,8 +1761,8 @@ class SelfEnergy:
         if getattr(self, "_peak_positions_sigma", None) is None:
             if self._peak_sigma is None or self._ekin_range is None:
                 return None
-            self._peak_positions_sigma = np.abs(np.sqrt(self._ekin_range / pref) \
-                        * np.cos(self._peak * dtor) * self._peak_sigma * dtor)
+            self._peak_positions_sigma = np.sqrt(self._ekin_range / pref) \
+                        * np.cos(self._peak * dtor) * self._peak_sigma * dtor
         return self._peak_positions_sigma
 
     @property
