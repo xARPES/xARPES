@@ -83,13 +83,34 @@ fig = mdcs.fit_selection(distributions=guess_dists, matrix_element=mat_el,
 # fig = mdcs.fit_selection(distributions=guess_dists, matrix_element=mat_el, 
 #                          matrix_args=mat_args, ax=ax)
 
+self_energy = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Inner_band_1', 
+                                bare_mass=0.6, fermi_wavevector=0.14, side='right'))
 
-
-self_energy = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Inner_band_1', side='right'))
-
-self_two = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Outer_band_2'))
+self_two = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Outer_band_2',
+                                bare_mass=0.6, fermi_wavevector=0.207))
 
 self_two.side='right'
+
+fig = plt.figure(figsize=(7, 5))
+ax = fig.gca()
+
+from xarpes.constants import stdv
+
+ax.errorbar(self_energy.enel_range, self_energy.imag, 
+            yerr=stdv * self_energy.imag_sigma, label =r"$-\Sigma''_{\rm{IR}}(E)$")
+ax.errorbar(self_energy.enel_range, self_two.imag, 
+            yerr=stdv * self_two.imag_sigma, label =r"$-\Sigma''_{\rm{OR}}(E)$")
+ax.errorbar(self_energy.enel_range, self_energy.real, 
+            yerr=stdv * self_energy.real_sigma, label =r"$\Sigma'_{\rm{IR}}(E)$")
+ax.errorbar(self_energy.enel_range, self_two.real,
+            yerr=stdv * self_two.real_sigma, label =r"$\Sigma'_{\rm{OR}}(E)$")
+ax.set_xlabel(r'$E-\mu$ (eV)'); ax.set_ylabel(r"$\Sigma'(E), -\Sigma''(E)$ (eV)")
+
+ax.set_ylim([0, 0.06])
+
+plt.legend(); plt.show()
+
+
 
 
 fig = plt.figure(figsize=(10, 7))
@@ -107,6 +128,7 @@ ax.errorbar(self_two.peak_positions, self_two.enel_range,
 ax.set_xlim([-0.25, 0.25]); ax.set_ylim([-0.3, 0.1])
 
 plt.legend()
+
 fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax)
 
 plt.show()

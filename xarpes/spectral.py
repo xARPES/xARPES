@@ -1448,7 +1448,7 @@ class MDCs:
     
 
     def expose_parameters(self, select_label, fermi_wavevector=None, 
-                        fermi_velocity=None, side=None):
+                        fermi_velocity=None, bare_mass=None, side=None):
         r"""
         Select and return fitted parameters for a given component label, plus a
         flat export dictionary containing values **and** 1σ uncertainties.
@@ -1461,6 +1461,8 @@ class MDCs:
             Optional Fermi wave vector to include.
         fermi_velocity : float, optional
             Optional Fermi velocity to include.
+        bare_mass : float, optional
+            Optional bare mass to include (used for SpectralQuadratic dispersions).
         side : {'left','right'}, optional
             Optional side selector for SpectralQuadratic dispersions.
 
@@ -1477,7 +1479,7 @@ class MDCs:
             <param>_sigma arrays.
         exported_parameters : dict
             Flat dictionary of parameters and their uncertainties, plus optional
-            Fermi quantities and `side`. Each key may be of the form "<class>.<param>"
+            Fermi quantities and `side`.
         """
 
         if self._ekin_range is None:
@@ -1505,26 +1507,25 @@ class MDCs:
             per_class_dicts[0] if len(per_class_dicts) == 1 else per_class_dicts
         )
 
-        # Build a flat export dictionary with values and sigmas side-by-side.
+        # Flat export dict: simple keys, includes optional extras
         exported_parameters = {
             "fermi_wavevector": fermi_wavevector,
             "fermi_velocity": fermi_velocity,
+            "bare_mass": bare_mass,
             "side": side,
         }
 
-        # Iterate the per-class dict(s) and namespace keys as "<class>.<param>"
-        def _pack(cls_bucket):
-            cls = cls_bucket.get("_class", "UnknownClass")
-            for key, arr in cls_bucket.items():
-                if key in ("label", "_class"):
-                    continue
-                exported_parameters[f"{cls}.{key}"] = arr
-
+        # Collect parameters without prefixing by class
         if isinstance(selected_properties, dict):
-            _pack(selected_properties)
+            for key, val in selected_properties.items():
+                if key not in ("label", "_class"):
+                    exported_parameters[key] = val
         else:
+            # If multiple classes, merge sequentially (last overwrites same-name keys)
             for cls_bucket in selected_properties:
-                _pack(cls_bucket)
+                for key, val in cls_bucket.items():
+                    if key not in ("label", "_class"):
+                        exported_parameters[key] = val
 
         return self._ekin_range, self.hnuminphi, select_label, \
             selected_properties, exported_parameters
@@ -1551,13 +1552,26 @@ class SelfEnergy:
         self._properties = dict(properties or {})
         self._class = self._properties.get("_class", None)
 
-        # optional, user-supplied extras (can be set later)
+        # ---- enforce supported classes at construction
+        if self._class not in ("SpectralLinear", "SpectralQuadratic"):
+            raise ValueError(
+                f"Unsupported spectral class '{self._class}'. "
+                "Only 'SpectralLinear' or 'SpectralQuadratic' are allowed."
+            )
+
+        # grab user parameters
         self._parameters = dict(parameters or {})
         self._fermi_wavevector = self._parameters.get("fermi_wavevector")
-        self._fermi_velocity  = self._parameters.get("fermi_velocity")
+        self._fermi_velocity   = self._parameters.get("fermi_velocity")
+        self._bare_mass        = self._parameters.get("bare_mass")
+        self._side             = self._parameters.get("side", None)
 
-        # Side ('left' or 'right'), optional
-        self._side = self._parameters.get("side", None)
+        # ---- class-specific parameter constraints
+        if self._class == "SpectralLinear" and (self._bare_mass is not None):
+            raise ValueError("`bare_mass` cannot be set for SpectralLinear.")
+        if self._class == "SpectralQuadratic" and (self._fermi_velocity is not None):
+            raise ValueError("`fermi_velocity` cannot be set for SpectralQuadratic.")
+
         if self._side is not None and self._side not in ("left", "right"):
             raise ValueError("`side` must be 'left' or 'right' if provided.")
         if self._side is not None:
@@ -1578,6 +1592,14 @@ class SelfEnergy:
         self._real_sigma = None
         self._imag = None
         self._imag_sigma = None
+
+    def _check_mass_velocity_exclusivity(self):
+        """Ensure that fermi_velocity and bare_mass are not both set."""
+        if (self._fermi_velocity is not None) and (self._bare_mass is not None):
+            raise ValueError(
+                "Cannot set both `fermi_velocity` and `bare_mass`: "
+                "choose one physical parametrization (SpectralLinear or SpectralQuadratic)."
+            )
 
     # ---------------- core read-only axes ----------------
     @property
@@ -1649,18 +1671,35 @@ class SelfEnergy:
 
     @fermi_velocity.setter
     def fermi_velocity(self, x):
+        if self._class == "SpectralQuadratic":
+            raise ValueError("`fermi_velocity` cannot be set for" \
+            " SpectralQuadratic.")
         self._fermi_velocity = x
         self._parameters["fermi_velocity"] = x
-         # invalidate dependent cache
-        self._imag = None
-        self._imag_sigma = None
-        self._real = None
-        self._real_sigma = None
+        # invalidate dependents
+        self._imag = None; self._imag_sigma = None
+        self._real = None; self._real_sigma = None
+
+    @property
+    def bare_mass(self):
+        """Optional bare mass; used by SpectralQuadratic formulas."""
+        return self._bare_mass
+
+    @bare_mass.setter
+    def bare_mass(self, x):
+        if self._class == "SpectralLinear":
+            raise ValueError("`bare_mass` cannot be set for SpectralLinear.")
+        self._bare_mass = x
+        self._parameters["bare_mass"] = x
+        # invalidate dependents
+        self._imag = None; self._imag_sigma = None
+        self._real = None; self._real_sigma = None
 
     # ---------------- optional fit parameters (convenience) ----------------
     @property
     def amplitude(self):
         return self._amplitude
+    
     @amplitude.setter
     def amplitude(self, x):
         self._amplitude = x
@@ -1669,6 +1708,7 @@ class SelfEnergy:
     @property
     def amplitude_sigma(self):
         return self._amplitude_sigma
+    
     @amplitude_sigma.setter
     def amplitude_sigma(self, x):
         self._amplitude_sigma = x
@@ -1720,105 +1760,115 @@ class SelfEnergy:
     # ---------------- derived outputs ----------------
     @property
     def peak_positions(self):
-        r"""k_parallel = peak * dtor * sqrt(ekin_range / pref) (lazy).
-        If _class is 'SpectralQuadratic':
-          - requires `side` ('left' or 'right');
-          - side='left'  → negative k_parallel
-          - side='right' → positive k_parallel.
-        For other classes: uses the signed peak directly.
-        Uncertainties are not modified.
-        """
-        if getattr(self, "_peak_positions", None) is None:
+        r"""k_parallel = peak * dtor * sqrt(ekin_range / pref) (lazy)."""
+        if self._peak_positions is None:
             if self._peak is None or self._ekin_range is None:
                 return None
-
-            # --- SpectralQuadratic requires an explicit side
             if self._class == "SpectralQuadratic":
                 if self._side is None:
-                    raise ValueError(
-                        "For SpectralQuadratic self-energies, you must define "
-                        "`side` ('left'/'right') to accessing peak_positions."
+                    raise AttributeError(
+                        "For SpectralQuadratic, set `side` ('left'/'right') "
+                        "before accessing peak_positions."
                     )
-
-                # magnitude (always positive)
                 kpar_mag = np.sqrt(self._ekin_range / pref) * \
-                           np.sin(np.abs(self._peak) * dtor)
-
-                sign = -1.0 if self._side == "left" else 1.0
-                self._peak_positions = sign * kpar_mag
-
-            # --- all other classes: direct signed peak
-            else:
-                self._peak_positions = np.sqrt(self._ekin_range / pref) * \
-                                       np.sin(self._peak * dtor)
-
+                    np.sin(np.abs(self._peak) * dtor)
+                self._peak_positions = (-1.0 if self._side == "left" \
+                                        else 1.0) * kpar_mag
+            else:  # SpectralLinear
+                self._peak_positions = np.sqrt(self._ekin_range / pref) \
+                * np.sin(self._peak * dtor)
         return self._peak_positions
 
     @property
     def peak_positions_sigma(self):
-        r"""Std. dev. of k_parallel = peak * dtor * sqrt(ekin_range / pref)
-          (lazy)."""
-        if getattr(self, "_peak_positions_sigma", None) is None:
+        r"""Std. dev. of k_parallel (lazy)."""
+        if self._peak_positions_sigma is None:
             if self._peak_sigma is None or self._ekin_range is None:
                 return None
-            self._peak_positions_sigma = np.sqrt(self._ekin_range / pref) \
-                        * np.cos(self._peak * dtor) * self._peak_sigma * dtor
+            self._peak_positions_sigma = (np.sqrt(self._ekin_range / pref)
+                                          * np.cos(self._peak * dtor) 
+                                          * self._peak_sigma * dtor)
         return self._peak_positions_sigma
 
     @property
     def imag(self):
-        r"""-Σ'': v_F * sqrt(E_kin / pref) * broadening (lazy)."""
-        if getattr(self, "_imag", None) is None:
-            if self._fermi_velocity is None:
-                raise AttributeError(
-                    "Cannot compute `imag`: fermi_velocity not set. "
-                    "Provide it via `self.fermi_velocity = ...`."
-                )
+        r"""-Σ'' (lazy)."""
+        if self._imag is None:
             if self._broadening is None or self._ekin_range is None:
                 return None
-            self._imag = self._fermi_velocity * np.sqrt(self._ekin_range \
-                                                    / pref) * self._broadening
+            if self._class == "SpectralLinear":
+                if self._fermi_velocity is None:
+                    raise AttributeError("Cannot compute `imag` "
+                    "(SpectralLinear): set `fermi_velocity` first.")
+                self._imag = self._fermi_velocity * np.sqrt(self._ekin_range \
+                     / pref) * self._broadening
+            else:  # SpectralQuadratic
+                if self._bare_mass is None:
+                    raise AttributeError("Cannot compute `imag` "
+                    "(SpectralQuadratic): set `bare_mass` first.")
+                self._imag = (self._ekin_range * self._broadening) \
+                / np.abs(self._bare_mass)
         return self._imag
 
     @property
     def imag_sigma(self):
-        r"""Std. dev. of -Σ'': v_F * sqrt(E_kin / pref) * broadening (lazy)."""
-        if getattr(self, "_imag_sigma", None) is None:
-            if self._fermi_velocity is None:
-                raise AttributeError(
-                    "Cannot compute `imag_sigma`: fermi_velocity not set. "
-                    "Provide it via `self.fermi_velocity = ...`."
-                )
+        r"""Std. dev. of -Σ'' (lazy)."""
+        if self._imag_sigma is None:
             if self._broadening_sigma is None or self._ekin_range is None:
                 return None
-            self._imag_sigma = self._fermi_velocity * np.sqrt( \
-                self._ekin_range / pref) * self._broadening_sigma
+            if self._class == "SpectralLinear":
+                if self._fermi_velocity is None:
+                    raise AttributeError("Cannot compute `imag_sigma` "
+                    "(SpectralLinear): set `fermi_velocity` first.")
+                self._imag_sigma = self._fermi_velocity * \
+                    np.sqrt(self._ekin_range / pref) * self._broadening_sigma
+            else:  # SpectralQuadratic
+                if self._bare_mass is None:
+                    raise AttributeError("Cannot compute `imag_sigma` "
+                    "(SpectralQuadratic): set `bare_mass` first.")
+                self._imag_sigma = (self._ekin_range * \
+                            self._broadening_sigma) / np.abs(self._bare_mass)
         return self._imag_sigma
 
     @property
     def real(self):
-        r"""Σ' (lazy, cached). Depends on: v_F, k_F, enel_range, peak."""
-        if getattr(self, "_real", None) is None:
-            if self._fermi_velocity is None or self._fermi_wavevector is None:
-                raise AttributeError(
-                    "Cannot compute `real`: set both fermi_velocity and " \
-                    "fermi_wavevector first."
-                )
+        r"""Σ' (lazy)."""
+        if self._real is None:
             if self._peak is None or self._ekin_range is None:
                 return None
-            self._real = self.enel_range - self._fermi_velocity * \
-            (self.peak_positions - self._fermi_wavevector)
+            if self._class == "SpectralLinear":
+                if self._fermi_velocity is None or self._fermi_wavevector is None:
+                    raise AttributeError("Cannot compute `real` "
+                    "(SpectralLinear): set `fermi_velocity` and " \
+                    "`fermi_wavevector` first.")
+                self._real = self.enel_range - self._fermi_velocity * \
+                    (self.peak_positions - self._fermi_wavevector)
+            else:  # SpectralQuadratic
+                if self._bare_mass is None or self._fermi_wavevector is None:
+                    raise AttributeError("Cannot compute `real` "
+                    "(SpectralQuadratic): set `bare_mass` and " \
+                    "`fermi_wavevector` first.")
+                self._real = self.enel_range - (pref / \
+                    np.abs(self._bare_mass)) * (self.peak_positions**2 \
+                    - self._fermi_wavevector**2)
         return self._real
 
     @property
     def real_sigma(self):
-        r"""Std. dev. of Σ' (lazy). Depends on: v_F and peak_positions_sigma."""
-        if getattr(self, "_real_sigma", None) is None:
-            if self._fermi_velocity is None:
-                raise AttributeError("Cannot compute `real_sigma`: set " \
-                "fermi_velocity first.")
+        r"""Std. dev. of Σ' (lazy)."""
+        if self._real_sigma is None:
             if self._peak_sigma is None or self._ekin_range is None:
                 return None
-            self._real_sigma = self._fermi_velocity * \
-                self.peak_positions_sigma
+            if self._class == "SpectralLinear":
+                if self._fermi_velocity is None:
+                    raise AttributeError("Cannot compute `real_sigma` "
+                    "(SpectralLinear): set `fermi_velocity` first.")
+                self._real_sigma = self._fermi_velocity * self.peak_positions_sigma
+            else:  # SpectralQuadratic
+                if self._bare_mass is None or self._fermi_wavevector is None:
+                    raise AttributeError("Cannot compute `real_sigma` "
+                    "(SpectralQuadratic): set `bare_mass` and " \
+                    "`fermi_wavevector` first.")
+                self._real_sigma = 2 * pref * self.peak_positions_sigma \
+                    * np.abs(self.peak_positions / self._bare_mass)
         return self._real_sigma
