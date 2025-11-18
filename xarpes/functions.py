@@ -239,12 +239,13 @@ def fit_leastsq(p0, xdata, ydata, function, resolution=None,
 
 
 def download_examples():
-    """Downloads the examples folder from the xARPES code only if it does not
-    already exist. Prints executed steps and a final cleanup/failure message.
+    """Downloads the examples folder from the main xARPES repository only if it
+    does not already exist in the current directory. Prints executed steps and a
+    final cleanup/failure message.
 
     Returns
     -------
-    0, 1 : int
+    0 or 1 : int
         Returns 0 if the execution succeeds, 1 if it fails.
     """
     import requests
@@ -254,15 +255,16 @@ def download_examples():
     import io
     import jupytext
 
-    repo_url = 'https://github.com/xARPES/xARPES_examples'
-    output_dir = '.' # Directory from which the function is called
+    # Main xARPES repo (examples now live in /examples here)
+    repo_url = 'https://github.com/xARPES/xARPES'
+    output_dir = '.'  # Directory from which the function is called
 
-    # Check if 'examples' directory already exists
+    # Target 'examples' directory in the user's current location
     final_examples_path = os.path.join(output_dir, 'examples')
     if os.path.exists(final_examples_path):
-        print("Warning: 'examples' folder already exists. " +
-        'No download will be performed.')
-        return 1 # Exit the function if 'examples' directory exists
+        print("Warning: 'examples' folder already exists. "
+              "No download will be performed.")
+        return 1  # Exit the function if 'examples' directory exists
 
     # Proceed with download if 'examples' directory does not exist
     repo_parts = repo_url.replace('https://github.com/', '').rstrip('/')
@@ -277,24 +279,29 @@ def download_examples():
         with zipfile.ZipFile(zip_file_bytes, 'r') as zip_ref:
             zip_ref.extractall(output_dir)
 
-        # Path to the extracted main folder
-        main_folder_path = os.path.join(output_dir,
-                repo_parts.split('/')[-1] + '-main')
+        # Path to the extracted main folder (e.g. xARPES-main)
+        main_folder_path = os.path.join(
+            output_dir,
+            repo_parts.split('/')[-1] + '-main'
+        )
         examples_path = os.path.join(main_folder_path, 'examples')
 
         # Move the 'examples' directory to the target location
         if os.path.exists(examples_path):
             shutil.move(examples_path, final_examples_path)
             print(f"'examples' subdirectory moved to {final_examples_path}")
+
             # Convert all .Rmd files in the examples directory to .ipynb
             # and delete the .Rmd files
             for dirpath, dirnames, filenames in os.walk(final_examples_path):
                 for filename in filenames:
                     if filename.endswith('.Rmd'):
                         full_path = os.path.join(dirpath, filename)
-                        jupytext.write(jupytext.read(full_path),
-                                       full_path.replace('.Rmd', '.ipynb'))
-                        os.remove(full_path) # Deletes .Rmd file afterwards
+                        jupytext.write(
+                            jupytext.read(full_path),
+                            full_path.replace('.Rmd', '.ipynb')
+                        )
+                        os.remove(full_path)  # Deletes .Rmd file afterwards
                         print(f'Converted and deleted {full_path}')
 
         # Remove the rest of the extracted content
@@ -303,7 +310,7 @@ def download_examples():
         return 0
     else:
         print('Failed to download the repository. Status code: '
-             f'{response.status_code}')
+              f'{response.status_code}')
         return 1
 
 
