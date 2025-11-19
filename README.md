@@ -1,6 +1,6 @@
 # xARPES 
 
-![xARPES](https://github.com/xARPES/xARPES/blob/main/logo/xarpes.svg)
+![xARPES](https://github.com/xARPES/xARPES/raw/main/logo/xarpes.svg)
 
 Repository for the code xARPES &ndash; extraction of the self-energy and Eliashberg function from angle-resolved photoemission spectroscopy. The documentation can be found on [Read the Docs](https://xarpes.readthedocs.io), while the code is maintained on [GitHub](https://github.com/xARPES/xARPES). Instructions for installing the code and downloading the code are found below. An extensive description of the functionalities and examples is found at the [arXiv preprint](https://arxiv.org/abs/2508.13845).
 
