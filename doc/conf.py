@@ -10,12 +10,14 @@ except Exception:
 
 project = 'xARPES'
 copyright = '2025 xARPES Developers'
-version = xarpes.__version__
-release = xarpes.__version__
 
-html_static_path = ["logo"]
-html_logo = "logo/xarpes.svg"
-html_theme_options = {'logo_only': True}
+# --- HTML logo + static files ---
+html_static_path = ["_static"]
+html_logo = "_static/xarpes.svg"
+html_theme = 'sphinx_rtd_theme'
+html_theme_options = {
+    'logo_only': True,
+}
 
 extensions = [
     'sphinx.ext.autodoc',

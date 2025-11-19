@@ -168,6 +168,7 @@ cython_debug/
 
 # --- But DO NOT ignore figures inside /doc ---
 !doc/logo/*.png
+!doc/_static/**
 
 # VS Code
 .vscode/
