@@ -1,0 +1,30 @@
+<?xml version='1.0'?>
+<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='470' height='102' viewBox='-0.921 -0.05 23.5 5.1'>
+    <defs>
+        <g id='xarpes'>
+            <path d='M0,1 l3,4 h1.25 l-3,-4 z'/>
+            <path d='M0,5 h1.25 l2.85,-3.8 a0.5,0.5,0,0,1,0.9,0.3 v0.5 h-1.25 l-0.75,1 h2 v2 h1 v-3.5 a1.5,1.5,0,0,0,-2.7,-0.9 z'/>
+            <path d='M7,5 h1 v-5 h-1 z m0,-2 h1.5 a1.5,1.5,0,0,0,0,-3 h-1.5 v1 h1.5 a0.5,0.5,0,0,1,0,1 h-1.5 z h1.5 a0.5,0.5,0,0,1,0.5,0.5 v1.5 h1 v-1.5 a1.5,1.5,0,0,0,-1.5,-1.5 h-1.5 z'/>
+            <path d='M11,5 h1 v-5 h-1 z m0,-2 h1.5 a1.5,1.5,0,0,0,0,-3 h-1.5 v1 h1.5 a0.5,0.5,0,0,1,0,1 h-1.5 z'/>
+            <path d='M15,5 h3 v-1 h-2 v-1 h2 v-1 h-2 v-1 h2 v-1 h-3 z'/>
+            <path d='M19,5 h1.5 a1.5,1.5,0,0,0,0,-3 a0.5,0.5,0,0,1,0,-1 h1.5 v-1 h-1.5 a1.5,1.5,0,0,0,0,3 a0.5,0.5,0,0,1,0,1 h-1.5 z'/>
+        </g>
+    </defs>
+    <g transform='skewX(-9)'>
+        <path d='M4.5,0 h0.5' stroke='#5db3e6' stroke-width='0.1'/>
+        <use xlink:href='#xarpes' fill='#5db3e6' stroke='#5db3e6' stroke-width='0.1' transform='translate(0.5)'/>
+        <use xlink:href='#xarpes' fill='#5db3e6' stroke='#5db3e6' stroke-width='0.1'/>
+        <use xlink:href='#xarpes' fill='#00214e'/>
+        <g stroke='#fece43' stroke-width='0.2' stroke-linejoin='round' stroke-linecap='round'>
+            <path d='M2.125,3 l1.575,-2.1 a1,1,0,0,1,1.8,0.6 v1' fill='none'/>
+            <path d='M3.615,1 v0.5 l-0.48,-0.36 z' fill='#fece43'/>
+            <path transform='translate(1.375, 2) rotate(53.13)' d='M-0.9,0 q0.15,0.3,0.3,0 q0.15,-0.3,0.3,0 q0.15,0.3,0.3,0 q0.15,-0.3,0.3,0 q0.15,0.3,0.3,0 q0.15,-0.3,0.3,0' fill='none'/>
+        </g>
+    </g>
+</svg>
+<!--
+    We choose a slope of 4/3 for the letter x since cos(arcsin(0.8)) = 0.6 (and vice versa) is rational.
+    We shift the bottom-left x coordinate -0.1 by -0.8 because of the skew: 5.05 tan(-9 degrees) = -0.7998.
+    We shift the top-right x coordinate 22.55 by 0.008 because of the skew: 0.05 tan(+9 degrees) = +0.0079.
+    We add a padding of 0.021 both on the left and on the right side to obtain an integer width and height.
+-->

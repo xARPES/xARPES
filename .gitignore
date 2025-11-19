@@ -70,6 +70,8 @@ instance/
 
 # Sphinx documentation
 doc/_build/
+doc/doctrees/
+doc/html/
 
 # PyBuilder
 .pybuilder/
@@ -165,8 +167,7 @@ cython_debug/
 *_small.svg
 
 # --- But DO NOT ignore figures inside /doc ---
-!doc/**/*.png
-!doc/**/*_small.svg
+!doc/logo/*.png
 
 # VS Code
 .vscode/
