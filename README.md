@@ -1,8 +1,8 @@
 # xARPES 
 
-![xARPES](https://xarpes.github.io/_images/xarpes.svg)
+![xARPES](https://github.com/xARPES/xARPES/blob/main/logo/xarpes.svg)
 
-Repository for the code xARPES &ndash; extraction of the self-energy and Eliashberg function from angle-resolved photoemission spectroscopy. The documentation can be found at https://xarpes.readthedocs.io, while the code is maintained at https://github.com/xARPES/xARPES. Instructions for installing the code and downloading the code are found below. An extensive description of the functionalities and examples is found at https://arxiv.org/abs/2508.13845.
+Repository for the code xARPES &ndash; extraction of the self-energy and Eliashberg function from angle-resolved photoemission spectroscopy. The documentation can be found on [Read the Docs](https://xarpes.readthedocs.io), while the code is maintained on [GitHub](https://github.com/xARPES/xARPES). Instructions for installing the code and downloading the code are found below. An extensive description of the functionalities and examples is found at the [arXiv preprint](https://arxiv.org/abs/2508.13845).
 
 # Warning
 
@@ -16,8 +16,8 @@ Contributions to the code are most welcome. xARPES is intended to co-develop alo
 
 xARPES can be installed in several ways depending on your workflow:  
 - via a graphical package manager (Anaconda Navigator, VS Code, PyCharm, Spyder, JupyterLab)  
-- via conda-forge, out-of-the-box or editable installation, sourcing https://anaconda.org/conda-forge/xarpes.
-- via Pip, out-of-the-box or editable installation, sourcing https://pypi.org/project/xarpes.
+- via conda-forge, out-of-the-box or editable installation, sourcing the [conda-forge package](https://anaconda.org/conda-forge/xarpes).  
+- via Pip, out-of-the-box or editable installation, sourcing the [PyPI package](https://pypi.org/project/xarpes).
 
 ## Graphical package manager installation
 
@@ -42,7 +42,7 @@ These IDEs install from the active environment’s package source:
 
 ### Installation steps (generic)
 
-1. Open your IDE
+1. Open your IDE  
 2. Select or create a Python environment  
 3. Open the environment/package manager panel  
 4. Search for “xarpes”  
@@ -54,7 +54,7 @@ Install xARPES inside a conda environment, either out of the box or as an editab
 
 ### Setting up a conda environment
 
-Download and install Miniconda (see https://docs.anaconda.com/free/miniconda/).
+Download and install Miniconda (see the [Miniconda installation page](https://docs.anaconda.com/free/miniconda/)).
 
 Example for Linux:
 
@@ -80,7 +80,7 @@ Create and activate an environment:
 
 ## Pip installation
 
-    Install xARPES using pip, either out of the box or as an editable.
+Install xARPES using pip, either out of the box or as an editable.
 
 ### Setting up a virtual environment
 
@@ -117,17 +117,18 @@ After installation of xARPES, the `examples/` folder can be downloaded to the cu
 
 Equivalently:
 
-	python3 -c "import xarpes; xarpes.download_examples()"
+    python3 -c "import xarpes; xarpes.download_examples()"
 
 # Execution
 
 It is recommended to use JupyterLab to analyse data. JupyterLab is launched using:
 
-	jupyter lab
+    jupyter lab
 
 # Citation
 
-If you have used xARPES for your research, please cite the following preprint: https://arxiv.org/abs/2508.13845.
+If you have used xARPES for your research, please cite the following preprint:  
+[arXiv preprint 2508.13845](https://arxiv.org/abs/2508.13845).
 
 # License
 
