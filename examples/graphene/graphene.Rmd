@@ -6,7 +6,7 @@ jupyter:
       extension: .Rmd
       format_name: rmarkdown
       format_version: '1.2'
-      jupytext_version: 1.17.3
+      jupytext_version: 1.15.2
   kernelspec:
     display_name: Python 3 (ipykernel)
     language: python
@@ -397,4 +397,8 @@ fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax)
 # ax = fig.gca()
 
 # fig = mdcs.plot(distributions=guess_dists, ax=ax, energy_value=-0.003)
+```
+
+```{python}
+
 ```
