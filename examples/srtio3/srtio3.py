@@ -7,11 +7,15 @@
 import matplotlib as mpl
 mpl.use('Qt5Agg')
 
+# Necessary packages
 import xarpes
 import matplotlib.pyplot as plt
 import os
 
+# Default plot configuration from xarpes.plotting.py
 xarpes.plot_settings('default')
+
+# If needed, close figures before running other cells, if figures show up in the wrong places.
 
 script_dir = xarpes.set_script_dir()
 
@@ -73,6 +77,11 @@ ax = fig.gca()
 fig = mdcs.visualize_guess(distributions=guess_dists, matrix_element=mat_el,
                            matrix_args=mat_args, energy_value=-0.000, ax=ax)
 
+# #### Note on interactive figures
+# - Operability of the interactive figure is sensitive to configuration of the plotting backend.
+# - With Python V>=3.13 in a conda environment, the figure may fail to show up more than once. In that case, the user could try to run "conda env config vars unset MPLBACKEND" inside the conda environment; in Python, this command can be preceded with an exclamation mark ("!conda env ...") such that the command is executed in the terminal. The reset should work after restarting the conda environment.
+# - As a fallback, the user may switch "%matplotlib widget" to "%matplotlib qt", after which the figure should pop up in an external window.
+
 
 fig = plt.figure(figsize=(7, 5))
 ax = fig.gca()
@@ -104,10 +113,6 @@ fig = plt.figure(figsize=(8, 5))
 ax = fig.gca()
 
 fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', self_energies=self_energies, ax=ax)
-
-
-
-
 
 fig = plt.figure(figsize=(7, 5))
 ax = fig.gca()
@@ -475,3 +480,5 @@ plt.show()
 # bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax, zorder=0.5)
 
 # plt.show()
+
+

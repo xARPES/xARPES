@@ -88,8 +88,11 @@ def convert_rmd_to_py(rmd_path: str) -> None:
                 if "%matplotlib widget" in line or "%matplotlib inline" in line:
                     continue
 
+                # Remove global Jupyter hooks (e.g. get_ipython().events.register(...))
+                if "get_ipython" in line:
+                    continue
+
                 # Replace first Jupyter magic comment with Qt5Agg backend
-                # (lines like "# %load_ext ..." often end up as "#%..." after export)
                 if line.replace(" ", "").startswith("#%"):
                     if first_magic_comment:
                         text.write("import matplotlib as mpl\n")
@@ -99,6 +102,7 @@ def convert_rmd_to_py(rmd_path: str) -> None:
 
                 # Otherwise, write code verbatim
                 text.write(line)
+
             else:
                 # ---- Outside code fence: Markdown -> Python comments ---------------
                 if line.strip() == "":

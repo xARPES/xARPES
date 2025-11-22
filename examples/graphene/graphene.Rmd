@@ -8,7 +8,7 @@ jupyter:
       format_version: '1.2'
       jupytext_version: 1.15.2
   kernelspec:
-    display_name: Python 3 (ipykernel)
+    display_name: 3.7_env
     language: python
     name: python3
 ---
@@ -23,11 +23,16 @@ jupyter:
 # %load_ext autoreload
 # %autoreload 2
 
+# Necessary packages
 import xarpes
 import matplotlib.pyplot as plt
 import os
 
+# Default plot configuration from xarpes.plotting.py
 xarpes.plot_settings('default')
+
+# If needed, close figures before running other cells, if figures show up in the wrong places.
+# get_ipython().events.register('pre_run_cell', lambda info: plt.close('all'))
 ```
 
 ```{python}
@@ -118,6 +123,11 @@ ax = fig.gca()
 fig = mdcs.visualize_guess(distributions=guess_dists, energy_value=energy_value, ax=ax)
 ```
 
+#### Note on interactive figures
+- Operability of the interactive figure is sensitive to configuration of the plotting backend.
+- With Python V>=3.13 in a conda environment, the figure may fail to show up more than once. In that case, the user could try to run "conda env config vars unset MPLBACKEND" inside the conda environment; in Python, this command can be preceded with an exclamation mark ("!conda env ...") such that the command is executed in the terminal. The reset should work after restarting the conda environment.
+- As a fallback, the user may switch "%matplotlib widget" to "%matplotlib qt", after which the figure should pop up in an external window.
+
 ```{python}
 # %matplotlib widget
 
@@ -127,6 +137,15 @@ ax = fig.gca()
 mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range))
 
 fig = mdcs.fit_selection(distributions=guess_dists, ax=ax)
+```
+
+```{python}
+# # %matplotlib widget
+
+# fig = plt.figure(figsize=(7, 5))
+# ax = fig.gca()
+
+# mdcs.plot(energy_range=[-0.15, -0.05], ax=ax)
 ```
 
 ```{python}
@@ -152,6 +171,8 @@ fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax)
 ```
 
 ```{python}
+# %matplotlib inline
+
 fig = plt.figure(figsize=(7, 5))
 ax = fig.gca()
 
@@ -163,7 +184,8 @@ ax.errorbar(self_energy.enel_range, self_energy.real,
             yerr=stdv * self_energy.real_sigma, label =r"$\Sigma'(E)$")
 ax.set_xlabel(r'$E-\mu$ (eV)'); ax.set_ylabel(r"$\Sigma'(E), -\Sigma''(E)$ (eV)")
 
-plt.legend(); plt.show()
+plt.legend()
+plt.show()
 ```
 
 ```{python}
@@ -195,25 +217,6 @@ self_left = xarpes.SelfEnergy(*mdc2.expose_parameters(select_label='Linear_left_
 ```
 
 ```{python}
-# %matplotlib inline
-
-fig = plt.figure(figsize=(8, 5))
-ax = fig.gca()
-
-from xarpes.constants import stdv
-
-ax.errorbar(self_left.peak_positions, self_left.enel_range, 
-            xerr=stdv * self_left.peak_positions_sigma,
-           markersize=2, color='tab:red', label=self_left.label)
-
-ax.errorbar(self_energy.peak_positions, self_energy.enel_range, 
-            xerr=stdv * self_energy.peak_positions_sigma,
-           markersize=2, color='tab:blue', label=self_energy.label)
-
-fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax)
-```
-
-```{python}
 
 ```
 
@@ -222,7 +225,22 @@ fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax)
 ```
 
 ```{python}
+# # %matplotlib inline
 
+# fig = plt.figure(figsize=(8, 5))
+# ax = fig.gca()
+
+# from xarpes.constants import stdv
+
+# ax.errorbar(self_left.peak_positions, self_left.enel_range, 
+#             xerr=stdv * self_left.peak_positions_sigma,
+#            markersize=2, color='tab:red', label=self_left.label)
+
+# ax.errorbar(self_energy.peak_positions, self_energy.enel_range, 
+#             xerr=stdv * self_energy.peak_positions_sigma,
+#            markersize=2, color='tab:blue', label=self_energy.label)
+
+# fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax)
 ```
 
 ```{python}
@@ -288,8 +306,6 @@ fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax)
 ```
 
 ```{python}
-
-
 # # %matplotlib inline
 
 # fig = plt.figure(figsize=(8, 6)); ax = fig.gca()
@@ -397,8 +413,4 @@ fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax)
 # ax = fig.gca()
 
 # fig = mdcs.plot(distributions=guess_dists, ax=ax, energy_value=-0.003)
-```
-
-```{python}
-
 ```

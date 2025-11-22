@@ -9,11 +9,15 @@
 import matplotlib as mpl
 mpl.use('Qt5Agg')
 
+# Necessary packages
 import xarpes
 import matplotlib.pyplot as plt
 import os
 
+# Default plot configuration from xarpes.plotting.py
 xarpes.plot_settings('default')
+
+# If needed, close figures before running other cells, if figures show up in the wrong places.
 
 script_dir = xarpes.set_script_dir()
 
@@ -89,6 +93,11 @@ ax = fig.gca()
 
 fig = mdcs.visualize_guess(distributions=guess_dists, energy_value=energy_value, ax=ax)
 
+# #### Note on interactive figures
+# - Operability of the interactive figure is sensitive to configuration of the plotting backend.
+# - With Python V>=3.13 in a conda environment, the figure may fail to show up more than once. In that case, the user could try to run "conda env config vars unset MPLBACKEND" inside the conda environment; in Python, this command can be preceded with an exclamation mark ("!conda env ...") such that the command is executed in the terminal. The reset should work after restarting the conda environment.
+# - As a fallback, the user may switch "%matplotlib widget" to "%matplotlib qt", after which the figure should pop up in an external window.
+
 
 fig = plt.figure(figsize=(7, 5))
 ax = fig.gca()
@@ -96,6 +105,12 @@ ax = fig.gca()
 mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range))
 
 fig = mdcs.fit_selection(distributions=guess_dists, ax=ax)
+
+
+# fig = plt.figure(figsize=(7, 5))
+# ax = fig.gca()
+
+# mdcs.plot(energy_range=[-0.15, -0.05], ax=ax)
 
 
 self_energy = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Linear_test_1',
@@ -113,6 +128,7 @@ ax.errorbar(self_energy.peak_positions, self_energy.enel_range,
 
 fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax)
 
+
 fig = plt.figure(figsize=(7, 5))
 ax = fig.gca()
 
@@ -124,7 +140,8 @@ ax.errorbar(self_energy.enel_range, self_energy.real,
             yerr=stdv * self_energy.real_sigma, label =r"$\Sigma'(E)$")
 ax.set_xlabel(r'$E-\mu$ (eV)'); ax.set_ylabel(r"$\Sigma'(E), -\Sigma''(E)$ (eV)")
 
-plt.legend(); plt.show()
+plt.legend()
+plt.show()
 
 
 angle_min2 = -1e6
@@ -150,26 +167,24 @@ fig = mdc2.fit_selection(distributions=guess_dists2, show=False, fig_close=True)
 self_left = xarpes.SelfEnergy(*mdc2.expose_parameters(select_label='Linear_left_1'))
 
 
-fig = plt.figure(figsize=(8, 5))
-ax = fig.gca()
-
-from xarpes.constants import stdv
-
-ax.errorbar(self_left.peak_positions, self_left.enel_range, 
-            xerr=stdv * self_left.peak_positions_sigma,
-           markersize=2, color='tab:red', label=self_left.label)
-
-ax.errorbar(self_energy.peak_positions, self_energy.enel_range, 
-            xerr=stdv * self_energy.peak_positions_sigma,
-           markersize=2, color='tab:blue', label=self_energy.label)
-
-fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax)
 
 
 
 
+# fig = plt.figure(figsize=(8, 5))
+# ax = fig.gca()
 
+# from xarpes.constants import stdv
 
+# ax.errorbar(self_left.peak_positions, self_left.enel_range, 
+#             xerr=stdv * self_left.peak_positions_sigma,
+#            markersize=2, color='tab:red', label=self_left.label)
+
+# ax.errorbar(self_energy.peak_positions, self_energy.enel_range, 
+#             xerr=stdv * self_energy.peak_positions_sigma,
+#            markersize=2, color='tab:blue', label=self_energy.label)
+
+# fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax)
 
 
 # fig = plt.figure(figsize=(8, 5))
@@ -221,8 +236,6 @@ fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax)
 
 # fig, new_distributions, covariance_matrix = mdc.fit(
 #      distributions=guess_dists, ax=ax, show=True)
-
-
 
 
 # fig = plt.figure(figsize=(8, 6)); ax = fig.gca()
