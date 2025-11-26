@@ -139,10 +139,10 @@ ax = fig.gca()
 
 from xarpes.constants import stdv
 
-ax.errorbar(self_energy.peak_positions, self_energy.enel_range, 
+ax.errorbar(self_energy.mdc_maxima, self_energy.enel_range, 
             xerr=stdv * self_energy.peak_positions_sigma,
            markersize=2, color='tab:blue', label=self_energy.label)
-ax.errorbar(self_two.peak_positions, self_two.enel_range, 
+ax.errorbar(self_two.mdc_maxima, self_two.enel_range, 
             xerr=stdv * self_two.peak_positions_sigma,
            markersize=2, color='tab:purple', label=self_two.label)
 
@@ -194,16 +194,16 @@ ax = fig.gca()
 
 from xarpes.constants import stdv
 
-ax.errorbar(self_energy.peak_positions, self_energy.enel_range, 
+ax.errorbar(self_energy.mdc_maxima, self_energy.enel_range, 
             xerr=stdv * self_energy.peak_positions_sigma,
            markersize=2, color='tab:blue', label=self_energy.label)
-ax.errorbar(self_two.peak_positions, self_two.enel_range, 
+ax.errorbar(self_two.mdc_maxima, self_two.enel_range, 
             xerr=stdv * self_two.peak_positions_sigma,
            markersize=2, color='tab:purple', label=self_two.label)
-ax.errorbar(self_three.peak_positions, self_three.enel_range, 
+ax.errorbar(self_three.mdc_maxima, self_three.enel_range, 
             xerr=stdv * self_three.peak_positions_sigma,
             markersize=2, color='tab:brown', label=self_three.label)
-ax.errorbar(self_four.peak_positions, self_four.enel_range, 
+ax.errorbar(self_four.mdc_maxima, self_four.enel_range, 
             xerr=stdv * self_four.peak_positions_sigma, 
             markersize=2, color='palevioletred', label=self_four.label)
 
@@ -215,8 +215,6 @@ plt.legend()
 bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax, zorder=0.5)
 
 plt.show()
-
-
 
 
 # fig = plt.figure(figsize=(7, 5))

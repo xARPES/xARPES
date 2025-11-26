@@ -1233,14 +1233,25 @@ class MDCs:
                 label = getattr(dist, 'label', str(dist))
                 individual_labels.append(label)
 
-                # ---- collect parameters for this distribution 
+                # ---- collect parameters for this distribution
                 # (Aggregated over slices)
                 cls = getattr(dist, 'class_name', None)
                 wanted = param_spec.get(cls, ())
 
                 # ensure dicts exist
                 label_bucket = aggregated_properties.setdefault(label, {})
-                class_bucket = label_bucket.setdefault(cls, {'label': label, '_class': cls})
+                class_bucket = label_bucket.setdefault(
+                    cls, {'label': label, '_class': cls}
+                )
+
+                # store center_wavevector (scalar) for SpectralQuadratic
+                if (
+                    cls == 'SpectralQuadratic'
+                    and hasattr(dist, 'center_wavevector')
+                ):
+                    class_bucket.setdefault(
+                        'center_wavevector', dist.center_wavevector
+                    )
 
                 # ensure keys for both values and sigmas
                 for pname in wanted:
@@ -1560,8 +1571,8 @@ class MDCs:
         return final_result
     
 
-    def expose_parameters(self, select_label, fermi_wavevector=None, 
-                        fermi_velocity=None, bare_mass=None, side=None):
+    def expose_parameters(self, select_label, fermi_wavevector=None,
+                          fermi_velocity=None, bare_mass=None, side=None):
         r"""
         Select and return fitted parameters for a given component label, plus a
         flat export dictionary containing values **and** 1σ uncertainties.
@@ -1575,7 +1586,8 @@ class MDCs:
         fermi_velocity : float, optional
             Optional Fermi velocity to include.
         bare_mass : float, optional
-            Optional bare mass to include (used for SpectralQuadratic dispersions).
+            Optional bare mass to include (used for SpectralQuadratic
+            dispersions).
         side : {'left','right'}, optional
             Optional side selector for SpectralQuadratic dispersions.
 
@@ -1588,29 +1600,40 @@ class MDCs:
         label : str
             Label of the selected distribution.
         selected_properties : dict or list of dict
-            Nested dictionary (or list thereof) containing <param> and 
-            <param>_sigma arrays.
+            Nested dictionary (or list thereof) containing <param> and
+            <param>_sigma arrays. For SpectralQuadratic components, a
+            scalar `center_wavevector` is also present.
         exported_parameters : dict
-            Flat dictionary of parameters and their uncertainties, plus optional
-            Fermi quantities and `side`.
+            Flat dictionary of parameters and their uncertainties, plus
+            optional Fermi quantities and `side`. For SpectralQuadratic
+            components, `center_wavevector` is included and taken directly
+            from the fitted distribution.
         """
 
         if self._ekin_range is None:
-            raise AttributeError("ekin_range not yet set. Run `.fit_selection()` first.")
+            raise AttributeError(
+                "ekin_range not yet set. Run `.fit_selection()` first."
+            )
 
         store = getattr(self, "_individual_properties", None)
         if not store or select_label not in store:
-            all_labels = (sorted(store.keys()) if isinstance(store, dict) else [])
+            all_labels = (sorted(store.keys())
+                          if isinstance(store, dict) else [])
             raise ValueError(
-                f"Label '{select_label}' not found in available labels: {all_labels}"
+                f"Label '{select_label}' not found in available labels: "
+                f"{all_labels}"
             )
 
-        # Convert lists → numpy arrays within the selected label’s classes
+        # Convert lists → numpy arrays within the selected label’s classes.
+        # Keep scalar center_wavevector as a scalar.
         per_class_dicts = []
         for cls, bucket in store[select_label].items():
             dct = {}
             for k, v in bucket.items():
                 if k in ("label", "_class"):
+                    dct[k] = v
+                elif k == "center_wavevector":
+                    # keep scalar as-is, do not wrap in np.asarray
                     dct[k] = v
                 else:
                     dct[k] = np.asarray(v)
@@ -1628,20 +1651,23 @@ class MDCs:
             "side": side,
         }
 
-        # Collect parameters without prefixing by class
+        # Collect parameters without prefixing by class. This will also include
+        # center_wavevector from the fitted SpectralQuadratic class, and since
+        # there is no function argument with that name, it cannot be overridden.
         if isinstance(selected_properties, dict):
             for key, val in selected_properties.items():
                 if key not in ("label", "_class"):
                     exported_parameters[key] = val
         else:
-            # If multiple classes, merge sequentially (last overwrites same-name keys)
+            # If multiple classes, merge sequentially
+            # (last overwrites same-name keys).
             for cls_bucket in selected_properties:
                 for key, val in cls_bucket.items():
                     if key not in ("label", "_class"):
                         exported_parameters[key] = val
 
-        return self._ekin_range, self.hnuminphi, select_label, \
-            selected_properties, exported_parameters
+        return (self._ekin_range, self.hnuminphi, select_label,
+                selected_properties, exported_parameters)
 
 
 class SelfEnergy:
@@ -1697,6 +1723,7 @@ class SelfEnergy:
         self._peak_sigma       = self._properties.get("peak_sigma")
         self._broadening       = self._properties.get("broadening")
         self._broadening_sigma = self._properties.get("broadening_sigma")
+        self._center_wavevector = self._properties.get("center_wavevector")
 
         # lazy caches
         self._peak_positions = None
@@ -1763,6 +1790,7 @@ class SelfEnergy:
         self._peak_positions = None
         self._real = None
         self._real_sigma = None
+        self._mdc_maxima = None
 
     @property
     def fermi_wavevector(self):
@@ -1838,6 +1866,7 @@ class SelfEnergy:
         # invalidate dependent cache
         self._peak_positions = None
         self._real = None
+        self._mdc_maxima = None
 
     @property
     def peak_sigma(self):
@@ -1870,6 +1899,11 @@ class SelfEnergy:
         self._properties["broadening_sigma"] = x
         self._imag_sigma = None
 
+    @property
+    def center_wavevector(self):
+        """Read-only center wavevector (SpectralQuadratic, if present)."""
+        return self._center_wavevector
+    
     # ---------------- derived outputs ----------------
     @property
     def peak_positions(self):
@@ -1936,7 +1970,7 @@ class SelfEnergy:
                     "(SpectralLinear): set `fermi_velocity` first.")
                 self._imag_sigma = np.abs(self._fermi_velocity) * \
                     np.sqrt(self._ekin_range / pref) * self._broadening_sigma
-            else:  # SpectralQuadratic
+            else:
                 if self._bare_mass is None:
                     raise AttributeError("Cannot compute `imag_sigma` "
                     "(SpectralQuadratic): set `bare_mass` first.")
@@ -1986,6 +2020,30 @@ class SelfEnergy:
                 self._real_sigma = 2 * pref * self.peak_positions_sigma \
                     * np.abs(self.peak_positions / self._bare_mass)
         return self._real_sigma
+
+    @property
+    def mdc_maxima(self):
+        """
+        MDC maxima (lazy).
+
+        SpectralLinear:
+            identical to peak_positions
+
+        SpectralQuadratic:
+            peak_positions + center_wavevector
+        """
+        if getattr(self, "_mdc_maxima", None) is None:
+            if self.peak_positions is None:
+                return None
+
+            if self._class == "SpectralLinear":
+                self._mdc_maxima = self.peak_positions
+            elif self._class == "SpectralQuadratic":
+                self._mdc_maxima = (
+                    self.peak_positions + self._center_wavevector
+                )
+
+        return self._mdc_maxima
 
 
 class CreateSelfEnergies:

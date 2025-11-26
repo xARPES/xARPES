@@ -98,6 +98,12 @@ fig = mdcs.visualize_guess(distributions=guess_dists, energy_value=energy_value,
 # - With Python V>=3.13 in a conda environment, the figure may fail to show up more than once. In that case, the user could try to run "conda env config vars unset MPLBACKEND" inside the conda environment; in Python, this command can be preceded with an exclamation mark ("!conda env ...") such that the command is executed in the terminal. The reset should work after restarting the conda environment.
 # - As a fallback, the user may switch "%matplotlib widget" to "%matplotlib qt", after which the figure should pop up in an external window.
 
+import os, matplotlib, matplotlib.pyplot as plt
+
+print("MPLBACKEND:", os.environ.get("MPLBACKEND"))
+print("matplotlib backend:", matplotlib.get_backend())
+print("plt backend:", plt.get_backend())
+
 
 fig = plt.figure(figsize=(7, 5))
 ax = fig.gca()

@@ -129,6 +129,14 @@ fig = mdcs.visualize_guess(distributions=guess_dists, energy_value=energy_value,
 - As a fallback, the user may switch "%matplotlib widget" to "%matplotlib qt", after which the figure should pop up in an external window.
 
 ```{python}
+import os, matplotlib, matplotlib.pyplot as plt
+
+print("MPLBACKEND:", os.environ.get("MPLBACKEND"))
+print("matplotlib backend:", matplotlib.get_backend())
+print("plt backend:", plt.get_backend())
+```
+
+```{python}
 # %matplotlib widget
 
 fig = plt.figure(figsize=(7, 5))
