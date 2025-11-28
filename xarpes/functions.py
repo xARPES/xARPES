@@ -4,7 +4,6 @@
 """Separate functions mostly used in conjunction with various classes."""
 
 import numpy as np
-from . import __version__
 from .constants import fwhm_to_std, sigma_extend
 
 def resolve_param_name(params, label, pname):
@@ -271,48 +270,63 @@ def download_examples():
 
     # --- Determine version from xarpes.__init__.__version__ -----------------
     try:
-        # Import here (inside the function) to avoid circular imports at module
-        # import time.
+        # Import inside the function, avoiding circular imports at import time
         import xarpes as _xarpes
         raw_version = getattr(_xarpes, "__version__", None)
     except Exception as exc:
-        print(f"Error: could not import xarpes to determine version: {exc}")
-        return 1
+        print(f"Warning: could not import xarpes to determine version: {exc}")
+        raw_version = None
 
-    if raw_version is None:
-        print("Error: xarpes.__version__ is not defined; cannot determine " \
-        "tag.")
-        return 1
+    tag_version = None
+    if raw_version is not None:
+        raw_version = str(raw_version)
+        # Strip dev/local suffixes so that '0.3.3.dev1' or '0.3.3+0.gHASH'
+        # maps to the tag 'v0.3.3'. If you use plain '0.3.3' already, this is 
+        # a no-op.
+        m = re.match(r"(\d+\.\d+\.\d+)", raw_version)
+        if m:
+            tag_version = m.group(1)
+        else:
+            tag_version = raw_version
 
-    raw_version = str(raw_version)
-
-    # Strip dev/local suffixes so that '0.3.3.dev1' or '0.3.3+0.gHASH'
-    # maps to the tag 'v0.3.3'. If you use plain '0.3.3' already, this is 
-    # a no-op.
-    m = re.match(r"(\d+\.\d+\.\d+)", raw_version)
-    if m:
-        tag_version = m.group(1)
+        print(f"Determined xARPES version from __init__: {raw_version} "
+              f"(using tag version '{tag_version}').")
     else:
-        # Fall back to the whole string if it doesn't match the simple 
-        # pattern.
-        tag_version = raw_version
+        print("Warning: xarpes.__version__ is not defined; will skip "
+        "tag-based download and try the main branch only.")
 
-    print(f"Determined xARPES version from __init__: {raw_version} "
-          f"(using tag version '{tag_version}').")
-
-    # --- Download from the corresponding GitHub tag -------------------------
+    # --- Build refs and use for–else to try them in order -------------------
     repo_parts = repo_url.replace("https://github.com/", "").rstrip("/")
-    ref = f"tags/v{tag_version}"
-    zip_url = f"https://github.com/{repo_parts}/archive/refs/{ref}.zip"
 
-    print(f"Downloading examples from tagged release at:\n  {zip_url}")
-    response = requests.get(zip_url)
+    refs_to_try = []
+    if tag_version is not None:
+        refs_to_try.append(f"tags/v{tag_version}")  # version-matched examples
+    refs_to_try.append("heads/main")                # fallback: latest examples
 
-    if response.status_code != 200:
-        print("Error: failed to download the repository for tag "
-              f"'v{tag_version}'. HTTP status code: {response.status_code}")
+    response = None
+    for ref in refs_to_try:
+        zip_url = f"https://github.com/{repo_parts}/archive/refs/{ref}.zip"
+        print(f"Attempting to download examples from '{ref}':\n  {zip_url}")
+        response = requests.get(zip_url)
+
+        if response.status_code == 200:
+            if ref.startswith("tags/"):
+                print(f"Successfully downloaded examples from tagged release "
+                      f"'v{tag_version}'.")
+            else:
+                print("Tagged release not available; using latest examples "
+                "from the 'main' branch instead.")
+            break
+        else:
+            print("Failed to download from this ref. HTTP status code: "
+                  f"{response.status_code}")
+    else:
+        # for–else: only executed if we never hit 'break'
+        print("Error: could not download examples from any ref "
+              f"(tried: {', '.join(refs_to_try)}).")
         return 1
 
+    # At this point, 'response' holds a successful download
     zip_file_bytes = io.BytesIO(response.content)
 
     # --- Extract into a temporary directory to avoid polluting CWD ----------
@@ -320,7 +334,7 @@ def download_examples():
         with zipfile.ZipFile(zip_file_bytes, "r") as zip_ref:
             zip_ref.extractall(tmpdir)
             # First member gives us the top-level directory in the archive,
-            # typically something like 'xARPES-0.3.3/'.
+            # typically something like 'xARPES-0.3.3/' or 'xARPES-main/'.
             first_member = zip_ref.namelist()[0]
 
         top_level_dir = first_member.split("/")[0]
@@ -328,8 +342,8 @@ def download_examples():
         examples_path = os.path.join(main_folder_path, "examples")
 
         if not os.path.exists(examples_path):
-            print("Error: downloaded archive does not contain an " \
-            "'examples' directory.")
+            print("Error: downloaded archive does not contain an 'examples' "
+            "directory.")
             return 1
 
         # Move the 'examples' directory to the target location in the CWD
