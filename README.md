@@ -10,7 +10,7 @@ This project is currently undergoing **beta testing**. Some of the functionaliti
 
 # Contributing
 
-Contributions to the code are most welcome. xARPES is intended to co-develop alongside the increasing complexity of experimental ARPES data sets. Contributions can be made by forking the code and creating a pull request. Importing of file formats from different beamlines is particularly encouraged.
+Contributions to the code are most welcome. xARPES is intended to co-develop alongside the increasing complexity of experimental ARPES data sets. Contributions can be made by forking the code and creating a pull request. Importing of file formats from different beamlines is particularly encouraged. Files useful for developers can be found in `/dev_tool`, such as the `Rmd2py.py` script for the development of examples.
 
 # Installation
 
@@ -124,6 +124,8 @@ Then perform editable installation:
 After installation of xARPES, the `examples/` folder can be downloaded to the current directory:
 
     python -c "import xarpes; xarpes.download_examples()"
+
+This attempts to download the examples from the version corresponding encountered in `__init__.py`. If no corresponding tagged version can be downloaded, the code attempts to download the latest examples instead.
 
 # Execution
 
