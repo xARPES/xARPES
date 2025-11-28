@@ -4,6 +4,7 @@
 """Separate functions mostly used in conjunction with various classes."""
 
 import numpy as np
+from . import __version__
 from .constants import fwhm_to_std, sigma_extend
 
 def resolve_param_name(params, label, pname):
@@ -254,6 +255,7 @@ def download_examples():
     import shutil
     import io
     import jupytext
+    import tempfile
 
     # Main xARPES repo (examples now live in /examples here)
     repo_url = 'https://github.com/xARPES/xARPES'
@@ -268,50 +270,59 @@ def download_examples():
 
     # Proceed with download if 'examples' directory does not exist
     repo_parts = repo_url.replace('https://github.com/', '').rstrip('/')
-    zip_url = f'https://github.com/{repo_parts}/archive/refs/heads/main.zip'
 
-    # Make the HTTP request to download the zip file
-    print(f'Downloading {zip_url}')
-    response = requests.get(zip_url)
-    if response.status_code == 200:
-        zip_file_bytes = io.BytesIO(response.content)
+    # Try matching tag first, then fall back to main
+    for ref in (f'tags/v{__version__}', 'heads/main'):
+        zip_url = f'https://github.com/{repo_parts}/archive/refs/{ref}.zip'
 
+        # Make the HTTP request to download the zip file
+        print(f'Downloading {zip_url}')
+        response = requests.get(zip_url)
+
+        if response.status_code == 200:
+            break
+        else:
+            print('Failed to download the repository. Status code: '
+                  f'{response.status_code}')
+    else:
+        # Neither tag nor main could be downloaded
+        return 1
+
+    zip_file_bytes = io.BytesIO(response.content)
+
+    # Use a temporary directory to avoid polluting the CWD
+    with tempfile.TemporaryDirectory() as tmpdir:
         with zipfile.ZipFile(zip_file_bytes, 'r') as zip_ref:
-            zip_ref.extractall(output_dir)
-
-        # Path to the extracted main folder (e.g. xARPES-main)
-        main_folder_path = os.path.join(
-            output_dir,
-            repo_parts.split('/')[-1] + '-main'
-        )
+            zip_ref.extractall(tmpdir)
+            # Get the top-level directory inside the archive
+            first_member = zip_ref.namelist()[0]
+        top_level_dir = first_member.split('/')[0]
+        main_folder_path = os.path.join(tmpdir, top_level_dir)
         examples_path = os.path.join(main_folder_path, 'examples')
 
         # Move the 'examples' directory to the target location
-        if os.path.exists(examples_path):
-            shutil.move(examples_path, final_examples_path)
-            print(f"'examples' subdirectory moved to {final_examples_path}")
+        if not os.path.exists(examples_path):
+            print("Error: downloaded archive does not contain an 'examples' directory.")
+            return 1
 
-            # Convert all .Rmd files in the examples directory to .ipynb
-            # and delete the .Rmd files
-            for dirpath, dirnames, filenames in os.walk(final_examples_path):
-                for filename in filenames:
-                    if filename.endswith('.Rmd'):
-                        full_path = os.path.join(dirpath, filename)
-                        jupytext.write(
-                            jupytext.read(full_path),
-                            full_path.replace('.Rmd', '.ipynb')
-                        )
-                        os.remove(full_path)  # Deletes .Rmd file afterwards
-                        print(f'Converted and deleted {full_path}')
+        shutil.move(examples_path, final_examples_path)
+        print(f"'examples' subdirectory moved to {final_examples_path}")
 
-        # Remove the rest of the extracted content
-        shutil.rmtree(main_folder_path)
-        print(f'Cleaned up temporary files in {main_folder_path}')
-        return 0
-    else:
-        print('Failed to download the repository. Status code: '
-              f'{response.status_code}')
-        return 1
+        # Convert all .Rmd files in the examples directory to .ipynb
+        # and delete the .Rmd files
+        for dirpath, dirnames, filenames in os.walk(final_examples_path):
+            for filename in filenames:
+                if filename.endswith('.Rmd'):
+                    full_path = os.path.join(dirpath, filename)
+                    jupytext.write(
+                        jupytext.read(full_path),
+                        full_path.replace('.Rmd', '.ipynb')
+                    )
+                    os.remove(full_path)  # Deletes .Rmd file afterwards
+                    print(f'Converted and deleted {full_path}')
+
+    print('Cleaned up temporary files.')
+    return 0
 
 
 def set_script_dir():
