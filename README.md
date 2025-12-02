@@ -10,7 +10,7 @@ This project is currently undergoing **beta testing**. Some of the functionaliti
 
 # Contributing
 
-Contributions to the code are most welcome. xARPES is intended to co-develop alongside the increasing complexity of experimental ARPES data sets. Contributions can be made by forking the code and creating a pull request. Importing of file formats from different beamlines is particularly encouraged. Files useful for developers can be found in `/dev_tool`, such as the `Rmd2py.py` script for the development of examples.
+Contributions to the code are most welcome. xARPES is intended to co-develop alongside the increasing complexity of experimental ARPES data sets. Contributions can be made by forking the code and creating a pull request. Importing of file formats from different beamlines is particularly encouraged. Files useful for developers can be found in `/dev_tools`, such as the `Rmd2py.py` script for the development of examples.
 
 # Installation
 
@@ -18,6 +18,8 @@ xARPES installation can be divided into graphical package manager instructions, 
 - via a graphical package manager (Anaconda Navigator, VS Code, PyCharm, Spyder, JupyterLab)  
 - via conda-forge, out-of-the-box or editable installation, sourcing the [conda-forge package](https://anaconda.org/conda-forge/xarpes).  
 - via Pip, out-of-the-box or editable installation, sourcing the [PyPI package](https://pypi.org/project/xarpes).
+
+We strongly recommend installing xARPES in a (conda/pip) virtual environment, and to activate the environment each time before activating xARPES.
 
 ## Graphical package manager installation
 
@@ -61,10 +63,12 @@ Example for Linux:
     wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh  
     bash Miniconda3-latest-Linux-x86_64.sh
 
-Create and activate an environment:
+Answer `y` to questions. Create and activate a new environment:
 
     conda create -n <my_env> -c defaults -c conda-forge  
     conda activate <my_env>
+
+Where `<my_env>` must be replaced by your desired name.
 
 ### Installing xARPES
 
@@ -95,8 +99,8 @@ Install venv if necessary:
 
 Create and activate a virtual environment:
 
-    python3 -m venv <my_venv>  
-    source <my_venv>/bin/activate
+    python3 -m venv <my_env>  
+    source <my_env>/bin/activate
 
 Upgrade pip:
 
