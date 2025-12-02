@@ -48,8 +48,7 @@ data_file_path = os.path.join(script_dir, dfld, flnm + extn)
 ```{python}
 # %matplotlib inline
 
-fig = plt.figure(figsize=(8, 5))
-ax = fig.gca()
+fig = plt.figure(figsize=(8, 5)); ax = fig.gca()
 
 bmap = xarpes.BandMap(data_file_path, energy_resolution=0.01,
                       angle_resolution=0.1, temperature=50)
@@ -124,9 +123,8 @@ fig = mdcs.visualize_guess(distributions=guess_dists, energy_value=energy_value,
 ```
 
 #### Note on interactive figures
-- Operability of the interactive figure is sensitive to configuration of the plotting backend.
-- With Python V>=3.13 in a conda environment, the figure may fail to show up more than once. In that case, the user could try to run "conda env config vars unset MPLBACKEND" inside the conda environment; in Python, this command can be preceded with an exclamation mark ("!conda env ...") such that the command is executed in the terminal. The reset should work after restarting the conda environment.
-- As a fallback, the user may switch "%matplotlib widget" to "%matplotlib qt", after which the figure should pop up in an external window.
+- The interactive figure might not work inside the Jupyter notebooks, despite our best efforts to ensure stability.
+- As a fallback, the user may switch from "%matplotlib widget" to "%matplotlib qt", after which the figure should pop up in an external window.
 
 ```{python}
 # %matplotlib widget
@@ -180,7 +178,7 @@ from xarpes.constants import stdv
 
 ax.errorbar(self_energy.enel_range, self_energy.imag, 
             yerr=stdv * self_energy.imag_sigma, label =r"$-\Sigma''(E)$")
-ax.errorbar(self_energy.enel_range, self_energy.real, 
+ax.errorbar(self_energy.enel_range, self_energy.real,
             yerr=stdv * self_energy.real_sigma, label =r"$\Sigma'(E)$")
 ax.set_xlabel(r'$E-\mu$ (eV)'); ax.set_ylabel(r"$\Sigma'(E), -\Sigma''(E)$ (eV)")
 
@@ -237,16 +235,22 @@ dis2 = self_left.fermi_velocity *(kspc - self_left.fermi_wavevector)
 # ax.set_xlim([np.min(Mome), np.max(Mome)])
 # ax.set_ylim([np.min(Ekin - bmap.hnuminphi), np.max(Ekin - bmap.hnuminphi)])
 
+from importlib import reload
+import xarpes
+reload(xarpes)
+
 # %matplotlib inline
 
 fig = plt.figure(figsize=(8, 5))
 ax = fig.gca()
 
 self_energies= xarpes.CreateSelfEnergies([
-    self_energy, self_left])
+    self_energy, 
+    self_left
+    ])
 
-fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', self_energies=self_energies, 
-             ax=ax, markersize=1.5)
+fig = bmap.plot(abscissa='momentum', ordinate='electron_energy',
+                self_energies=self_energies,  ax=ax, markersize=1.0)
 ```
 
 ```{python}
@@ -466,4 +470,6 @@ fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax)
 # ax = fig.gca()
 
 # fig = mdcs.plot(distributions=guess_dists, ax=ax, energy_value=-0.003)
+
+
 ```

@@ -349,7 +349,7 @@ class BandMap:
 
     @add_fig_kwargs
     def plot(self, abscissa='momentum', ordinate='electron_energy',
-            self_energies=None, ax=None, **kwargs):
+             self_energies=None, ax=None, markersize=None, **kwargs):
         r"""
         Plot the band map. Optionally attach a collection of self-energies,
         e.g. a CreateSelfEnergies instance or any iterable of self-energy
@@ -358,8 +358,8 @@ class BandMap:
         When self-energies are present and ``abscissa='momentum'``, their
         MDC maxima are overlaid with 95 % confidence intervals.
         """
+        import warnings
 
-        # Validate options early
         valid_abscissa = ('angle', 'momentum')
         valid_ordinate = ('kinetic_energy', 'electron_energy')
 
@@ -374,13 +374,6 @@ class BandMap:
                 f"Valid options: {valid_ordinate}"
             )
 
-        # Extract optional marker-size override early (before any pcolormesh).
-        marker_kws = {}
-        for key in ("markersize", "ms"):
-            if key in kwargs:
-                marker_kws["markersize"] = kwargs.pop(key)
-                break
-
         # Optionally store self-energies on the instance
         if self_energies is not None:
 
@@ -388,11 +381,9 @@ class BandMap:
             if abscissa == 'angle' and isinstance(
                 self_energies, (list, tuple, CreateSelfEnergies)
             ):
-                raise ValueError(
-                    "MDC maxima cannot be plotted against angles; they are "
-                    "defined in momentum space. Use abscissa='momentum' when "
-                    "passing a list of self-energies."
-                )
+                raise ValueError( "MDC maxima cannot be plotted against "
+                "angles; they are defined in momentum space. Use " \
+                "abscissa='momentum' when passing a list of self-energies.")
 
             if not isinstance(self_energies, CreateSelfEnergies):
                 self_energies = CreateSelfEnergies(self_energies)
@@ -402,60 +393,65 @@ class BandMap:
             self._self_energies = None
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
+        # Below, **kwargs is 
 
         Angl, Ekin = np.meshgrid(self.angles, self.ekin)
-        mesh = None  # sentinel to detect missing branch
-
+        
         if abscissa == 'angle':
             ax.set_xlabel('Angle ($\\degree$)')
             if ordinate == 'kinetic_energy':
-                mesh = ax.pcolormesh(
-                    Angl, Ekin, self.intensities, shading='auto',
-                    cmap=plt.get_cmap('bone').reversed(), **kwargs
-                )
+                mesh = ax.pcolormesh(Angl, Ekin, self.intensities, 
+                    shading='auto', cmap=plt.get_cmap('bone').reversed(), 
+                        **kwargs)
                 ax.set_ylabel('$E_{\\mathrm{kin}}$ (eV)')
             elif ordinate == 'electron_energy':
                 Enel = Ekin - self.hnuminphi
-                mesh = ax.pcolormesh(
-                    Angl, Enel, self.intensities, shading='auto',
-                    cmap=plt.get_cmap('bone').reversed(), **kwargs
-                )
+                mesh = ax.pcolormesh(Angl, Enel, self.intensities, 
+                    shading='auto', cmap=plt.get_cmap('bone').reversed(), 
+                        **kwargs)
                 ax.set_ylabel('$E-\\mu$ (eV)')
 
         elif abscissa == 'momentum':
-            Mome = np.sqrt(Ekin / pref) * np.sin(Angl * dtor)
             ax.set_xlabel(r'$k_{//}$ ($\mathrm{\AA}^{-1}$)')
-            if ordinate == 'kinetic_energy':
-                mesh = ax.pcolormesh(
-                    Mome, Ekin, self.intensities, shading='auto',
-                    cmap=plt.get_cmap('bone').reversed(), **kwargs
-                )
-                ax.set_ylabel('$E_{\\mathrm{kin}}$ (eV)')
-            elif ordinate == 'electron_energy':
-                Enel = Ekin - self.hnuminphi
-                mesh = ax.pcolormesh(
-                    Mome, Enel, self.intensities, shading='auto',
-                    cmap=plt.get_cmap('bone').reversed(), **kwargs
-                )
-                ax.set_ylabel('$E-\\mu$ (eV)')
 
-        # If no branch set 'mesh', fail with a clear message
-        if mesh is None:
-            raise RuntimeError(
-                "No plot produced for the combination: "
-                f"abscissa='{abscissa}', ordinate='{ordinate}'. "
-                f"Valid abscissa: {valid_abscissa}; "
-                f"valid ordinate: {valid_ordinate}."
-            )
+            with warnings.catch_warnings(record=True) as wlist:
+                warnings.filterwarnings("always",
+                    message=("The input coordinates to pcolormesh are "
+                        "interpreted as cell centers, but are not "
+                        "monotonically increasing or decreasing."),
+                    category=UserWarning)
 
-        # Overlay MDC maxima from attached self-energies, if any.
+                Mome = np.sqrt(Ekin / pref) * np.sin(Angl * dtor)
+
+                if ordinate == 'kinetic_energy':
+                    mesh = ax.pcolormesh(Mome, Ekin, self.intensities,
+                        shading='auto', cmap=plt.get_cmap('bone').reversed(), 
+                        **kwargs)
+                    ax.set_ylabel('$E_{\\mathrm{kin}}$ (eV)')
+
+                elif ordinate == 'electron_energy':
+                    Enel = Ekin - self.hnuminphi
+                    mesh = ax.pcolormesh(Mome, Enel, self.intensities, 
+                        shading='auto', cmap=plt.get_cmap('bone').reversed(), 
+                        **kwargs)
+                    ax.set_ylabel('$E-\\mu$ (eV)')
+
+            if any("cell centers" in str(w.message) for w in wlist):
+                warnings.warn("Conversion from angle to momenta causes warping "
+                              "of the cell centers. \n Cell edges of the "
+                              "mesh plot may look irregular.", UserWarning, 
+                              stacklevel=2)
+
         if abscissa == 'momentum' and self._self_energies is not None:
             for self_energy in self._self_energies:
                 mdc_maxima = getattr(self_energy, "mdc_maxima", None)
+
+                # If this self-energy doesn't contain maxima, don't plot them
                 if mdc_maxima is None:
                     continue
 
-                peak_sigma = getattr(self_energy, "peak_positions_sigma", None)
+                peak_sigma = getattr(self_energy, "peak_positions_sigma",
+                    None)
                 xerr = stdv * peak_sigma if peak_sigma is not None else None
 
                 if ordinate == 'kinetic_energy':
@@ -467,24 +463,16 @@ class BandMap:
                 label = getattr(self_energy, "label", None)
 
                 if xerr is not None:
-                    ax.errorbar(
-                        x_vals,
-                        y_vals,
-                        xerr=xerr,
-                        fmt='o',
-                        linestyle='',
-                        label=label,
-                        **marker_kws,
-                    )
+                    ax.errorbar(x_vals, y_vals, xerr=xerr, fmt='o',
+                                linestyle='', label=label,
+                                markersize=markersize)
                 else:
-                    ax.plot(
-                        x_vals,
-                        y_vals,
-                        linestyle='',
-                        marker='o',
-                        label=label,
-                        **marker_kws,
-                    )
+                    ax.plot(x_vals, y_vals, linestyle='', marker='o',
+                            label=label, markersize=markersize)
+
+            handles, labels = ax.get_legend_handles_labels()
+            if any(labels):
+                ax.legend()
 
             handles, labels = ax.get_legend_handles_labels()
             if any(labels):

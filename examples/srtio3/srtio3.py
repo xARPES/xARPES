@@ -46,8 +46,6 @@ print('The optimised h nu - Phi = ' + f'{bmap.hnuminphi:.4f}' + ' +/- '
       + f'{bmap.hnuminphi_std:.4f}' + ' eV.')
 
 
-from xarpes.constants import dtor
-
 k_0 = -0.0014 # 0.02
 theta_0 = 0
 
@@ -61,7 +59,7 @@ xarpes.SpectralQuadratic(amplitude=1800, peak=-3.6, broadening=0.0004,
 
 import numpy as np
 
-mat_el = lambda x: np.sin((x - theta_0) * dtor) ** 2
+mat_el = lambda x: np.sin((x - theta_0) * xarpes.dtor) ** 2
 
 mat_args = {}
 
@@ -78,9 +76,8 @@ fig = mdcs.visualize_guess(distributions=guess_dists, matrix_element=mat_el,
                            matrix_args=mat_args, energy_value=-0.000, ax=ax)
 
 # #### Note on interactive figures
-# - Operability of the interactive figure is sensitive to configuration of the plotting backend.
-# - With Python V>=3.13 in a conda environment, the figure may fail to show up more than once. In that case, the user could try to run "conda env config vars unset MPLBACKEND" inside the conda environment; in Python, this command can be preceded with an exclamation mark ("!conda env ...") such that the command is executed in the terminal. The reset should work after restarting the conda environment.
-# - As a fallback, the user may switch "%matplotlib widget" to "%matplotlib qt", after which the figure should pop up in an external window.
+# - The interactive figure might not work inside the Jupyter notebooks, despite our best efforts to ensure stability.
+# - As a fallback, the user may switch from "%matplotlib widget" to "%matplotlib qt", after which the figure should pop up in an external window.
 
 
 fig = plt.figure(figsize=(7, 5))
@@ -98,7 +95,7 @@ fig = mdcs.fit_selection(distributions=guess_dists, matrix_element=mat_el,
 # - However, this would also require setting boundaries for the fitting range.  
 # - Instead, the user is advised to carefully check correspondence of peak maxima with MDC fitting results.
 
-fermi_one = 0.122 # 0.142
+fermi_one = 0.142
 
 self_energy = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Inner_band_1', 
                                 bare_mass=0.6, fermi_wavevector=fermi_one, side='right'))
@@ -137,10 +134,8 @@ plt.legend(); plt.show()
 
 import numpy as np
 
-from xarpes.constants import pref, dtor
-
 Angl, Ekin = np.meshgrid(bmap.angles, bmap.ekin)
-Mome = np.sqrt(Ekin / xarpes.pref) * np.sin(Angl * dtor)
+Mome = np.sqrt(Ekin / xarpes.pref) * np.sin(Angl * xarpes.dtor)
 
 kmin, kmax = np.min(Mome), np.max(Mome)
 
@@ -231,8 +226,8 @@ ax.set_xlim([0, 0.25]); ax.set_ylim([-0.15, 0.05])
 
 plt.legend()
 
-# Put <1 zorder such that scatters aren't overrridden
-bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax, zorder=0.5)
+
+bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax)
 
 plt.show()
 
@@ -494,8 +489,7 @@ plt.show()
 
 # plt.legend()
 
-# # Put <1 zorder such that scatters aren't overrridden
-# bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax, zorder=0.5)
+# bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax)
 
 # plt.show()
 
