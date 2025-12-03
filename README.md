@@ -65,10 +65,10 @@ Example for Linux:
 
 Answer `y` to questions. Create and activate a new environment:
 
-    conda create -n <my_env> -c defaults -c conda-forge  
+    conda create -n <my_env> -c conda-forge  
     conda activate <my_env>
 
-Where `<my_env>` must be replaced by your desired name.
+Where `<my_env>` must be replaced by your desired name. Package compatibility ssues may arise if conda installs from different channels. This can be prevented by appending `--strict-channel-priority` to the creation command.
 
 ### Installing xARPES
 
