@@ -348,7 +348,8 @@ class BandMap:
 
     @add_fig_kwargs
     def plot(self, abscissa='momentum', ordinate='electron_energy',
-             self_energies=None, ax=None, markersize=None, **kwargs):
+             self_energies=None, ax=None, markersize=None,
+             plot_dispersions=True, **kwargs):
         r"""
         Plot the band map. Optionally overlay a collection of self-energies,
         e.g. a CreateSelfEnergies instance or any iterable of self-energy
@@ -374,24 +375,15 @@ class BandMap:
                 f"Valid options: {valid_ordinate}"
             )
 
-        # Local self-energies container (do not store on self)
-        se_iter = None
         if self_energies is not None:
 
             # MDC maxima are defined in momentum space, not angle space
-            if abscissa == 'angle' and isinstance(
-                self_energies, (list, tuple, CreateSelfEnergies)
-            ):
+            if abscissa == 'angle':
                 raise ValueError(
                     "MDC maxima cannot be plotted against angles; they are "
                     "defined in momentum space. Use abscissa='momentum' "
-                    "when passing a list of self-energies."
+                    "when passing self-energies."
                 )
-
-            if not isinstance(self_energies, CreateSelfEnergies):
-                se_iter = CreateSelfEnergies(self_energies)
-            else:
-                se_iter = self_energies
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
@@ -432,6 +424,9 @@ class BandMap:
                 )
 
                 Mome = np.sqrt(Ekin / pref) * np.sin(Angl * dtor)
+                disp_momenta = np.linspace(
+                    np.min(Mome), np.max(Mome), len(self.angles)
+                )
 
                 if ordinate == 'kinetic_energy':
                     mesh = ax.pcolormesh(
@@ -441,7 +436,6 @@ class BandMap:
                         **kwargs
                     )
                     ax.set_ylabel('$E_{\\mathrm{kin}}$ (eV)')
-
                 elif ordinate == 'electron_energy':
                     Enel = Ekin - self.hnuminphi
                     mesh = ax.pcolormesh(
@@ -452,6 +446,8 @@ class BandMap:
                     )
                     ax.set_ylabel('$E-\\mu$ (eV)')
 
+                y_lims = ax.get_ylim()
+
             if any("cell centers" in str(w.message) for w in wlist):
                 warnings.warn(
                     "Conversion from angle to momenta causes warping of the "
@@ -461,13 +457,49 @@ class BandMap:
                     stacklevel=2,
                 )
 
-        if abscissa == 'momentum' and se_iter is not None:
-            for self_energy in se_iter:
+        if abscissa == 'momentum' and self_energies is not None:
+            for self_energy in self_energies:
+
                 mdc_maxima = getattr(self_energy, "mdc_maxima", None)
 
-                # If this self-energy doesn't contain maxima, don't plot them
+                # If this self-energy doesn't contain maxima, don't plot
                 if mdc_maxima is None:
                     continue
+
+                # Get next color from the line property cycle
+                color = next(ax._get_lines.prop_cycler)['color']
+
+                # Bare-band dispersion for SpectralLinear self-energies
+                spec_class = getattr(
+                    self_energy, "_class",
+                    self_energy.__class__.__name__,
+                )
+
+                if plot_dispersions and spec_class == "SpectralLinear":
+                    if ordinate == 'electron_energy':
+                        disp_vals = (
+                            self_energy.fermi_velocity
+                            * (disp_momenta
+                               - self_energy.fermi_wavevector)
+                        )
+                    else:  # kinetic energy
+                        disp_vals = (
+                            self_energy.fermi_velocity
+                            * (disp_momenta
+                               - self_energy.fermi_wavevector)
+                            + self.hnuminphi
+                        )
+
+                    band_label = getattr(self_energy, "label", None)
+                    if band_label is not None:
+                        band_label = f"{band_label} (bare)"
+
+                    ax.plot(
+                        disp_momenta, disp_vals,
+                        label=band_label,
+                        linestyle='--',
+                        color=color,
+                    )
 
                 peak_sigma = getattr(
                     self_energy, "peak_positions_sigma", None
@@ -476,7 +508,7 @@ class BandMap:
 
                 if ordinate == 'kinetic_energy':
                     y_vals = self_energy.ekin_range
-                else:  # electron energy
+                else:
                     y_vals = self_energy.enel_range
 
                 x_vals = mdc_maxima
@@ -487,21 +519,25 @@ class BandMap:
                         x_vals, y_vals, xerr=xerr, fmt='o',
                         linestyle='', label=label,
                         markersize=markersize,
+                        color=color, ecolor=color,
                     )
                 else:
                     ax.plot(
                         x_vals, y_vals, linestyle='',
                         marker='o', label=label,
                         markersize=markersize,
+                        color=color,
                     )
 
             handles, labels = ax.get_legend_handles_labels()
             if any(labels):
                 ax.legend()
 
+            ax.set_ylim(y_lims)
+
         plt.colorbar(mesh, ax=ax, label='counts (-)')
         return fig
-
+    
     @add_fig_kwargs
     def fit_fermi_edge(self, hnuminphi_guess, background_guess=0.0,
                        integrated_weight_guess=1.0, angle_min=-np.inf,
