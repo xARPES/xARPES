@@ -17,8 +17,6 @@ import os
 # Default plot configuration from xarpes.plotting.py
 xarpes.plot_settings('default')
 
-# If needed, close figures before running other cells, if figures show up in the wrong places.
-
 script_dir = xarpes.set_script_dir()
 
 dfld = 'data_sets'    # Folder containing the data

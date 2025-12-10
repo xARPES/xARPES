@@ -27,9 +27,6 @@ import os
 
 # Default plot configuration from xarpes.plotting.py
 xarpes.plot_settings('default')
-
-# If needed, close figures before running other cells, if figures show up in the wrong places.
-get_ipython().events.register('pre_run_cell', lambda info: plt.close('all'))
 ```
 
 ```{python}
