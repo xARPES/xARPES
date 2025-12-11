@@ -174,5 +174,6 @@ cython_debug/
 .vscode/
 
 # Ignore conversion scripts if placed in examples folder
-examples/Rmd2py.py
 examples/Rmd2ipynb.py
+examples/ipynb2Rmd2py.py
+examples/Rmd2py.py

@@ -10,7 +10,9 @@ This project is currently undergoing **beta testing**. Some of the functionaliti
 
 # Contributing
 
-Contributions to the code are most welcome. xARPES is intended to co-develop alongside the increasing complexity of experimental ARPES data sets. Contributions can be made by forking the code and creating a pull request. Importing of file formats from different beamlines is particularly encouraged. Files useful for developers can be found in `/dev_tools`, such as the `Rmd2py.py` script for the development of examples.
+Contributions to the code are most welcome. xARPES is intended to co-develop alongside the increasing complexity of experimental ARPES data sets. Contributions can be made by forking the code and creating a pull request. Importing of file formats from different beamlines is particularly encouraged. For development of the examples, the following scripts in `/dev_tools` could be useful:
+- The `Rmd2ipynb.py` file, to generate the `.ipynb` from which the examples can conveniently be developed; to be executed after cloning/pulling updated `.Rmd` and `.py` files.
+- The `ipynb2Rmd2py.py` file, to synchronise the `.Rmd` and `.py` files from the `.ipynb` file; to be executed right before pushing modifications to the repository.
 
 # Installation
 
