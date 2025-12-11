@@ -173,5 +173,7 @@ cython_debug/
 # VS Code
 .vscode/
 
-# Ignore Rmd2py.py script in examples folder
+# Ignore conversion scripts if placed in examples folder
+examples/Rmd2ipynb.py
+examples/ipynb2Rmd2py.py
 examples/Rmd2py.py
