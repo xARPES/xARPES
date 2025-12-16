@@ -127,8 +127,8 @@ xarpes.SpectralQuadratic(amplitude=8, peak=3.6, broadening=0.0004,
 ])
 
 energy_range = [-0.1, 0.003]
-angle_min=0.0
-angle_max=5.0
+angle_min=-5.0
+angle_max=0.0
 
 mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range))
 
@@ -143,14 +143,11 @@ ax = fig.gca()
 
 fig = mdcs.fit_selection(distributions=guess_dists, ax=ax)
 
-self_three = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Inner_nm_1', side='right',
+self_three = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Inner_nm_1', side='left',
                                 bare_mass=0.5, fermi_wavevector=0.142))
 
-self_four = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Outer_nm_2', side='right',
+self_four = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Outer_nm_2', side='left',
                                 bare_mass=0.62, fermi_wavevector=0.207))
-
-self_three.side='left'
-self_four.side='left'
 
 
 fig = plt.figure(figsize=(12, 6))
@@ -161,8 +158,8 @@ self_total = xarpes.CreateSelfEnergies([
     self_three, self_four
 ])
 
-fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax, self_energies=self_total,
-          plot_dispersions='domain')
+fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax, 
+                self_energies=self_total, plot_dispersions='domain')
 
 
 # fig = plt.figure(figsize=(7, 5))
