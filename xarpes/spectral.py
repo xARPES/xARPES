@@ -16,7 +16,7 @@ from igor2 import binarywave
 from .plotting import get_ax_fig_plt, add_fig_kwargs
 from .functions import fit_leastsq, extend_function
 from .distributions import FermiDirac, Linear
-from .constants import uncr, pref, dtor, kilo, stdv
+from .constants import KILO, PREF
 
 class BandMap:
     r"""
@@ -40,10 +40,10 @@ class BandMap:
         Angular-resolution standard deviation [deg].
     temperature : float, optional
         Sample temperature [K].
-    hnuminphi : float, optional
+    hnuminPhi : float, optional
         Photon energy minus work function [eV].
-    hnuminphi_std : float, optional
-        Standard deviation on ``hnuminphi`` [eV].
+    hnuminPhi_std : float, optional
+        Standard deviation on ``hnuminPhi`` [eV].
     transpose : bool, optional
         If True, transpose the input data.
     flip_ekin : bool, optional
@@ -61,17 +61,17 @@ class BandMap:
         Kinetic-energy axis in eV.
     enel : ndarray
         Electron-energy axis in eV.
-    hnuminphi : float or None
+    hnuminPhi : float or None
         Photon energy minus work function.
-    hnuminphi_std : float or None
-        Standard deviation on ``hnuminphi``.
+    hnuminPhi_std : float or None
+        Standard deviation on ``hnuminPhi``.
 
     """
 
     def __init__(self, datafile=None, intensities=None, angles=None,
                  ekin=None, enel=None, energy_resolution=None,
-                 angle_resolution=None, temperature=None, hnuminphi=None,
-                 hnuminphi_std=None, transpose=False, flip_ekin=False,
+                 angle_resolution=None, temperature=None, hnuminPhi=None,
+                 hnuminPhi_std=None, transpose=False, flip_ekin=False,
                  flip_angles=False):
 
         # --- IO / file load -------------------------------------------------
@@ -137,10 +137,10 @@ class BandMap:
         self.temperature = temperature
 
         # Work-function combo and its std
-        self._hnuminphi = None
-        self._hnuminphi_std = None
-        self.hnuminphi = hnuminphi
-        self.hnuminphi_std = hnuminphi_std
+        self._hnuminPhi = None
+        self._hnuminPhi_std = None
+        self.hnuminPhi = hnuminPhi
+        self.hnuminPhi_std = hnuminPhi_std
 
         # --- 1) Track which axis is authoritative --------------------------
         self._ekin_explicit = ekin is not None or (file_ekin is not None
@@ -149,11 +149,11 @@ class BandMap:
 
         # --- 2) Derive missing axis if possible ----------------------------
         if self._ekin is None and self._enel is not None \
-                and self._hnuminphi is not None:
-            self._ekin = self._enel + self._hnuminphi
+                and self._hnuminPhi is not None:
+            self._ekin = self._enel + self._hnuminPhi
         if self._enel is None and self._ekin is not None \
-                and self._hnuminphi is not None:
-            self._enel = self._ekin - self._hnuminphi
+                and self._hnuminPhi is not None:
+            self._enel = self._ekin - self._hnuminPhi
 
     # -------------------- Properties: data arrays ---------------------------
     @property
@@ -197,60 +197,60 @@ class BandMap:
     def temperature(self, x):
         self._temperature = x
 
-    # -------------------- 4) Sync ekin / enel / hnuminphi ------------------
+    # -------------------- 4) Sync ekin / enel / hnuminPhi ------------------
     @property
     def ekin(self):
         if self._ekin is None and self._enel is not None \
-                and self._hnuminphi is not None:
-            return self._enel + self._hnuminphi
+                and self._hnuminPhi is not None:
+            return self._enel + self._hnuminPhi
         return self._ekin
 
     @ekin.setter
     def ekin(self, x):
         if getattr(self, "_enel_explicit", False):
-            raise AttributeError('enel is explicit; set hnuminphi instead.')
+            raise AttributeError('enel is explicit; set hnuminPhi instead.')
         self._ekin = x
         self._ekin_explicit = True
         if not getattr(self, "_enel_explicit", False) \
-                and self._hnuminphi is not None and x is not None:
-            self._enel = x - self._hnuminphi
+                and self._hnuminPhi is not None and x is not None:
+            self._enel = x - self._hnuminPhi
 
     @property
     def enel(self):
         if self._enel is None and self._ekin is not None \
-                and self._hnuminphi is not None:
-            return self._ekin - self._hnuminphi
+                and self._hnuminPhi is not None:
+            return self._ekin - self._hnuminPhi
         return self._enel
 
     @enel.setter
     def enel(self, x):
         if getattr(self, "_ekin_explicit", False):
-            raise AttributeError('ekin is explicit; set hnuminphi instead.')
+            raise AttributeError('ekin is explicit; set hnuminPhi instead.')
         self._enel = x
         self._enel_explicit = True
         if not getattr(self, "_ekin_explicit", False) \
-                and self._hnuminphi is not None and x is not None:
-            self._ekin = x + self._hnuminphi
+                and self._hnuminPhi is not None and x is not None:
+            self._ekin = x + self._hnuminPhi
             
     @property
-    def hnuminphi(self):
+    def hnuminPhi(self):
         r"""Returns the photon energy minus the work function in eV if it has
         been set, either during instantiation, with the setter, or by fitting
         the Fermi-Dirac distribution to the integrated weight.
 
         Returns
         -------
-        hnuminphi : float, None
+        hnuminPhi : float, None
             Kinetic energy minus the work function [eV]
 
         """
-        return self._hnuminphi
+        return self._hnuminPhi
 
-    @hnuminphi.setter
-    def hnuminphi(self, x):
+    @hnuminPhi.setter
+    def hnuminPhi(self, x):
         r"""TBD
         """
-        self._hnuminphi = x
+        self._hnuminPhi = x
         # Re-derive the non-explicit axis if possible
         if not getattr(self, "_ekin_explicit", False) \
                 and self._enel is not None and x is not None:
@@ -260,30 +260,30 @@ class BandMap:
             self._enel = self._ekin - x
 
     @property
-    def hnuminphi_std(self):
+    def hnuminPhi_std(self):
         r"""Returns standard deviation of the photon energy minus the work
         function in eV.
 
         Returns
         -------
-        hnuminphi_std : float
+        hnuminPhi_std : float
             Standard deviation of energy minus the work function [eV]
             
         """
-        return self._hnuminphi_std
+        return self._hnuminPhi_std
 
-    @hnuminphi_std.setter
-    def hnuminphi_std(self, x):
+    @hnuminPhi_std.setter
+    def hnuminPhi_std(self, x):
         r"""Manually sets the standard deviation of photon energy minus the
         work function in eV.
 
         Parameters
         ----------
-        hnuminphi_std : float
+        hnuminPhi_std : float
             Standard deviation of energy minus the work function [eV]
 
         """
-        self._hnuminphi_std = x
+        self._hnuminPhi_std = x
 
     def shift_angles(self, shift):
         r"""
@@ -344,7 +344,7 @@ class BandMap:
                                     angle_min_index:angle_max_index + 1]
 
         return mdcs, angle_range_out, self.angle_resolution, \
-        enel_range_out, self.hnuminphi
+        enel_range_out, self.hnuminPhi
 
     @add_fig_kwargs
     def plot(self, abscissa='momentum', ordinate='electron_energy',
@@ -372,6 +372,7 @@ class BandMap:
           as "full".
         """
         import warnings
+        from . import settings_parameters as xprs
 
         plot_disp_mode = plot_dispersions
         valid_disp_modes = ('full', 'none', 'kink', 'domain')
@@ -418,7 +419,7 @@ class BandMap:
                     cmap=plt.get_cmap('bone').reversed())
                 ax.set_ylabel('$E_{\\mathrm{kin}}$ (eV)')
             elif ordinate == 'electron_energy':
-                Enel = Ekin - self.hnuminphi
+                Enel = Ekin - self.hnuminPhi
                 mesh = ax.pcolormesh(
                     Angl, Enel, self.intensities,
                     shading='auto',
@@ -439,7 +440,7 @@ class BandMap:
                     category=UserWarning,
                 )
 
-                Mome = np.sqrt(Ekin / pref) * np.sin(Angl * dtor)
+                Mome = np.sqrt(Ekin / PREF) * np.sin(np.deg2rad(Angl))
                 mome_min = np.min(Mome)
                 mome_max = np.max(Mome)
                 full_disp_momenta = np.linspace(
@@ -453,7 +454,7 @@ class BandMap:
                         cmap=plt.get_cmap('bone').reversed())
                     ax.set_ylabel('$E_{\\mathrm{kin}}$ (eV)')
                 elif ordinate == 'electron_energy':
-                    Enel = Ekin - self.hnuminphi
+                    Enel = Ekin - self.hnuminPhi
                     mesh = ax.pcolormesh(
                         Mome, Enel, self.intensities,
                         shading='auto',
@@ -487,7 +488,8 @@ class BandMap:
                 peak_sigma = getattr(
                     self_energy, "peak_positions_sigma", None
                 )
-                xerr = stdv * peak_sigma if peak_sigma is not None else None
+                xerr = xprs.sigma_confidence * peak_sigma if peak_sigma is \
+                    not None else None
 
                 if ordinate == 'kinetic_energy':
                     y_vals = self_energy.ekin_range
@@ -606,15 +608,13 @@ class BandMap:
                             )
 
                         dk = disp_momenta - center_k
-                        base_disp = (
-                            pref * (dk ** 2 - fermi_k ** 2) / bare_mass
-                        )
+                        base_disp = PREF * (dk ** 2 - fermi_k ** 2) / bare_mass
                     # --- end parameter checks and base_disp construction ---
 
                     if ordinate == 'electron_energy':
                         disp_vals = base_disp
                     else:  # kinetic energy
-                        disp_vals = base_disp + self.hnuminphi
+                        disp_vals = base_disp + self.hnuminPhi
 
                     band_label = getattr(self_energy, "label", None)
                     if band_label is not None:
@@ -637,18 +637,18 @@ class BandMap:
         return fig
     
     @add_fig_kwargs
-    def fit_fermi_edge(self, hnuminphi_guess, background_guess=0.0,
+    def fit_fermi_edge(self, hnuminPhi_guess, background_guess=0.0,
                        integrated_weight_guess=1.0, angle_min=-np.inf,
                        angle_max=np.inf, ekin_min=-np.inf,
                        ekin_max=np.inf, ax=None, **kwargs):
         r"""Fits the Fermi edge of the band map and plots the result.
-        Also sets hnuminphi, the kinetic energy minus the work function in eV.
+        Also sets hnuminPhi, the kinetic energy minus the work function in eV.
         The fitting includes an energy convolution with an abscissa range
         expanded by 5 times the energy resolution standard deviation.
 
         Parameters
         ----------
-        hnuminphi_guess : float
+        hnuminPhi_guess : float
             Initial guess for kinetic energy minus the work function [eV]
         background_guess : float
             Initial guess for background intensity [counts]
@@ -694,13 +694,13 @@ class BandMap:
                 min_angle_index:max_angle_index], axis=1)
 
         fdir_initial = FermiDirac(temperature=self.temperature,
-                                  hnuminphi=hnuminphi_guess,
+                                  hnuminPhi=hnuminPhi_guess,
                                   background=background_guess,
                                   integrated_weight=integrated_weight_guess,
                                   name='Initial guess')
 
         parameters = np.array(
-            [hnuminphi_guess, background_guess, integrated_weight_guess])
+            [hnuminPhi_guess, background_guess, integrated_weight_guess])
 
         extra_args = (self.temperature,)
 
@@ -708,12 +708,12 @@ class BandMap:
         parameters, energy_range, integrated_intensity, fdir_initial,
         self.energy_resolution, None, *extra_args)
 
-        # Update hnuminphi; automatically sets self.enel
-        self.hnuminphi = popt[0]
-        self.hnuminphi_std = np.sqrt(np.diag(pcov)[0])
+        # Update hnuminPhi; automatically sets self.enel
+        self.hnuminPhi = popt[0]
+        self.hnuminPhi_std = np.sqrt(np.diag(pcov)[0])
 
         fdir_final = FermiDirac(temperature=self.temperature,
-                                hnuminphi=self.hnuminphi, background=popt[1],
+                                hnuminPhi=self.hnuminPhi, background=popt[1],
                                 integrated_weight=popt[2],
                                 name='Fitted result')
 
@@ -741,17 +741,17 @@ class BandMap:
 
 
     @add_fig_kwargs
-    def correct_fermi_edge(self, hnuminphi_guess=None, background_guess=0.0,
+    def correct_fermi_edge(self, hnuminPhi_guess=None, background_guess=0.0,
                        integrated_weight_guess=1.0, angle_min=-np.inf,
                        angle_max=np.inf, ekin_min=-np.inf, ekin_max=np.inf,
                        slope_guess=0, offset_guess=None,
                            true_angle=0, ax=None, **kwargs):
         r"""TBD
-        hnuminphi_guess should be estimate at true angle
+        hnuminPhi_guess should be estimate at true angle
 
         Parameters
         ----------
-        hnuminphi_guess : float, optional
+        hnuminPhi_guess : float, optional
             Initial guess for kinetic energy minus the work function [eV].
 
         Other parameters
@@ -766,10 +766,11 @@ class BandMap:
 
         """
         from scipy.ndimage import map_coordinates
+        from . import settings_parameters as xprs
         
-        if hnuminphi_guess is None:
+        if hnuminPhi_guess is None:
             raise ValueError('Please provide an initial guess for ' +
-                             'hnuminphi.')
+                             'hnuminPhi.')
  
         # Here some loop where it fits all the Fermi edges
         angle_min_index = np.abs(self.angles - angle_min).argmin()
@@ -787,17 +788,17 @@ class BandMap:
         nmps = np.zeros(angle_shape)
         stds = np.zeros(angle_shape)
         
-        hnuminphi_left = hnuminphi_guess - (true_angle - angle_min) \
+        hnuminPhi_left = hnuminPhi_guess - (true_angle - angle_min) \
         * slope_guess
   
         fdir_initial = FermiDirac(temperature=self.temperature,
-                      hnuminphi=hnuminphi_left,
+                      hnuminPhi=hnuminPhi_left,
                       background=background_guess,
                       integrated_weight=integrated_weight_guess,
                       name='Initial guess')
         
         parameters = np.array(
-                [hnuminphi_left, background_guess, integrated_weight_guess])
+                [hnuminPhi_left, background_guess, integrated_weight_guess])
         
         extra_args = (self.temperature,)
  
@@ -813,7 +814,7 @@ class BandMap:
         
         # Offset at true angle if not set before
         if offset_guess is None:    
-            offset_guess = hnuminphi_guess - slope_guess * true_angle 
+            offset_guess = hnuminPhi_guess - slope_guess * true_angle 
             
         parameters = np.array([offset_guess, slope_guess])
         
@@ -824,9 +825,9 @@ class BandMap:
 
         linsp = lin_fun(angle_range, popt[0], popt[1])
             
-        # Update hnuminphi; automatically sets self.enel
-        self.hnuminphi = lin_fun(true_angle, popt[0], popt[1])
-        self.hnuminphi_std = np.sqrt(true_angle**2 * pcov[1, 1] + pcov[0, 0] 
+        # Update hnuminPhi; automatically sets self.enel
+        self.hnuminPhi = lin_fun(true_angle, popt[0], popt[1])
+        self.hnuminPhi_std = np.sqrt(true_angle**2 * pcov[1, 1] + pcov[0, 0] 
                                      + 2 * true_angle * pcov[0, 1])
                     
         Angl, Ekin = np.meshgrid(self.angles, self.ekin)
@@ -839,7 +840,7 @@ class BandMap:
                        shading='auto', cmap=plt.get_cmap('bone').reversed(),
                              zorder=1)
 
-        ax.errorbar(angle_range, nmps, yerr=uncr * stds, zorder=1)
+        ax.errorbar(angle_range, nmps, yerr=xprs.sigma_confidence * stds, zorder=1)
         ax.plot(angle_range, linsp, zorder=2)
         
         cbar = plt.colorbar(mesh, ax=ax, label='counts (-)')
@@ -874,7 +875,7 @@ class MDCs:
     enel : ndarray or float
         Electron binding energies of the MDC slices [eV].
         Can be a scalar for a single MDC.
-    hnuminphi : float
+    hnuminPhi : float
         Photon energy minus work function, used to convert ``enel`` to
         kinetic energy [eV].
 
@@ -889,8 +890,8 @@ class MDCs:
     enel : ndarray or float
         Electron binding energies [eV], as given at construction.
     ekin : ndarray or float
-        Kinetic energies [eV], computed as ``enel + hnuminphi``.
-    hnuminphi : float
+        Kinetic energies [eV], computed as ``enel + hnuminPhi``.
+    hnuminPhi : float
         Photon energy minus work function [eV].
     ekin_range : ndarray
         Kinetic-energy values of the slices that were actually fitted.
@@ -922,13 +923,13 @@ class MDCs:
     
     """
 
-    def __init__(self, intensities, angles, angle_resolution, enel, hnuminphi):
+    def __init__(self, intensities, angles, angle_resolution, enel, hnuminPhi):
         # Core input data (read-only)
         self._intensities = intensities
         self._angles = angles
         self._angle_resolution = angle_resolution
         self._enel = enel
-        self._hnuminphi = hnuminphi
+        self._hnuminPhi = hnuminPhi
 
         # Derived attributes (populated by fit_selection)
         self._ekin_range = None
@@ -956,18 +957,18 @@ class MDCs:
         raise AttributeError("`enel` is read-only; set it via the constructor.")
 
     @property
-    def hnuminphi(self):
+    def hnuminPhi(self):
         """Work-function/photon-energy offset. Read-only."""
-        return self._hnuminphi
+        return self._hnuminPhi
 
-    @hnuminphi.setter
-    def hnuminphi(self, _):
-        raise AttributeError("`hnuminphi` is read-only; set it via the constructor.")
+    @hnuminPhi.setter
+    def hnuminPhi(self, _):
+        raise AttributeError("`hnuminPhi` is read-only; set it via the constructor.")
 
     @property
     def ekin(self):
-        """Kinetic energy array: enel + hnuminphi (computed on the fly)."""
-        return self._enel + self._hnuminphi
+        """Kinetic energy array: enel + hnuminPhi (computed on the fly)."""
+        return self._enel + self._hnuminPhi
 
     @ekin.setter
     def ekin(self, _):
@@ -1092,7 +1093,7 @@ class MDCs:
 
             intensities = self.intensities
             ax.scatter(angles, intensities, label="Data")
-            ax.set_title(f"Energy slice: {energies * kilo:.3f} meV")
+            ax.set_title(f"Energy slice: {energies * KILO:.3f} meV")
 
             # --- y-only autoscale, preserve x ---
             x0, x1 = ax.get_xlim()                 # keep current x-range
@@ -1117,7 +1118,7 @@ class MDCs:
                 idx = int(np.abs(energies - energy_value).argmin())
                 intensities = self.intensities[idx]
                 ax.scatter(angles, intensities, label="Data")
-                ax.set_title(f"Energy slice: {energies[idx] * kilo:.3f} meV")
+                ax.set_title(f"Energy slice: {energies[idx] * KILO:.3f} meV")
 
                 # --- y-only autoscale, preserve x ---
                 x0, x1 = ax.get_xlim()                 # keep current x-range
@@ -1143,7 +1144,7 @@ class MDCs:
                 idx = 0
                 scatter = ax.scatter(angles, intensities[idx], label="Data")
                 ax.set_title(f"Energy slice: "
-                             f"{energies[indices[idx]] * kilo:.3f} meV")
+                             f"{energies[indices[idx]] * KILO:.3f} meV")
 
                 # Suppress single-point slider warning (when len(indices) == 1)
                 warnings.filterwarnings(
@@ -1187,7 +1188,7 @@ class MDCs:
 
                     # Update title and redraw
                     ax.set_title(f"Energy slice: "
-                                 f"{energies[indices[i]] * kilo:.3f} meV")
+                                 f"{energies[indices[i]] * KILO:.3f} meV")
                     fig.canvas.draw_idle()
 
                 slider.on_changed(update)
@@ -1245,7 +1246,7 @@ class MDCs:
         ax.set_xlabel('Angle ($\\degree$)')
         ax.set_ylabel('Counts (-)')
         ax.set_title(f"Energy slice: "
-                     f"{(kinergy - self.hnuminphi) * kilo:.3f} meV")
+                     f"{(kinergy - self.hnuminPhi) * KILO:.3f} meV")
         ax.scatter(self.angles, counts, label='Data')
 
         final_result = self._merge_and_plot(ax=ax, 
@@ -1357,7 +1358,7 @@ class MDCs:
                 mini = Minimizer(
                     residual, parameters,
                     fcn_args=(self.angles, intensity, self.angle_resolution,
-                              new_distributions, kinergy, self.hnuminphi,
+                              new_distributions, kinergy, self.hnuminPhi,
                               matrix_element, element_names)
                 )
             else:
@@ -1366,7 +1367,7 @@ class MDCs:
                 mini = Minimizer(
                     residual, parameters,
                     fcn_args=(self.angles, intensity, self.angle_resolution,
-                              new_distributions, kinergy, self.hnuminphi)
+                              new_distributions, kinergy, self.hnuminPhi)
                 )
 
             outcome = mini.minimize('least_squares')
@@ -1410,14 +1411,14 @@ class MDCs:
                 # evaluate each component on the extended grid
                 if getattr(dist, 'class_name', None) == 'SpectralQuadratic':
                     if (getattr(dist, 'center_angle', None) is not None) and (
-                        kinergy is None or self.hnuminphi is None
+                        kinergy is None or self.hnuminPhi is None
                     ):
                         raise ValueError(
                             'Spectral quadratic function is defined in terms '
                             'of a center angle. Please provide a kinetic energy '
-                            'and hnuminphi.'
+                            'and hnuminPhi.'
                         )
-                    extended_result = dist.evaluate(extend, kinergy, self.hnuminphi)
+                    extended_result = dist.evaluate(extend, kinergy, self.hnuminPhi)
                 else:
                     extended_result = dist.evaluate(extend)
 
@@ -1519,7 +1520,7 @@ class MDCs:
             ax.plot(self.angles, yfit, label="Fit")
             ax.scatter(self.angles, yres, label="Residual")
 
-            ax.set_title(f"Energy slice: {energies * kilo:.3f} meV")
+            ax.set_title(f"Energy slice: {energies * KILO:.3f} meV")
             ax.relim()          # recompute data limits from all artists
             ax.autoscale_view() # apply autoscaling + axes.ymargin padding
 
@@ -1569,7 +1570,7 @@ class MDCs:
                                        label="Residual")
 
             # Title + limits (use only the currently shown slice)
-            ax.set_title(f"Energy slice: {energies_sel[idx] * kilo:.3f} meV")
+            ax.set_title(f"Energy slice: {energies_sel[idx] * KILO:.3f} meV")
             ax.relim()             # recompute data limits from all artists
             ax.autoscale_view()    # apply autoscaling + axes.ymargin padding
 
@@ -1607,7 +1608,7 @@ class MDCs:
 
                 # Update title and redraw
                 ax.set_title(f"Energy slice: "
-                             f"{energies_sel[i] * kilo:.3f} meV")
+                             f"{energies_sel[i] * KILO:.3f} meV")
                 fig.canvas.draw_idle()
 
             slider.on_changed(update)
@@ -1671,7 +1672,7 @@ class MDCs:
         ax.set_xlabel('Angle ($\\degree$)')
         ax.set_ylabel('Counts (-)')
         ax.set_title(f"Energy slice: "
-                     f"{(kinergy - self.hnuminphi) * kilo:.3f} meV")
+                     f"{(kinergy - self.hnuminPhi) * KILO:.3f} meV")
         
         ax.scatter(self.angles, counts, label='Data')
 
@@ -1685,7 +1686,7 @@ class MDCs:
             mini = Minimizer(
                 residual, parameters,
                 fcn_args=(self.angles, counts, self.angle_resolution,
-                          new_distributions, kinergy, self.hnuminphi,
+                          new_distributions, kinergy, self.hnuminPhi,
                           matrix_element, element_names))
         else:
             parameters = construct_parameters(distributions)
@@ -1693,7 +1694,7 @@ class MDCs:
                                                     parameters)
             mini = Minimizer(residual, parameters,
                 fcn_args=(self.angles, counts, self.angle_resolution,
-                          new_distributions, kinergy, self.hnuminphi))
+                          new_distributions, kinergy, self.hnuminPhi))
 
         outcome = mini.minimize('least_squares')
         pcov = outcome.covar
@@ -1741,15 +1742,15 @@ class MDCs:
             # Special handling for SpectralQuadratic
             if getattr(dist, 'class_name', None) == 'SpectralQuadratic':
                 if (getattr(dist, 'center_angle', None) is not None) and (
-                    kinetic_energy is None or self.hnuminphi is None
+                    kinetic_energy is None or self.hnuminPhi is None
                 ):
                     raise ValueError(
                         'Spectral quadratic function is defined in terms '
                         'of a center angle. Please provide a kinetic energy '
-                        'and hnuminphi.'
+                        'and hnuminPhi.'
                     )
                 extended_result = dist.evaluate(extend, kinetic_energy, \
-                                                self.hnuminphi)
+                                                self.hnuminPhi)
             else:
                 extended_result = dist.evaluate(extend)
 
@@ -1799,7 +1800,7 @@ class MDCs:
         -------
         ekin_range : np.ndarray
             Kinetic-energy grid corresponding to the selected label.
-        hnuminphi : float
+        hnuminPhi : float
             Photoelectron work-function offset.
         label : str
             Label of the selected distribution.
@@ -1870,17 +1871,17 @@ class MDCs:
                     if key not in ("label", "_class"):
                         exported_parameters[key] = val
 
-        return (self._ekin_range, self.hnuminphi, select_label,
+        return (self._ekin_range, self.hnuminPhi, select_label,
                 selected_properties, exported_parameters)
 
 
 class SelfEnergy:
-    r"""Self-energy (ekin-leading; hnuminphi/ekin are read-only)."""
+    r"""Self-energy (ekin-leading; hnuminPhi/ekin are read-only)."""
 
-    def __init__(self, ekin_range, hnuminphi, label, properties, parameters):
+    def __init__(self, ekin_range, hnuminPhi, label, properties, parameters):
         # core read-only state
         self._ekin_range = ekin_range
-        self._hnuminphi = hnuminphi
+        self._hnuminPhi = hnuminPhi
         self._label = label
 
         # accept either a dict or a single-element list of dicts
@@ -1954,12 +1955,12 @@ class SelfEnergy:
     def enel_range(self):
         if self._ekin_range is None:
             return None
-        hnp = 0.0 if self._hnuminphi is None else self._hnuminphi
+        hnp = 0.0 if self._hnuminPhi is None else self._hnuminPhi
         return np.asarray(self._ekin_range) - hnp
 
     @property
-    def hnuminphi(self):
-        return self._hnuminphi
+    def hnuminPhi(self):
+        return self._hnuminPhi
 
     # ---------------- identifiers ----------------
     @property
@@ -2122,14 +2123,15 @@ class SelfEnergy:
                         "before accessing peak_positions and quantities that "
                         "depend on the latter."
                     )
-                kpar_mag = np.sqrt(self._ekin_range / pref) * \
-                    np.sin(np.abs(self._peak) * dtor)
+                kpar_mag = np.sqrt(self._ekin_range / PREF) * \
+                    np.sin(np.deg2rad(np.abs(self._peak)))
                 self._peak_positions = (-1.0 if self._side == "left" \
                                         else 1.0) * kpar_mag
             else:
-                self._peak_positions = np.sqrt(self._ekin_range / pref) \
-                * np.sin(self._peak * dtor)
+                self._peak_positions = np.sqrt(self._ekin_range / PREF) \
+                * np.sin(np.deg2rad(self._peak))
         return self._peak_positions
+    
 
     @property
     def peak_positions_sigma(self):
@@ -2137,9 +2139,9 @@ class SelfEnergy:
         if self._peak_positions_sigma is None:
             if self._peak_sigma is None or self._ekin_range is None:
                 return None
-            self._peak_positions_sigma = (np.sqrt(self._ekin_range / pref)
-                                          * np.abs(np.cos(self._peak * dtor))
-                                          * self._peak_sigma * dtor)
+            self._peak_positions_sigma = (np.sqrt(self._ekin_range / PREF) \
+                * np.abs(np.cos(np.deg2rad(self._peak))) \
+                * np.deg2rad(self._peak_sigma))
         return self._peak_positions_sigma
 
     @property
@@ -2153,7 +2155,7 @@ class SelfEnergy:
                     raise AttributeError("Cannot compute `imag` "
                     "(SpectralLinear): set `fermi_velocity` first.")
                 self._imag = np.abs(self._fermi_velocity) * np.sqrt(self._ekin_range \
-                     / pref) * self._broadening
+                     / PREF) * self._broadening
             else:
                 if self._bare_mass is None:
                     raise AttributeError("Cannot compute `imag` "
@@ -2173,7 +2175,7 @@ class SelfEnergy:
                     raise AttributeError("Cannot compute `imag_sigma` "
                     "(SpectralLinear): set `fermi_velocity` first.")
                 self._imag_sigma = np.abs(self._fermi_velocity) * \
-                    np.sqrt(self._ekin_range / pref) * self._broadening_sigma
+                    np.sqrt(self._ekin_range / PREF) * self._broadening_sigma
             else:
                 if self._bare_mass is None:
                     raise AttributeError("Cannot compute `imag_sigma` "
@@ -2200,7 +2202,7 @@ class SelfEnergy:
                     raise AttributeError("Cannot compute `real` "
                     "(SpectralQuadratic): set `bare_mass` and " \
                     "`fermi_wavevector` first.")
-                self._real = self.enel_range - (pref / \
+                self._real = self.enel_range - (PREF / \
                     self._bare_mass) * (self.peak_positions**2 \
                     - self._fermi_wavevector**2)
         return self._real
@@ -2221,7 +2223,7 @@ class SelfEnergy:
                     raise AttributeError("Cannot compute `real_sigma` "
                     "(SpectralQuadratic): set `bare_mass` and " \
                     "`fermi_wavevector` first.")
-                self._real_sigma = 2 * pref * self.peak_positions_sigma \
+                self._real_sigma = 2 * PREF * self.peak_positions_sigma \
                     * np.abs(self.peak_positions / self._bare_mass)
         return self._real_sigma
 
@@ -2287,6 +2289,7 @@ class SelfEnergy:
         fig : Matplotlib-Figure
             Figure containing the Σ'(E) plot.
         """
+        from . import settings_parameters as xprs
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
@@ -2303,7 +2306,7 @@ class SelfEnergy:
                     "Warning: some Σ'(E) uncertainty values are missing. "
                     "Error bars omitted at those energies."
                 )
-            kwargs.setdefault("yerr", stdv * y_sigma)
+            kwargs.setdefault("yerr", xprs.sigma_confidence * y_sigma)
 
         ax.errorbar(x, y, **kwargs)
         ax.set_xlabel(r"$E-\mu$ (eV)")
@@ -2328,6 +2331,7 @@ class SelfEnergy:
         fig : Matplotlib-Figure
             Figure containing the -Σ''(E) plot.
         """
+        from . import settings_parameters as xprs
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
@@ -2344,7 +2348,7 @@ class SelfEnergy:
                     "Warning: some -Σ''(E) uncertainty values are missing. "
                     "Error bars omitted at those energies."
                 )
-            kwargs.setdefault("yerr", stdv * y_sigma)
+            kwargs.setdefault("yerr", xprs.sigma_confidence * y_sigma)
 
         ax.errorbar(x, y, **kwargs)
         ax.set_xlabel(r"$E-\mu$ (eV)")
@@ -2356,6 +2360,7 @@ class SelfEnergy:
     @add_fig_kwargs
     def plot_both(self, ax=None, **kwargs):
         r"""Plot Σ'(E) and -Σ''(E) vs. E-μ on the same axis."""
+        from . import settings_parameters as xprs
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
@@ -2375,7 +2380,7 @@ class SelfEnergy:
                     "Warning: some Σ'(E) uncertainty values are missing. "
                     "Error bars omitted at those energies."
                 )
-            kw_real.setdefault("yerr", stdv * real_sigma)
+            kw_real.setdefault("yerr", xprs.sigma_confidence * real_sigma)
         kw_real.setdefault("label", real_label)
         ax.errorbar(x, real, **kw_real)
 
@@ -2387,7 +2392,7 @@ class SelfEnergy:
                     "Warning: some -Σ''(E) uncertainty values are missing. "
                     "Error bars omitted at those energies."
                 )
-            kw_imag.setdefault("yerr", stdv * imag_sigma)
+            kw_imag.setdefault("yerr", xprs.sigma_confidence * imag_sigma)
         kw_imag.setdefault("label", imag_label)
         ax.errorbar(x, imag, **kw_imag)
 

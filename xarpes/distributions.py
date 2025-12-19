@@ -6,7 +6,7 @@
 import numpy as np
 from .functions import extend_function
 from .plotting import get_ax_fig_plt, add_fig_kwargs
-from .constants import k_B, pref, dtor
+from .constants import K_B, PREF
 
 class CreateDistributions:
     r"""
@@ -95,7 +95,7 @@ class CreateDistributions:
 
     @add_fig_kwargs
     def plot(self, angle_range, angle_resolution, kinetic_energy=None,
-             hnuminphi=None, matrix_element=None, matrix_args=None, ax=None,
+             hnuminPhi=None, matrix_element=None, matrix_args=None, ax=None,
              **kwargs):
         r"""
         """
@@ -118,12 +118,12 @@ class CreateDistributions:
         for dist in self.distributions:
             if dist.class_name == 'SpectralQuadratic':
                 if (dist.center_angle is not None) and (kinetic_energy is
-                    None or hnuminphi is None):
+                    None or hnuminPhi is None):
                     raise ValueError('Spectral quadratic function is '
                     'defined in terms of a center angle. Please provide '
-                    'a kinetic energy and hnuminphi.')
+                    'a kinetic energy and hnuminPhi.')
                 extended_result = dist.evaluate(extend,
-                                            kinetic_energy, hnuminphi)
+                                            kinetic_energy, hnuminPhi)
             else:
                 extended_result = dist.evaluate(extend)
 
@@ -171,7 +171,7 @@ class Distribution:
 
     @add_fig_kwargs
     def plot(self, angle_range, angle_resolution, kinetic_energy=None,
-             hnuminphi=None, matrix_element=None, matrix_args=None,
+             hnuminPhi=None, matrix_element=None, matrix_args=None,
              ax=None, **kwargs):
         r"""Overwritten for FermiDirac distribution.
         """
@@ -188,7 +188,7 @@ class Distribution:
         extend, step, numb = extend_function(angle_range, angle_resolution)
 
         if self.class_name == 'SpectralQuadratic':
-            extended_result = self.evaluate(extend, kinetic_energy, hnuminphi)
+            extended_result = self.evaluate(extend, kinetic_energy, hnuminPhi)
         else:
             extended_result = self.evaluate(extend)
 
@@ -242,25 +242,25 @@ class FermiDirac(UniqueDistribution):
             \frac{A}{\rm{e}^{\beta(E_{\rm{kin}}-(h\nu-\Phi))}+1} + B
 
     with :math:`A` as :attr:`integrated_weight`, :math:`B` as
-    :attr:`background`, :math:`h\nu-\Phi` as :attr:`hnuminphi`, and
+    :attr:`background`, :math:`h\nu-\Phi` as :attr:`hnuminPhi`, and
     :math:`\beta=1/(k_{\rm{B}}T)` with :math:`T` as :attr:`temperature`.
 
     Parameters
     ----------
     temperature : float
         Temperature of the sample [K]
-    hnuminphi : float
+    hnuminPhi : float
         Kinetic energy minus the work function [eV]
     background : float
         Background spectral weight [counts]
     integrated_weight : float
         Integrated weight on top of the background [counts]
     """
-    def __init__(self, temperature, hnuminphi, background=0,
+    def __init__(self, temperature, hnuminPhi, background=0,
                  integrated_weight=1, name='FermiDirac'):
         super().__init__(name)
         self.temperature = temperature
-        self.hnuminphi = hnuminphi
+        self.hnuminPhi = hnuminPhi
         self.background = background
         self.integrated_weight = integrated_weight
 
@@ -287,28 +287,28 @@ class FermiDirac(UniqueDistribution):
             self._temperature = x
 
         @property
-        def hnuminphi(self):
+        def hnuminPhi(self):
             r"""Returns the photon energy minus the work function of the FD
             distribution.
 
             Returns
             -------
-            hnuminphi: float
+            hnuminPhi: float
                 Kinetic energy minus the work function [eV]
             """
-            return self._hnuminphi
+            return self._hnuminPhi
 
-        @hnuminphi.setter
-        def hnuminphi(self, x):
+        @hnuminPhi.setter
+        def hnuminPhi(self, x):
             r"""Sets the photon energy minus the work function of the FD
             distribution.
 
             Parameters
             ----------
-            hnuminphi : float
+            hnuminPhi : float
                 Kinetic energy minus the work function [eV]
             """
-            self._hnuminphi = x
+            self._hnuminPhi = x
 
         @property
         def background(self):
@@ -354,7 +354,7 @@ class FermiDirac(UniqueDistribution):
             """
             self._integrated_weight = x
 
-    def __call__(self, energy_range, hnuminphi, background, integrated_weight,
+    def __call__(self, energy_range, hnuminPhi, background, integrated_weight,
                  temperature):
         """Call method to directly evaluate a FD distribution without having to
         instantiate a class instance.
@@ -363,7 +363,7 @@ class FermiDirac(UniqueDistribution):
         ----------
         energy_range : ndarray
             1D array on which to evaluate the FD distribution [eV]
-        hnuminphi : float
+        hnuminPhi : float
             Kinetic energy minus the work function [eV]
         background : float
             Background spectral weight [counts]
@@ -377,9 +377,9 @@ class FermiDirac(UniqueDistribution):
         evalf : ndarray
             1D array of the energy-convolved FD distribution [counts]
         """
-        k_BT = temperature * k_B
+        k_BT = temperature * K_B
 
-        return (integrated_weight / (1 + np.exp((energy_range - hnuminphi)
+        return (integrated_weight / (1 + np.exp((energy_range - hnuminPhi)
                / k_BT)) + background)
 
     def evaluate(self, energy_range):
@@ -396,10 +396,10 @@ class FermiDirac(UniqueDistribution):
         evalf : ndarray
             1D array of the evaluated FD distribution [counts]
         """
-        k_BT = self.temperature * k_B
+        k_BT = self.temperature * K_B
 
         return (self.integrated_weight
-            / (1 + np.exp((energy_range - self.hnuminphi) / k_BT))
+            / (1 + np.exp((energy_range - self.hnuminPhi) / k_BT))
             + self.background)
 
     @add_fig_kwargs
@@ -641,16 +641,17 @@ class SpectralLinear(Dispersion):
                 peak):
         r"""
         """
-        result = amplitude / np.pi * broadening / ((np.sin(angle_range * dtor)
-                            - np.sin(peak * dtor)) ** 2 + broadening ** 2)
+        result = amplitude / np.pi * broadening / \
+            ((np.sin(np.deg2rad(angle_range)) - np.sin(np.deg2rad(peak)))**2 \
+             + broadening ** 2)
         return result
 
     def evaluate(self, angle_range):
         r"""
         """
         return self.amplitude / np.pi * self.broadening / ((np.sin(
-        angle_range * dtor) - np.sin(self.peak * dtor)) ** 2 +
-        self.broadening ** 2)
+        np.deg2rad(angle_range)) - np.sin(np.deg2rad(self.peak)))** 2 +
+        self.broadening** 2)
 
     
 class SpectralQuadratic(Dispersion):
@@ -704,41 +705,42 @@ class SpectralQuadratic(Dispersion):
                              'energies. Please check again.')
 
     def __call__(self, angle_range, amplitude, broadening,
-                peak, kinetic_energy, hnuminphi, center_wavevector=None,
+                peak, kinetic_energy, hnuminPhi, center_wavevector=None,
                  center_angle=None):
         r"""TBD
         """
         self.check_center_coordinates(center_wavevector, center_angle)
 
         if center_wavevector is not None:
-            binding_angle = np.arcsin(np.sqrt(pref / kinetic_energy)
-                                      * center_wavevector) / dtor
+            binding_angle = np.rad2deg(np.arcsin(np.sqrt(PREF / kinetic_energy)
+                                      * center_wavevector))
             self.check_binding_angle(binding_angle)
         elif center_angle is not None:
-            binding_angle = self.center_angle * np.sqrt(hnuminphi /
+            binding_angle = self.center_angle * np.sqrt(hnuminPhi /
                                                       kinetic_energy)
 
-        return amplitude / np.pi * broadening / (((np.sin(angle_range * dtor)
-             - np.sin(binding_angle * dtor)) ** 2 - np.sin(peak * dtor) ** 2)
+        return amplitude / np.pi * broadening / (((np.sin(np.deg2rad(angle_range))
+             - np.sin(np.deg2rad(binding_angle)))** 2 - np.sin(np.deg2rad(peak))** 2)
              ** 2 + broadening ** 2)
 
-    def evaluate(self, angle_range, kinetic_energy, hnuminphi):
+    def evaluate(self, angle_range, kinetic_energy, hnuminPhi):
         r"""TBD
         """
         if self.center_wavevector is not None:
-            binding_angle = np.arcsin(np.sqrt(pref / kinetic_energy)
-                                      * self.center_wavevector) / dtor
+            binding_angle = np.rad2deg(np.arcsin(np.sqrt(PREF / kinetic_energy)
+                                      * self.center_wavevector))
             self.check_binding_angle(binding_angle)
         elif self.center_angle is not None:
-            binding_angle = self.center_angle * np.sqrt(hnuminphi /
+            binding_angle = self.center_angle * np.sqrt(hnuminPhi /
                                                       kinetic_energy)
 
-        return self.amplitude / np.pi * self.broadening / (((np.sin(
-            angle_range * dtor) - np.sin(binding_angle * dtor)) ** 2 - np.sin(
-            self.peak * dtor) ** 2) ** 2 + self.broadening ** 2)
+        return self.amplitude / np.pi * self.broadening / \
+            (((np.sin(np.deg2rad(angle_range)) - \
+               np.sin(np.deg2rad(binding_angle)))**2 - \
+                np.sin(np.deg2rad(self.peak))**2)**2 + self.broadening**2)
 
     @add_fig_kwargs
-    def plot(self, angle_range, angle_resolution, kinetic_energy, hnuminphi,
+    def plot(self, angle_range, angle_resolution, kinetic_energy, hnuminPhi,
              matrix_element=None, matrix_args=None, ax=None, **kwargs):
         r"""Overwrites generic class plotting method.
         """
@@ -751,7 +753,7 @@ class SpectralQuadratic(Dispersion):
 
         extend, step, numb = extend_function(angle_range, angle_resolution)
 
-        extended_result = self.evaluate(extend, kinetic_energy, hnuminphi)
+        extended_result = self.evaluate(extend, kinetic_energy, hnuminPhi)
 
         if matrix_element is not None:
             extended_result *= matrix_element(extend, **matrix_args)

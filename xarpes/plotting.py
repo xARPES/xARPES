@@ -11,54 +11,7 @@
 
 """Functions related to plotting."""
 
-from functools import wraps
-from IPython import get_ipython
 import matplotlib.pyplot as plt
-import matplotlib as mpl
-
-
-def plot_settings(name='default', register_pre_run=True):
-    """Configure default plotting style for xARPES."""
-
-    mpl.rc('xtick', labelsize=10, direction='in')
-    mpl.rc('ytick', labelsize=10, direction='in')
-    plt.rcParams['legend.frameon'] = False
-    lw = dict(default=2.0, large=4.0)[name]
-
-    mpl.rcParams.update({
-        'lines.linewidth': lw,
-        'lines.markersize': 3,
-        'xtick.major.size': 4,
-        'xtick.minor.size': 2,
-        'xtick.major.width': 0.8,
-        'font.size': 16,
-        'axes.ymargin': 0.15,
-    })
-
-    if register_pre_run:
-        _maybe_register_pre_run_close_all()
-
-
-def _maybe_register_pre_run_close_all():
-    """Register a pre_run_cell hook once, and only inside Jupyter."""
-
-    # Create the function attribute on first call
-    if not hasattr(_maybe_register_pre_run_close_all, "_registered"):
-        _maybe_register_pre_run_close_all._registered = False
-
-    if _maybe_register_pre_run_close_all._registered:
-        return
-
-    ip = get_ipython()
-    if ip is None or ip.__class__.__name__ != "ZMQInteractiveShell":
-        return
-
-    def _close_all(_info):
-        plt.close('all')
-
-    ip.events.register('pre_run_cell', _close_all)
-    _maybe_register_pre_run_close_all._registered = True
-
 
 def get_ax_fig_plt(ax=None, **kwargs):
     r"""Helper function used in plot functions supporting an optional `Axes`
@@ -100,6 +53,7 @@ def add_fig_kwargs(func):
     first element is a matplotlib figure, or None to signal some sort of
     error/unexpected event.
     """
+    from functools import wraps
     @wraps(func)
     def wrapper(*args, **kwargs):
         # pop the kwds used by the decorator.

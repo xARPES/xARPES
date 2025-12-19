@@ -61,7 +61,7 @@ fig = bmap.plot(abscissa='momentum', ordinate='kinetic_energy', ax=ax)
 fig, ax = plt.subplots(2, 1, figsize=(6, 8))
 
 bmap.correct_fermi_edge(
-      hnuminphi_guess=32, background_guess=1e2,
+      hnuminPhi_guess=32, background_guess=1e2,
       integrated_weight_guess=1e3, angle_min=-10, angle_max=10,
       ekin_min=31.96, ekin_max=32.1, true_angle=0,
       ax=ax[0], show=False, fig_close=False)
@@ -75,8 +75,8 @@ ax[0].set_title('Fermi correction fit')
 fig.subplots_adjust(top=0.92, hspace=0.1)
 plt.show()
 
-print('The optimised hnu - Phi=' + f'{bmap.hnuminphi:.4f}' + ' +/- '
-      + f'{1.96 * bmap.hnuminphi_std:.5f}' + ' eV.')
+print('The optimised hnu - Phi=' + f'{bmap.hnuminPhi:.4f}' + ' +/- '
+      + f'{1.96 * bmap.hnuminPhi_std:.5f}' + ' eV.')
 
 # fig = bmap.plot(ordinate='kinetic_energy', abscissa='angle')
 ```
@@ -87,13 +87,13 @@ print('The optimised hnu - Phi=' + f'{bmap.hnuminphi:.4f}' + ' +/- '
 fig = plt.figure(figsize=(6, 5))
 ax = fig.gca()
 
-fig = bmap.fit_fermi_edge(hnuminphi_guess=32, background_guess=1e5,
+fig = bmap.fit_fermi_edge(hnuminPhi_guess=32, background_guess=1e5,
                           integrated_weight_guess=1.5e6, angle_min=-10,
                           angle_max=10, ekin_min=31.96, ekin_max=32.1,
                           ax=ax, show=True, fig_close=True, title='Fermi edge fit')
 
-print('The optimised hnu - Phi=' + f'{bmap.hnuminphi:.4f}' + ' +/- '
-      + f'{1.96 * bmap.hnuminphi_std:.5f}' + ' eV.')
+print('The optimised hnu - Phi=' + f'{bmap.hnuminPhi:.4f}' + ' +/- '
+      + f'{1.96 * bmap.hnuminPhi_std:.5f}' + ' eV.')
 ```
 
 ```{python}
@@ -155,9 +155,13 @@ fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax,
 ```{python}
 # %matplotlib inline
 
+xarpes.parameter_settings(new_sigma=4)
+
 fig = plt.figure(figsize=(7, 5)); ax = fig.gca()
 
 fig = self_energy.plot_real(ax=ax)
+
+xarpes.parameter_settings(new_sigma=2)
 ```
 
 ```{python}

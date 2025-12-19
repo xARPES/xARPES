@@ -4,7 +4,6 @@
 """Separate functions mostly used in conjunction with various classes."""
 
 import numpy as np
-from .constants import fwhm_to_std, sigma_extend
 
 def resolve_param_name(params, label, pname):
     """
@@ -100,7 +99,7 @@ def construct_parameters(distribution_list, matrix_args=None):
 
 
 def residual(parameters, xdata, ydata, angle_resolution, new_distributions,
-             kinetic_energy, hnuminphi, matrix_element=None,
+             kinetic_energy, hnuminPhi, matrix_element=None,
              element_names=None):
     r"""
     """
@@ -120,8 +119,9 @@ def residual(parameters, xdata, ydata, angle_resolution, new_distributions,
     model = np.zeros_like(extend)
 
     for dist in new_distributions:
-        if getattr(dist, 'class_name', type(dist).__name__) == 'SpectralQuadratic':
-            part = dist.evaluate(extend, kinetic_energy, hnuminphi)
+        if getattr(dist, 'class_name', type(dist).__name__) == \
+            'SpectralQuadratic':
+            part = dist.evaluate(extend, kinetic_energy, hnuminPhi)
         else:
             part = dist.evaluate(extend)
 
@@ -137,9 +137,11 @@ def residual(parameters, xdata, ydata, angle_resolution, new_distributions,
 def extend_function(abscissa_range, abscissa_resolution):
     r"""TBD
     """
+    from .constants import FWHM2STD
+    from . import settings_parameters as xprs
     step_size = np.abs(abscissa_range[1] - abscissa_range[0])
-    step = abscissa_resolution / (step_size * fwhm_to_std)
-    numb = int(sigma_extend * step)
+    step = abscissa_resolution / (step_size * FWHM2STD)
+    numb = int(xprs.sigma_extend * step)
     extend = np.linspace(abscissa_range[0] - numb * step_size,
                          abscissa_range[-1] + numb * step_size,
                          len(abscissa_range) + 2 * numb)
@@ -236,6 +238,16 @@ def fit_leastsq(p0, xdata, ydata, function, resolution=None,
         pcov = np.inf
 
     return pfit, pcov
+
+
+def MEM_core():
+    r"""
+    Extracts the unscaled Eliashberg function for a given value of the Lagrange 
+    multiplier alpha. It also returns the reconstruction F.
+    In essence, this function applies the Newton method to solve 
+    """
+    return 0
+
 
 
 def download_examples():

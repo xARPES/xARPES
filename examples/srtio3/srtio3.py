@@ -35,13 +35,13 @@ bmap.shift_angles(shift=-0.57)
 fig = bmap.plot(abscissa='angle', ordinate='kinetic_energy', ax=ax)
 
 
-fig = bmap.fit_fermi_edge(hnuminphi_guess=42.24, background_guess=1e4,
+fig = bmap.fit_fermi_edge(hnuminPhi_guess=42.24, background_guess=1e4,
                           integrated_weight_guess=1e6, angle_min=-5,
                           angle_max=5, ekin_min=42.22, ekin_max=42.3,
                           show=True, title='Fermi edge fit')
 
-print('The optimised h nu - Phi = ' + f'{bmap.hnuminphi:.4f}' + ' +/- '
-      + f'{bmap.hnuminphi_std:.4f}' + ' eV.')
+print('The optimised h nu - Phi = ' + f'{bmap.hnuminPhi:.4f}' + ' +/- '
+      + f'{bmap.hnuminPhi_std:.4f}' + ' eV.')
 
 
 k_0 = -0.0014 # 0.02
@@ -57,7 +57,7 @@ xarpes.SpectralQuadratic(amplitude=1800, peak=-3.6, broadening=0.0004,
 
 import numpy as np
 
-mat_el = lambda x: np.sin((x - theta_0) * xarpes.dtor) ** 2
+mat_el = lambda x: np.sin(np.deg2rad(x - theta_0)) ** 2
 
 mat_args = {}
 
@@ -165,8 +165,6 @@ fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax,
 # fig = plt.figure(figsize=(7, 5))
 # ax = fig.gca()
 
-# from xarpes.constants import dtor
-
 # k_0 = -0.0014
 # theta_0 = 0
 
@@ -181,9 +179,9 @@ fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax,
 # ])
 
 # import numpy as np
-# mat_el = lambda x: np.sin((x - theta_0) * dtor) ** 2
+# mat_el = lambda x: np.sin(np.deg2rad(x - theta_0)) ** 2
 
-# # mat_el = lambda x, theta_0: np.sin((x - theta_0) * dtor) ** 2
+# # mat_el = lambda x, theta_0: np.sin(np.deg2rad(x - theta_0)) ** 2
 
 # mat_args = {
 # #  'theta_0' : 0.0
@@ -216,8 +214,6 @@ fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax,
 # fig = plt.figure(figsize=(7, 5))
 # ax = fig.gca()
 
-# from xarpes.constants import dtor
-
 # k_0 = -0.0014
 # theta_0 = 0
 
@@ -235,9 +231,9 @@ fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax,
 # ])
 
 # import numpy as np
-# mat_el = lambda x: np.sin((x - theta_0) * dtor) ** 2
+# mat_el = lambda x: np.sin(np.deg2rad(x - theta_0)) ** 2
 
-# # mat_el = lambda x, theta_0: np.sin((x - theta_0) * dtor) ** 2
+# # mat_el = lambda x, theta_0: np.sin(np.deg2rad(x - theta_0)) ** 2
 
 # mat_args = {
 # #  'theta_0' : 0.0
@@ -296,7 +292,7 @@ fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax,
 
 # import numpy as np
 
-# mat_el = lambda x: np.sin((x - theta_0) * dtor) ** 2
+# mat_el = lambda x: np.sin((x - theta_0) * np.deg2rad) ** 2
 
 # mat_args = {}
 
