@@ -22,97 +22,70 @@ class BandMap:
     r"""
     Class for the band map from the ARPES experiment.
 
-    Parameters
-    ----------
-    datafile : str, optional
-        Path to an IGOR binary wave file.
-    intensities : ndarray, optional
-        2D array of intensities [E, angle].
-    angles : ndarray, optional
-        1D array of emission angles in degrees.
-    ekin : ndarray, optional
-        1D array of kinetic energies in eV.
-    enel : ndarray, optional
-        1D array of electron energies in eV.
-    energy_resolution : float, optional
-        Energy-resolution standard deviation [eV].
-    angle_resolution : float, optional
-        Angular-resolution standard deviation [deg].
-    temperature : float, optional
-        Sample temperature [K].
-    hnuminPhi : float, optional
-        Photon energy minus work function [eV].
-    hnuminPhi_std : float, optional
-        Standard deviation on ``hnuminPhi`` [eV].
-    transpose : bool, optional
-        If True, transpose the input data.
-    flip_ekin : bool, optional
-        If True, flip the energy axis.
-    flip_angles : bool, optional
-        If True, flip the angle axis.
+    Construction
+    ------------
+    Prefer the alternate constructors:
 
-    Attributes
-    ----------
-    intensities : ndarray
-        2D intensity map [energy, angle].
-    angles : ndarray
-        Emission angles in degrees.
-    ekin : ndarray
-        Kinetic-energy axis in eV.
-    enel : ndarray
-        Electron-energy axis in eV.
-    hnuminPhi : float or None
-        Photon energy minus work function.
-    hnuminPhi_std : float or None
-        Standard deviation on ``hnuminPhi``.
+    - BandMap._from_ibw_file(path, ...)
+    - BandMap._from_np_arrays(intensities=..., angles=..., ekin=... or enel=...)
 
+    The __init__ takes *canonical* arrays (no file I/O).
     """
 
-    def __init__(self, datafile=None, intensities=None, angles=None,
-                 ekin=None, enel=None, energy_resolution=None,
-                 angle_resolution=None, temperature=None, hnuminPhi=None,
-                 hnuminPhi_std=None, transpose=False, flip_ekin=False,
-                 flip_angles=False):
+    @classmethod
+    def from_ibw_file(cls, datafile, transpose=False, flip_ekin=False,
+                       flip_angles=False, **kwargs):
+        r"""Construct BandMap from an IGOR binary wave (.ibw)."""
+        data = binarywave.load(datafile)
+        intensities = data['wave']['wData']
 
-        # --- IO / file load -------------------------------------------------
-        if datafile is not None:
-            data = binarywave.load(datafile)
-            self.intensities = data['wave']['wData']
+        fnum, anum = data['wave']['wave_header']['nDim'][0:2]
+        fstp, astp = data['wave']['wave_header']['sfA'][0:2]
+        fmin, amin = data['wave']['wave_header']['sfB'][0:2]
 
-            fnum, anum = data['wave']['wave_header']['nDim'][0:2]
-            fstp, astp = data['wave']['wave_header']['sfA'][0:2]
-            fmin, amin = data['wave']['wave_header']['sfB'][0:2]
+        if intensities.shape != (fnum, anum):
+            raise ValueError('nDim and shape of wData do not match.')
 
-            if self.intensities.shape != (fnum, anum):
-                raise ValueError('nDim and shape of wData do not match.')
+        if transpose:
+            intensities = intensities.T
+            fnum, anum = anum, fnum
+            fstp, astp = astp, fstp
+            fmin, amin = amin, fmin
 
-            if transpose:
-                self.intensities = self.intensities.T
-                fnum, anum = anum, fnum
-                fstp, astp = astp, fstp
-                fmin, amin = amin, fmin
+        if flip_ekin:
+            intensities = intensities[::-1, :]
 
-            if flip_ekin:
-                self.intensities = self.intensities[::-1, :]
+        if flip_angles:
+            intensities = intensities[:, ::-1]
 
-            if flip_angles:
-                self.intensities = self.intensities[:, ::-1]
+        angles = np.linspace(amin, amin + (anum - 1) * astp, anum)
+        ekin = np.linspace(fmin, fmin + (fnum - 1) * fstp, fnum)
 
-            self.angles = np.linspace(amin, amin + (anum - 1) * astp, anum)
-            file_ekin = np.linspace(fmin, fmin + (fnum - 1) * fstp, fnum)
-        else:
-            file_ekin = None
+        return cls(intensities=intensities, angles=angles, ekin=ekin, **kwargs)
 
-        # --- Required arrays if not using datafile -------------------------
-        if intensities is not None:
-            self.intensities = intensities
-        elif datafile is None:
-            raise ValueError('Please provide datafile or intensities.')
+    @classmethod
+    def from_np_arrays(cls, intensities=None, angles=None, ekin=None, enel=None,
+                        **kwargs):
+        r"""Construct BandMap from NumPy arrays."""
+        if intensities is None or angles is None:
+            raise ValueError('Please provide intensities and angles.')
+        if (ekin is None) == (enel is None):
+            raise ValueError('Provide exactly one of ekin or enel.')
+        return cls(intensities=intensities, angles=angles, ekin=ekin, enel=enel,
+                   **kwargs)
 
-        if angles is not None:
-            self.angles = angles
-        elif datafile is None:
-            raise ValueError('Please provide datafile or angles.')
+    def __init__(self, intensities=None, angles=None, ekin=None, enel=None,
+                 energy_resolution=None, angle_resolution=None, temperature=None,
+                 hnuminPhi=None, hnuminPhi_std=None):
+
+        # --- Required arrays ------------------------------------------------
+        if intensities is None:
+            raise ValueError('Please provide intensities.')
+        if angles is None:
+            raise ValueError('Please provide angles.')
+
+        self.intensities = intensities
+        self.angles = angles
 
         # --- Initialize energy axes (raw slots) ----------------------------
         self._ekin = None
