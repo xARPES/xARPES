@@ -1,4 +1,4 @@
-settings_parameters
+Settings_parameters
 ===================
 
 .. automodule:: xarpes.settings_parameters

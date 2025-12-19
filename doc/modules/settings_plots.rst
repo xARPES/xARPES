@@ -1,4 +1,4 @@
-settings_plots
+Settings_plots
 ==============
 
 .. automodule:: xarpes.settings_plots
