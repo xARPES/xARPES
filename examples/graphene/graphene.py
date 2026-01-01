@@ -27,7 +27,7 @@ extn = '.ibw'         # Extension of the file
 
 data_file_path = os.path.join(script_dir, dfld, flnm + extn)
 
-# The following cell instantiates band map class object based on the Igor Binary Wave (ibw) file. The subsequent (commented) cell illustrates how a band map object could be instantiated with NumPy arrays instead.
+# The following cell instantiates band map class object based on the Igor Binary Wave (ibw) file. The subsequent cell illustrates how a band map object could be instantiated with NumPy arrays instead. Only one of the cells will have to be executed to populate the band map object.
 
 
 bmap = xarpes.BandMap.from_ibw_file(data_file_path, energy_resolution=0.01, 
@@ -116,7 +116,7 @@ fig = mdcs.visualize_guess(distributions=guess_dists, energy_value=energy_value,
 # - For some package versions, a static version of the interactive widget may spuriously show up inside other cells. In that case, uncomment the #get_ipython()... line in the first cell for your notebooks.
 
 
-fig = plt.figure(figsize=(7, 5))
+fig = plt.figure(figsize=(8, 6))
 ax = fig.gca()
 
 mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range))
@@ -126,7 +126,7 @@ fig = mdcs.fit_selection(distributions=guess_dists, ax=ax)
 
 plt.rcParams['lines.markersize'] = 0.8
 
-fig = plt.figure(figsize=(8, 5))
+fig = plt.figure(figsize=(8, 6))
 ax = fig.gca()
 
 self_energy = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Linear_test_1',
@@ -175,13 +175,14 @@ fermi_velocity=-2.67, fermi_wavevector=-0.354))
 fig = plt.figure(figsize=(8, 5)); ax = fig.gca()
 
 self_energies= xarpes.CreateSelfEnergies([
-    self_energy, self_left])
+    self_energy, self_left
+])
 
 fig = bmap.plot(abscissa='momentum', ordinate='electron_energy',
                 self_energies=self_energies, plot_dispersions='full',
                 ax=ax)
 
-fig = plt.figure(figsize=(9, 6)); ax = fig.gca()
+fig = plt.figure(figsize=(8, 6)); ax = fig.gca()
 
 self_left.plot_both(ax=ax, show=False, fig_close=False)
 self_energy.plot_both(ax=ax, show=False, fig_close=False)
@@ -208,165 +209,3 @@ labels = [
 
 ax.legend([left_real, left_imag, right_real, right_imag], labels)
 plt.show()
-
-
-# fig = plt.figure(figsize=(8, 5))
-# ax = fig.gca()
-
-# from xarpes.constants import stdv
-
-# ax.errorbar(self_left.peak_positions, self_left.enel_range, 
-#             xerr=stdv * self_left.peak_positions_sigma,
-#            markersize=2, color='tab:red', label=self_left.label)
-
-# ax.errorbar(self_energy.peak_positions, self_energy.enel_range, 
-#             xerr=stdv * self_energy.peak_positions_sigma,
-#            markersize=2, color='tab:blue', label=self_energy.label)
-
-# fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax)
-
-
-# fig = plt.figure(figsize=(8, 5))
-# ax = fig.gca()
-
-# from xarpes.constants import stdv
-
-# ax.errorbar(self_energy.peak_positions, self_energy.enel_range, 
-#             xerr=stdv * self_energy.peak_positions_sigma,
-#            markersize=2, color='tab:blue', label=self_energy.label)
-
-# fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax)
-
-
-# angle_min2 = -1e6
-# angle_max2 = 0
-
-# mdc2 = xarpes.MDCs(*bmap.mdc_set(angle_min2, angle_max2, energy_range=energy_range))
-
-# guess_dists2 = xarpes.CreateDistributions([
-# xarpes.Linear(offset=2.0e3, slope=100),
-# xarpes.SpectralLinear(amplitude=450, peak=-7.25, broadening=0.01,
-#                       name='Linear_left', index='1'),
-# ])
-
-# fig = plt.figure(figsize=(8, 6))
-# ax = fig.gca()
-
-# fig = mdc2.visualize_guess(distributions=guess_dists2, energy_value=0, ax=ax)
-
-# angle_min = 0
-# angle_max = 1e6
-
-# energy_range = [-0.1, 0.01]
-
-# mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range))
-
-# guess_dists = xarpes.CreateDistributions([
-# xarpes.Linear(offset=3.0e3, slope=-100),
-# xarpes.SpectralLinear(amplitude=450, peak=7.4, broadening=0.012,
-#                       name='Linear_test', index='1'),
-# # xarpes.SpectralQuadratic(amplitude=20, peak=5.5, center_wavevector=0,
-# #    broadening=0.005, name='Quadratic_test', index='1')
-# ])
-
-
-# fig = plt.figure(figsize=(8, 6))
-# ax = fig.gca()
-
-# fig, new_distributions, covariance_matrix = mdc.fit(
-#      distributions=guess_dists, ax=ax, show=True)
-
-
-# fig = plt.figure(figsize=(8, 6)); ax = fig.gca()
-
-# guess_dists = xarpes.CreateDistributions([
-# xarpes.Linear(offset=3.0e3, slope=-100),
-# xarpes.SpectralLinear(amplitude=450, peak=7.4, broadening=0.012,
-#                       name='Linear_test', index='1'),
-# xarpes.SpectralQuadratic(amplitude=20, peak=4.5, center_wavevector=0,
-#                             broadening=0.005, name='Quadratic_test', index='1')
-# ])
-
-# fig = mdc.visualize_guess(distributions=guess_dists, ax=ax, show=True)
-
-
-# angle_min = 0
-# angle_max = 1e6
-# en_val = 0
-
-# mdc = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_value=en_val))
-# new_range = mdc.angles
-
-# line1 = xarpes.SpectralLinear(amplitude=500, peak=7.5, broadening=0.01,
-#                               name='Linear test', index='1')
-# line2 = xarpes.SpectralLinear(amplitude=600, peak=5.5, broadening=0.02,
-#                               name='Linear test', index='2')
-
-# fig = plt.figure(figsize=(7, 5))
-# ax = fig.gca()
-
-# line1.plot(angle_range=new_range, angle_resolution=0.1, ax=ax, show=False,
-#            fig_close=False)
-# line2.plot(angle_range=new_range, angle_resolution=0.1, ax=ax, show=False,
-#            fig_close=False)
-# fig = mdc.plot(ax=ax)
-
-
-# angle_min = 0.1
-# angle_max = 1e6
-# en_val = 0
-# energy_range = [-0.3, 0.05]
-
-# mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_value=en_val))
-
-# fig = plt.figure(figsize=(6, 5))
-# ax = fig.gca()
-
-# fig = mdcs.plot(ax=ax)
-
-# # Subsequent plot customization
-# # ax.set_xlim([2, 10]); # ax.set_ylim([0, 10000])
-
-# # change = xarpes.SpectralLinear(amplitude=500, peak=7.5, broadening=0.01,
-# #                                name='Linear_test', index='1')
-
-# # change.broadening = 0.02
-# # print(change.broadening)
-
-# change = xarpes.SpectralLinear(amplitude=500, peak=7.5, broadening=0.01,
-#                                name='Linear_test', index='1')
-
-# change.broadening = 0.02
-
-# print(change.broadening)
-
-# angle_min = 0
-# angle_max = 1e6
-
-# energy_range = [-0.05, 0]
-
-# mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range))
-
-
-# line1 = xarpes.SpectralLinear(amplitude=500, peak=7.5, broadening=0.01,
-#                               name='Linear test', index='1')
-# line2 = xarpes.SpectralLinear(amplitude=600, peak=5.5, broadening=0.02,
-#                               name='Linear test', index='2')
-
-# fig = plt.figure(figsize=(7, 5))
-# ax = fig.gca()
-
-# # In case the lines are plotted on top, they may exceed the auto scaling
-# line1.plot(angle_range=new_range, angle_resolution=0.1, ax=ax, show=False,
-#            fig_close=False)
-# line2.plot(angle_range=new_range, angle_resolution=0.1, ax=ax, show=False,
-#            fig_close=False)
-# fig = mdcs.plot(ax=ax)
-
-
-# fig = plt.figure(figsize=(7, 5))
-# ax = fig.gca()
-
-# fig = mdcs.plot(distributions=guess_dists, ax=ax, energy_value=-0.003)
-
-
