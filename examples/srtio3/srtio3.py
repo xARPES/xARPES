@@ -28,8 +28,7 @@ data_file_path = os.path.join(script_dir, dfld, flnm + extn)
 # The following cell instantiates band map class object based on the Igor Binary Wave (ibw) file. The subsequent cell illustrates how a band map object could be instantiated with NumPy arrays instead. Only one of the cells will have to be executed to populate the band map object.
 
 
-fig = plt.figure(figsize=(8, 5))
-ax = fig.gca()
+fig = plt.figure(figsize=(8, 5)); ax = fig.gca()
 
 bmap = xarpes.BandMap.from_ibw_file(data_file_path, energy_resolution=0.01,
                       angle_resolution=0.2, temperature=20)
@@ -87,8 +86,7 @@ angle_max = 4.8
 
 mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range))
 
-fig = plt.figure(figsize=(7, 5))
-ax = fig.gca()
+fig = plt.figure(figsize=(7, 5)); ax = fig.gca()
 
 fig = mdcs.visualize_guess(distributions=guess_dists, matrix_element=mat_el,
                            matrix_args=mat_args, energy_value=-0.000, ax=ax)

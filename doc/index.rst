@@ -5,7 +5,9 @@
    :caption: Modules
    :hidden:
 
-   modules/spectral
+   modules/bandmap
+   modules/mdcs
+   modules/selfenergies
    modules/distributions
    modules/functions
    modules/plotting
