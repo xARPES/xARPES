@@ -560,80 +560,160 @@ class SelfEnergy:
                     omega_S, h_n, method='chi2kink', parts='both',
                     alpha_min=1.0, alpha_max=9.0, alpha_num=10.0, mu=1.0,
                     a_guess=1.0, b_guess=2.5, c_guess=3.0, d_guess=1.5,
-                    f_chi_squared=None, impurity_scattering=0.0, 
-                    sigma_svd=1e-4):
+                    f_chi_squared=None, impurity_scattering=0.0,
+                    ecut_left=0.0, ecut_right=None, sigma_svd=1e-4,
+                    t_criterion=1e-8, iter_max=1e4):
         r"""
         Extract Eliashberg function α²F(ω) from the self-energy. While working
         with band maps and MDCs is more intuitive in eV, the self-energy
-        extraction is performed in eV
+        extraction is performed in eV.
+
+        Parameters
+        ----------
+        ecut_left : float, optional
+            Energy cutoff applied on the high–binding-energy side (left-hand
+            side of the energy axis), in meV. Binding energies are negative, so
+             this value is interpreted relative to the most negative energy in
+             ``self.enel_range``. Any data points with energies smaller than
+            ``min(self.enel_range) + ecut_left`` are excluded from the
+            analysis. Must be non-negative. Defaults to 0.0, meaning no
+            exclusion on the high–binding-energy side.
+
+        ecut_right : float or None, optional
+            Energy cutoff applied on the low–binding-energy side (right-hand
+            side of the energy axis), in meV, measured relative to the
+            chemical potential (zero energy). Any data points with energies
+            larger than ``-ecut_right`` are excluded. If ``None`` (default),
+            the cutoff is set equal to the energy resolution
+            ``self.energy_resolution`` (in eV). Negative values are allowed,
+            leading to retention of data above the chemical potential.
+
         """
+
         if parts not in {"both", "real", "imag"}:
             raise ValueError(
                 "parts must be one of {'both', 'real', 'imag'}"
             )
 
+        if ecut_left < 0.0:
+            raise ValueError("ecut_left must be >= 0.0")
+        ecut_left_eV = ecut_left / KILO
+        
+        if ecut_right is None:
+            ecut_right_eV = self.energy_resolution
+        else:
+            ecut_right_eV = ecut_right / KILO
+
         if f_chi_squared is None:
             f_chi_squared = 2.5 if parts == "both" else 2.0
-        
+
         if method != "chi2kink":
-            raise NotImplementedError("Only method='chi2kink' is " \
-                "currently implemented.")
-    
-        from . import (create_model_function, create_kernel_function, 
-                       singular_value_decomposition, MEM_core,
-                       fit_leastsq, chi2kink_logistic, chi2kink_a2f)
+            raise NotImplementedError(
+                "Only method='chi2kink' is currently implemented."
+            )
+
+        from . import (create_model_function, create_kernel_function,
+                    singular_value_decomposition, MEM_core)
 
         omega_range = np.linspace(omega_min, omega_max, omega_num)
 
-        # Create the model and rescale it for the MEM loop
-        model = create_model_function(omega_range, omega_I, omega_M,
-                                       omega_S, h_n)
+        model = create_model_function(omega_range, omega_I, omega_M, omega_S,
+                                       h_n)
         delta_omega = (omega_max - omega_min) / omega_num
         model_in = model * delta_omega
-        
+
         k_BT = K_B * self.temperature * KILO
-        energies = self.enel_range * KILO
+        energies_eV = self.enel_range
+
+        Emin = np.min(energies_eV)
+        Elow = Emin + ecut_left_eV
+
+        Ehigh = -ecut_right_eV
+        mE = (energies_eV >= Elow) & (energies_eV <= Ehigh)
+
+        if not np.any(mE):
+            raise ValueError(
+                "Energy cutoffs removed all points; adjust ecut_left/right."
+            )
+
+        energies = energies_eV[mE] * KILO
 
         kernel = create_kernel_function(energies, omega_range, k_BT)
 
         if parts == "both":
-            real = self.real * KILO
-            real_sigma = self.real_sigma * KILO
-            imag = self.imag * KILO - impurity_scattering
-            imag_sigma = self.imag_sigma * KILO
+            real = self.real[mE] * KILO
+            real_sigma = self.real_sigma[mE] * KILO
+            imag = self.imag[mE] * KILO - impurity_scattering
+            imag_sigma = self.imag_sigma[mE] * KILO
             dvec = np.concatenate((real, imag))
             wvec = np.concatenate((real_sigma**(-2), imag_sigma**(-2)))
             kernel = np.concatenate((np.real(kernel), -np.imag(kernel)))
 
         elif parts == "real":
-            real = self.real * KILO
-            real_sigma = self.real_sigma * KILO
+            real = self.real[mE] * KILO
+            real_sigma = self.real_sigma[mE] * KILO
             dvec = real
             wvec = real_sigma**(-2)
-
             kernel = np.real(kernel)
 
         else:  # parts == "imag"
-            imag = self.imag * KILO - impurity_scattering
-            imag_sigma = self.imag_sigma * KILO
+            imag = self.imag[mE] * KILO - impurity_scattering
+            imag_sigma = self.imag_sigma[mE] * KILO
             dvec = imag
             wvec = imag_sigma**(-2)
             kernel = -np.imag(kernel)
 
         V_Sigma, U, uvec = singular_value_decomposition(kernel, sigma_svd)
 
-        print(f_chi_squared)
-
         if method == "chi2kink":
-            spectrum_in = chi2kink_a2f(dvec, model_in, uvec, mu, 
-                wvec, V_Sigma, U, alpha_min, alpha_max, alpha_num, a_guess, 
-                b_guess, c_guess, d_guess, f_chi_squared, MEM_core, 
-                fit_leastsq, chi2kink_logistic)
+            spectrum_in = self._chi2kink_a2f(
+                dvec, model_in, uvec, mu, wvec, V_Sigma, U, alpha_min,
+                alpha_max, alpha_num, a_guess, b_guess, c_guess, d_guess,
+                f_chi_squared, t_criterion, iter_max, MEM_core
+            )
 
         spectrum = spectrum_in * omega_num / omega_max
-
         return spectrum, model
+    
+    def _chi2kink_a2f(self, dvec, model_in, uvec, mu, wvec, V_Sigma, U,
+                            alpha_min, alpha_max, alpha_num, a_guess, b_guess,
+                            c_guess, d_guess, f_chi_squared, t_criterion, 
+                            iter_max, MEM_core):
+        r"""Compute MEM spectrum using the chi2kink alpha-selection procedure.
 
+        Returns
+        -------
+        spectrum_in : ndarray
+            Selected spectrum from MEM_core evaluated at the chi2kink alpha.
+        """
+        from . import (fit_leastsq, chi2kink_logistic)
+
+        alpha_range = np.logspace(alpha_min, alpha_max, alpha_num)
+        chi_squared = np.empty_like(alpha_range, dtype=float)
+
+        for i, alpha in enumerate(alpha_range):
+            spectrum_in, uvec = MEM_core(dvec, model_in, uvec, mu, alpha, 
+                wvec, V_Sigma, U,  t_criterion, iter_max)
+            
+            T = V_Sigma @ (U.T @ spectrum_in)
+            chi_squared[i] = wvec @ ((T - dvec) ** 2)
+
+        log_alpha = np.log10(alpha_range)
+        log_chi_squared = np.log10(chi_squared)
+
+        p0 = np.array([a_guess, b_guess, c_guess, d_guess], dtype=float)
+        pfit, pcov = fit_leastsq(
+            p0, log_alpha, log_chi_squared, chi2kink_logistic
+        )
+
+        cout = pfit[2]
+        dout = pfit[3]
+        alpha_select = 10 ** (cout - f_chi_squared / dout)
+
+        spectrum_in, uvec = MEM_core(dvec, model_in, uvec, mu, alpha_select, 
+                        wvec, V_Sigma, U, t_criterion, iter_max)
+
+        return spectrum_in
 
 
 class CreateSelfEnergies:

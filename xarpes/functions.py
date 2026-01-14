@@ -393,14 +393,15 @@ def set_script_dir():
     return script_dir
 
 
-def MEM_core(dvec, model_in, uvec, mu, alpha, wvec, V_Sigma, U, 
-             t_criterion=1e-4, iter_max=1e4):
+def MEM_core(dvec, model_in, uvec, mu, alpha, wvec, V_Sigma, U,
+             t_criterion, iter_max):
     r"""
-    Implementation of Bryan's algorithm (not to be confused with Bryan's 
+    Implementation of Bryan's algorithm (not to be confused with Bryan's
     'method' for determining the Lagrange multiplier alpha. For details, see
     Eur. Biophys. J. 18, 165 (1990).
     """
     import numpy as np
+    import warnings
 
     spectrum_in = model_in * np.exp(U @ uvec)  # Eq. 9
     alphamu = alpha + mu
@@ -408,75 +409,50 @@ def MEM_core(dvec, model_in, uvec, mu, alpha, wvec, V_Sigma, U,
     converged = False
     iter_count = 0
     while not converged and iter_count < iter_max:
-  
+
         T = V_Sigma @ (U.T @ spectrum_in)  # Below Eq. 7
         gvec = V_Sigma.T @ (wvec * (T - dvec))  # Eq. 10
-        M = V_Sigma.T @ ((wvec[:, None] * V_Sigma))  # Above Eq. 11
-        K = U.T @ (spectrum_in[:, None] * U)# Above Eq. 11
+        M = V_Sigma.T @ (wvec[:, None] * V_Sigma)  # Above Eq. 11
+        K = U.T @ (spectrum_in[:, None] * U)  # Above Eq. 11
 
         xi, P = np.linalg.eigh(K)  # Eq. 13
         sqrt_xi = np.sqrt(xi)
-        P_sqrt_xi = P * sqrt_xi[None, :]    
+        P_sqrt_xi = P * sqrt_xi[None, :]
         A = P_sqrt_xi.T @ (M @ P_sqrt_xi)  # Between Eqs. 13 and 14
         Lambda, R = np.linalg.eigh(A)  # Eq. 14
         Y_inv = R.T @ (sqrt_xi[:, None] * P.T)  # Below Eq. 15
-        # From eq. 16:
+
+        # From Eq. 16:
         Y_inv_du = -(Y_inv @ (alpha * uvec + gvec)) / (alphamu + Lambda)
-        d_uvec = (-alpha * uvec - gvec - M @ (Y_inv.T @ Y_inv_du)
-                  ) / alphamu  # Eq. 20
+        d_uvec = (
+            -alpha * uvec - gvec - M @ (Y_inv.T @ Y_inv_du)
+        ) / alphamu  # Eq. 20
+
         uvec += d_uvec
         spectrum_in = model_in * np.exp(U @ uvec)  # Eq. 9
 
         # Convergence block: Section 2.3
-        alpha_K_u = alpha * (K @ uvec) # Skipping the minus sign twice
+        alpha_K_u = alpha * (K @ uvec)  # Skipping the minus sign twice
         K_g = K @ gvec
-        tcon = 2 * np.linalg.norm(alpha_K_u + K_g)**2 / (np.linalg.norm(alpha_K_u) 
-            + np.linalg.norm(K_g))**2
+        tcon = (
+            2 * np.linalg.norm(alpha_K_u + K_g)**2
+            / (np.linalg.norm(alpha_K_u) + np.linalg.norm(K_g))**2
+        )
         converged = (tcon < t_criterion)
 
         iter_count += 1
 
-    return spectrum_in
+    if not converged:
+        with warnings.catch_warnings():
+            warnings.simplefilter("always", RuntimeWarning)
+            warnings.warn(
+                f"MEM_core did not converge within iter_max={iter_max} "
+                f"(performed {iter_count} iterations).",
+                category=RuntimeWarning,
+                stacklevel=2,
+            )
 
-
-def chi2kink_a2f(dvec, model_in, uvec, mu, wvec, V_Sigma, U,
-                         alpha_min, alpha_max, alpha_num, a_guess, b_guess,
-                         c_guess, d_guess, f_chi_squared, MEM_core,
-                         fit_leastsq, chi2kink_logistic):
-    r"""Compute MEM spectrum using the chi2kink alpha-selection procedure.
-
-    Returns
-    -------
-    spectrum_in : ndarray
-        Selected spectrum from MEM_core evaluated at the chi2kink alpha.
-    """
-    alpha_range = np.logspace(alpha_min, alpha_max, alpha_num)
-    chi_squared = np.empty_like(alpha_range, dtype=float)
-
-    for i, alpha in enumerate(alpha_range):
-        spectrum_in = MEM_core(
-            dvec, model_in, uvec, mu, alpha, wvec, V_Sigma, U
-        )
-        T = V_Sigma @ (U.T @ spectrum_in)
-        chi_squared[i] = wvec @ ((T - dvec) ** 2)
-
-    log_alpha = np.log10(alpha_range)
-    log_chi_squared = np.log10(chi_squared)
-
-    p0 = np.array([a_guess, b_guess, c_guess, d_guess], dtype=float)
-    pfit, pcov = fit_leastsq(
-        p0, log_alpha, log_chi_squared, chi2kink_logistic
-    )
-
-    cout = pfit[2]
-    dout = pfit[3]
-    alpha_select = 10 ** (cout - f_chi_squared / dout)
-
-    spectrum_in = MEM_core(
-        dvec, model_in, uvec, mu, alpha_select, wvec, V_Sigma, U
-    )
-
-    return spectrum_in
+    return spectrum_in, uvec
 
 
 def bose_einstein(omega, k_BT):
@@ -556,8 +532,8 @@ def singular_value_decomposition(kernel, sigma_svd):
     
     uvec = np.zeros(s_reduced)
     
-    print('Dimensionality has been reduced from rank ' + str(min(kernel.shape)) +
-          ' to ' + str(int(s_reduced)) + '.')
+    print('Dimensionality has been reduced from a matrix of rank ' + str(min(kernel.shape)) +
+          ' to ' + str(int(s_reduced)) + ' in the singular space.')
           
     return V_Sigma, U, uvec
 
