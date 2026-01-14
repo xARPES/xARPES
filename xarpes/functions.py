@@ -439,6 +439,46 @@ def MEM_core(dvec, model_in, uvec, mu, alpha, wvec, V_Sigma, U,
     return spectrum_in
 
 
+def chi2kink_a2f(dvec, model_in, uvec, mu, wvec, V_Sigma, U,
+                         alpha_min, alpha_max, alpha_num, a_guess, b_guess,
+                         c_guess, d_guess, f_chi_squared, MEM_core,
+                         fit_leastsq, chi2kink_logistic):
+    r"""Compute MEM spectrum using the chi2kink alpha-selection procedure.
+
+    Returns
+    -------
+    spectrum_in : ndarray
+        Selected spectrum from MEM_core evaluated at the chi2kink alpha.
+    """
+    alpha_range = np.logspace(alpha_min, alpha_max, alpha_num)
+    chi_squared = np.empty_like(alpha_range, dtype=float)
+
+    for i, alpha in enumerate(alpha_range):
+        spectrum_in = MEM_core(
+            dvec, model_in, uvec, mu, alpha, wvec, V_Sigma, U
+        )
+        T = V_Sigma @ (U.T @ spectrum_in)
+        chi_squared[i] = wvec @ ((T - dvec) ** 2)
+
+    log_alpha = np.log10(alpha_range)
+    log_chi_squared = np.log10(chi_squared)
+
+    p0 = np.array([a_guess, b_guess, c_guess, d_guess], dtype=float)
+    pfit, pcov = fit_leastsq(
+        p0, log_alpha, log_chi_squared, chi2kink_logistic
+    )
+
+    cout = pfit[2]
+    dout = pfit[3]
+    alpha_select = 10 ** (cout - f_chi_squared / dout)
+
+    spectrum_in = MEM_core(
+        dvec, model_in, uvec, mu, alpha_select, wvec, V_Sigma, U
+    )
+
+    return spectrum_in
+
+
 def bose_einstein(omega, k_BT):
     """Bose-Einstein distribution n_B(omega) for k_BT > 0 and omega >= 0."""
     x_over = np.log(np.finfo(float).max)  # ~709.78 for float64
@@ -499,9 +539,6 @@ def create_kernel_function(enel, omega, k_BT):
          - digamma(0.5 - 1j * (enel + omega) / denom)
          - 2j * np.pi * (bose_einstein(omega, k_BT) + 0.5))
 
-    # Notice the minus sign in the following concatenation
-    K = np.concatenate((np.real(K), -np.imag(K)))
-
     return K
 
 
@@ -516,11 +553,13 @@ def singular_value_decomposition(kernel, sigma_svd):
     V = V[:, :s_reduced]
     U = U[:, :s_reduced]
     V_Sigma = V * Sigma[None, :]
-
+    
+    uvec = np.zeros(s_reduced)
+    
     print('Dimensionality has been reduced from rank ' + str(min(kernel.shape)) +
           ' to ' + str(int(s_reduced)) + '.')
           
-    return V_Sigma, U
+    return V_Sigma, U, uvec
 
 
 def create_model_function(omega, omega_I, omega_M, omega_S, h_n):
@@ -577,3 +616,40 @@ def create_model_function(omega, omega_I, omega_M, omega_S, h_n):
     domains[m5] = ((omega[m5] - omega_M) / denom - 1.0) ** 2
 
     return 2.0 * h_n * domains
+
+
+def chi2kink_logistic(x, a, b, c, d):
+    """Four-parameter logistic (scaled sigmoid), evaluated stably.
+
+    Parameters
+    ----------
+    x : array_like
+        Input values.
+    a : float
+        Lower asymptote.
+    b : float
+        Amplitude (upper - lower).
+    c : float
+        Midpoint (inflection point).
+    d : float
+        Slope parameter (steepness).
+
+    Returns
+    -------
+    phi : ndarray
+        Logistic curve evaluated at x.
+    """
+    z = d * (x - c)
+
+    phi = np.empty_like(z, dtype=float)
+
+    mpos = z >= 0
+    if np.any(mpos):
+        phi[mpos] = a + b / (1.0 + np.exp(-z[mpos]))
+
+    mneg = ~mpos
+    if np.any(mneg):
+        expz = np.exp(z[mneg])
+        phi[mneg] = a + b * expz / (1.0 + expz)
+
+    return phi
