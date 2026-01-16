@@ -19,7 +19,7 @@ dependencies = [
     "igor2>=0.5.8",
     "jupyterlab",
     "jupytext",
-    "matplotlib",
+    "matplotlib<3.10.0",
     "numpy",
     "scipy",
     "lmfit",

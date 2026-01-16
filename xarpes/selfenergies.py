@@ -296,6 +296,7 @@ class SelfEnergy:
                 * np.abs(np.cos(np.deg2rad(self._peak))) \
                 * np.deg2rad(self._peak_sigma))
         return self._peak_positions_sigma
+    
 
     @property
     def imag(self):
@@ -303,19 +304,9 @@ class SelfEnergy:
         if self._imag is None:
             if self._broadening is None or self._ekin_range is None:
                 return None
-            if self._class == "SpectralLinear":
-                if self._fermi_velocity is None:
-                    raise AttributeError("Cannot compute `imag` "
-                    "(SpectralLinear): set `fermi_velocity` first.")
-                self._imag = np.abs(self._fermi_velocity) * np.sqrt(self._ekin_range \
-                     / PREF) * self._broadening
-            else:
-                if self._bare_mass is None:
-                    raise AttributeError("Cannot compute `imag` "
-                    "(SpectralQuadratic): set `bare_mass` first.")
-                self._imag = (self._ekin_range * self._broadening) \
-                / np.abs(self._bare_mass)
+            self._imag = self._compute_imag()
         return self._imag
+
 
     @property
     def imag_sigma(self):
@@ -323,19 +314,9 @@ class SelfEnergy:
         if self._imag_sigma is None:
             if self._broadening_sigma is None or self._ekin_range is None:
                 return None
-            if self._class == "SpectralLinear":
-                if self._fermi_velocity is None:
-                    raise AttributeError("Cannot compute `imag_sigma` "
-                    "(SpectralLinear): set `fermi_velocity` first.")
-                self._imag_sigma = np.abs(self._fermi_velocity) * \
-                    np.sqrt(self._ekin_range / PREF) * self._broadening_sigma
-            else:
-                if self._bare_mass is None:
-                    raise AttributeError("Cannot compute `imag_sigma` "
-                    "(SpectralQuadratic): set `bare_mass` first.")
-                self._imag_sigma = (self._ekin_range * \
-                            self._broadening_sigma) / np.abs(self._bare_mass)
+            self._imag_sigma = self._compute_imag_sigma()
         return self._imag_sigma
+
 
     @property
     def real(self):
@@ -343,22 +324,9 @@ class SelfEnergy:
         if self._real is None:
             if self._peak is None or self._ekin_range is None:
                 return None
-            if self._class == "SpectralLinear":
-                if self._fermi_velocity is None or self._fermi_wavevector is None:
-                    raise AttributeError("Cannot compute `real` "
-                    "(SpectralLinear): set `fermi_velocity` and " \
-                    "`fermi_wavevector` first.")
-                self._real = self.enel_range - self._fermi_velocity * \
-                    (self.peak_positions - self._fermi_wavevector)
-            else:
-                if self._bare_mass is None or self._fermi_wavevector is None:
-                    raise AttributeError("Cannot compute `real` "
-                    "(SpectralQuadratic): set `bare_mass` and " \
-                    "`fermi_wavevector` first.")
-                self._real = self.enel_range - (PREF / \
-                    self._bare_mass) * (self.peak_positions**2 \
-                    - self._fermi_wavevector**2)
+            self._real = self._compute_real()
         return self._real
+
 
     @property
     def real_sigma(self):
@@ -366,19 +334,144 @@ class SelfEnergy:
         if self._real_sigma is None:
             if self._peak_sigma is None or self._ekin_range is None:
                 return None
-            if self._class == "SpectralLinear":
-                if self._fermi_velocity is None:
-                    raise AttributeError("Cannot compute `real_sigma` "
-                    "(SpectralLinear): set `fermi_velocity` first.")
-                self._real_sigma = np.abs(self._fermi_velocity) * self.peak_positions_sigma
-            else: 
-                if self._bare_mass is None or self._fermi_wavevector is None:
-                    raise AttributeError("Cannot compute `real_sigma` "
-                    "(SpectralQuadratic): set `bare_mass` and " \
-                    "`fermi_wavevector` first.")
-                self._real_sigma = 2 * PREF * self.peak_positions_sigma \
-                    * np.abs(self.peak_positions / self._bare_mass)
+            self._real_sigma = self._compute_real_sigma()
         return self._real_sigma
+
+
+    def _compute_imag(self, fermi_velocity=None, mbare=None):
+        r"""Compute -Σ'' without touching caches."""
+        if self._broadening is None or self._ekin_range is None:
+            return None
+
+        ekin = np.asarray(self._ekin_range)
+        broad = self._broadening
+
+        if self._class == "SpectralLinear":
+            vF = self._fermi_velocity if fermi_velocity is None else fermi_velocity
+            if vF is None:
+                raise AttributeError(
+                    "Cannot compute `imag` (SpectralLinear): set `fermi_velocity` "
+                    "first."
+                )
+            return np.abs(vF) * np.sqrt(ekin / PREF) * broad
+
+        mb = self._bare_mass if mbare is None else mbare
+        if mb is None:
+            raise AttributeError(
+                "Cannot compute `imag` (SpectralQuadratic): set `bare_mass` first."
+            )
+        return (ekin * broad) / np.abs(mb)
+
+
+    def _compute_imag_sigma(self, fermi_velocity=None, mbare=None):
+        r"""Compute std. dev. of -Σ'' without touching caches."""
+        if self._broadening_sigma is None or self._ekin_range is None:
+            return None
+
+        ekin = np.asarray(self._ekin_range)
+        broad_sigma = self._broadening_sigma
+
+        if self._class == "SpectralLinear":
+            vF = self._fermi_velocity if fermi_velocity is None else fermi_velocity
+            if vF is None:
+                raise AttributeError(
+                    "Cannot compute `imag_sigma` (SpectralLinear): set "
+                    "`fermi_velocity` first."
+                )
+            return np.abs(vF) * np.sqrt(ekin / PREF) * broad_sigma
+
+        mb = self._bare_mass if mbare is None else mbare
+        if mb is None:
+            raise AttributeError(
+                "Cannot compute `imag_sigma` (SpectralQuadratic): set `bare_mass` "
+                "first."
+            )
+        return (ekin * broad_sigma) / np.abs(mb)
+
+
+    def _compute_real(self, fermi_velocity=None, fermi_wavevector=None, mbare=None):
+        r"""Compute Σ' without touching caches."""
+        if self._peak is None or self._ekin_range is None:
+            return None
+
+        enel = self.enel_range
+        kpar = self.peak_positions
+        if kpar is None:
+            return None
+
+        if self._class == "SpectralLinear":
+            vF = self._fermi_velocity if fermi_velocity is None else fermi_velocity
+            kF = (self._fermi_wavevector if fermi_wavevector is None
+                else fermi_wavevector)
+            if vF is None or kF is None:
+                raise AttributeError(
+                    "Cannot compute `real` (SpectralLinear): set `fermi_velocity` "
+                    "and `fermi_wavevector` first."
+                )
+            return enel - vF * (kpar - kF)
+
+        mb = self._bare_mass if mbare is None else mbare
+        kF = (self._fermi_wavevector if fermi_wavevector is None
+            else fermi_wavevector)
+        if mb is None or kF is None:
+            raise AttributeError(
+                "Cannot compute `real` (SpectralQuadratic): set `bare_mass` and "
+                "`fermi_wavevector` first."
+            )
+        return enel - (PREF / mb) * (kpar**2 - kF**2)
+
+
+    def _compute_real_sigma(self, fermi_velocity=None, fermi_wavevector=None,
+                            mbare=None):
+        r"""Compute std. dev. of Σ' without touching caches."""
+        if self._peak_sigma is None or self._ekin_range is None:
+            return None
+
+        kpar_sigma = self.peak_positions_sigma
+        if kpar_sigma is None:
+            return None
+
+        if self._class == "SpectralLinear":
+            vF = self._fermi_velocity if fermi_velocity is None else fermi_velocity
+            if vF is None:
+                raise AttributeError(
+                    "Cannot compute `real_sigma` (SpectralLinear): set "
+                    "`fermi_velocity` first."
+                )
+            return np.abs(vF) * kpar_sigma
+
+        mb = self._bare_mass if mbare is None else mbare
+        kF = (self._fermi_wavevector if fermi_wavevector is None
+            else fermi_wavevector)
+        if mb is None or kF is None:
+            raise AttributeError(
+                "Cannot compute `real_sigma` (SpectralQuadratic): set `bare_mass` "
+                "and `fermi_wavevector` first."
+            )
+
+        kpar = self.peak_positions
+        if kpar is None:
+            return None
+        return 2.0 * PREF * kpar_sigma * np.abs(kpar / mb)
+    
+
+    def _evaluate_self_energy_arrays(self, fermi_velocity=None, fermi_wavevector=None,
+                                    mbare=None):
+        r"""Evaluate Σ' / -Σ'' and 1σ uncertainties without mutating caches."""
+        real = self._compute_real(
+            fermi_velocity=fermi_velocity, fermi_wavevector=fermi_wavevector,
+            mbare=mbare,
+        )
+        real_sigma = self._compute_real_sigma(
+            fermi_velocity=fermi_velocity, fermi_wavevector=fermi_wavevector,
+            mbare=mbare,
+        )
+        imag = self._compute_imag(fermi_velocity=fermi_velocity, mbare=mbare)
+        imag_sigma = self._compute_imag_sigma(
+            fermi_velocity=fermi_velocity, mbare=mbare
+        )
+        return real, real_sigma, imag, imag_sigma
+
 
     @property
     def mdc_maxima(self):
@@ -402,7 +495,7 @@ class SelfEnergy:
                     self.peak_positions + self._center_wavevector
                 )
 
-        return self._mdc_maxima
+        return self._mdc_maxima    
     
     def _se_legend_labels(self):
         """Return (real_label, imag_label) for legend with safe subscripts."""
@@ -557,12 +650,13 @@ class SelfEnergy:
 
 
     def extract_a2f(self, omega_min, omega_max, omega_num, omega_I, omega_M,
-                    omega_S, h_n, method='chi2kink', parts='both',
+                    omega_S, method='chi2kink', parts='both',
                     alpha_min=1.0, alpha_max=9.0, alpha_num=10.0, mu=1.0,
                     a_guess=1.0, b_guess=2.5, c_guess=3.0, d_guess=1.5,
-                    f_chi_squared=None, impurity_scattering=0.0,
-                    ecut_left=0.0, ecut_right=None, sigma_svd=1e-4,
-                    t_criterion=1e-8, iter_max=1e4):
+                    ecut_left=0.0, ecut_right=None, f_chi_squared=None, 
+                    W=None, power=2, h_n=0.1, impurity_magnitude=0.0, 
+                    lambda_el=0.0, sigma_svd=1e-4, t_criterion=1e-8, 
+                    iter_max=1e4):
         r"""
         Extract Eliashberg function α²F(ω) from the self-energy. While working
         with band maps and MDCs is more intuitive in eV, the self-energy
@@ -619,15 +713,14 @@ class SelfEnergy:
 
         model = create_model_function(omega_range, omega_I, omega_M, omega_S,
                                        h_n)
-        delta_omega = (omega_max - omega_min) / omega_num
+        
+        delta_omega = (omega_max - omega_min) / (omega_num - 1)
         model_in = model * delta_omega
 
-        k_BT = K_B * self.temperature * KILO
         energies_eV = self.enel_range
 
         Emin = np.min(energies_eV)
         Elow = Emin + ecut_left_eV
-
         Ehigh = -ecut_right_eV
         mE = (energies_eV >= Elow) & (energies_eV <= Ehigh)
 
@@ -636,28 +729,53 @@ class SelfEnergy:
                 "Energy cutoffs removed all points; adjust ecut_left/right."
             )
 
-        energies = energies_eV[mE] * KILO
+        energies_eV_masked = energies_eV[mE]
+        energies = energies_eV_masked * KILO
+
+        k_BT = K_B * self.temperature * KILO
 
         kernel = create_kernel_function(energies, omega_range, k_BT)
 
+        if lambda_el:
+            if W is None:
+                if self._class == "SpectralQuadratic":
+                    W = (
+                        PREF * self._fermi_wavevector**2
+                        / (2.0 * self._bare_mass)
+                    ) * KILO
+                else:
+                    raise ValueError(
+                        "lambda_el was provided, but W is None. For a "
+                        "linearised band (SpectralLinear), you must also "
+                        "provide W in meV: the electron–electron interaction scale."
+                    )
+
+            energies_el = energies_eV_masked * KILO
+            real_el, imag_el = self._el_el_self_energy(
+                energies_el, k_BT, lambda_el, W, power
+            )
+        else:
+            real_el = 0.0
+            imag_el = 0.0
+
         if parts == "both":
-            real = self.real[mE] * KILO
+            real = self.real[mE] * KILO - real_el
             real_sigma = self.real_sigma[mE] * KILO
-            imag = self.imag[mE] * KILO - impurity_scattering
+            imag = self.imag[mE] * KILO - impurity_magnitude - imag_el
             imag_sigma = self.imag_sigma[mE] * KILO
             dvec = np.concatenate((real, imag))
             wvec = np.concatenate((real_sigma**(-2), imag_sigma**(-2)))
             kernel = np.concatenate((np.real(kernel), -np.imag(kernel)))
 
         elif parts == "real":
-            real = self.real[mE] * KILO
+            real = self.real[mE] * KILO - real_el
             real_sigma = self.real_sigma[mE] * KILO
             dvec = real
             wvec = real_sigma**(-2)
             kernel = np.real(kernel)
 
         else:  # parts == "imag"
-            imag = self.imag[mE] * KILO - impurity_scattering
+            imag = self.imag[mE] * KILO - impurity_magnitude - imag_el
             imag_sigma = self.imag_sigma[mE] * KILO
             dvec = imag
             wvec = imag_sigma**(-2)
@@ -666,16 +784,103 @@ class SelfEnergy:
         V_Sigma, U, uvec = singular_value_decomposition(kernel, sigma_svd)
 
         if method == "chi2kink":
-            spectrum_in = self._chi2kink_a2f(
-                dvec, model_in, uvec, mu, wvec, V_Sigma, U, alpha_min,
-                alpha_max, alpha_num, a_guess, b_guess, c_guess, d_guess,
-                f_chi_squared, t_criterion, iter_max, MEM_core
-            )
+            spectrum_in, _ = self._chi2kink_a2f(dvec, model_in, uvec, mu, wvec,
+                V_Sigma, U, alpha_min, alpha_max, alpha_num, a_guess, b_guess,
+                 c_guess, d_guess, f_chi_squared, t_criterion, iter_max, 
+                 MEM_core)
 
         spectrum = spectrum_in * omega_num / omega_max
         return spectrum, model
     
-    def _chi2kink_a2f(self, dvec, model_in, uvec, mu, wvec, V_Sigma, U,
+
+    def bayesian_loop(self, omega_min, omega_max, omega_num, omega_I, omega_M,
+                    omega_S, method='chi2kink', parts='both',
+                    alpha_min=1.0, alpha_max=9.0, alpha_num=10.0, mu=1.0,
+                    a_guess=1.0, b_guess=2.5, c_guess=3.0, d_guess=1.5,
+                    f_chi_squared=None, W=None, power=2,
+                    ecut_left=0.0, ecut_right=None, sigma_svd=1e-4,
+                    t_criterion=1e-8, iter_max=1e4,
+                    h_n=1.0, impurity_magnitude=0.0, lambda_el=0.0,
+                    fermi_velocity=None, fermi_wavevector=None):
+        r"""TBD
+
+        Stub for a Bayesian outer loop that will call extract_a2f().
+        Currently accepts the same arguments as extract_a2f and does nothing.
+        """
+
+        if self._class == "SpectralLinear":
+            if fermi_velocity is None:
+                if hasattr(self, "fermi_velocity"):
+                    fermi_velocity = self.fermi_velocity
+                else:
+                    raise ValueError("SpectralLinear optimisation requires an "
+                    "initial fermi_velocity to be provided.")
+                
+            if fermi_wavevector is None:
+                if hasattr(self, "fermi_wavevector"):
+                    fermi_wavevector = self.fermi_wavevector
+                else:
+                    raise ValueError("SpectralLinear optimisation requires an "
+                    "initial fermi_wavevector to be provided.")
+
+        optimisation_parameters = {"h_n": h_n,
+        "impurity_magnitude": impurity_magnitude,
+        "lambda_el": lambda_el,
+        "fermi_velocity": fermi_velocity,
+        "fermi_wavevector": fermi_wavevector}
+
+        cost = cost_function(optimisation_parameters)
+
+        # T = V_Sigma @ (U.T @ spectrum_in)
+        # chi_squared = wvec @ ((T - dvec) ** 2)
+
+        # mask = (spectrum_in > 0.0) & (model_in > 0.0)
+        # information_entropy = (np.sum(spectrum_in[mask] - model_in[mask]) 
+        #                     - np.sum(spectrum_in[mask] * 
+        #                              np.log(spectrum_in[mask] / model_in[mask])))
+        
+        # cost_function = (
+        #     0.5 * chi_squared
+        #     - alpha_select * information_entropy
+        #     + 0.5 * np.sum(np.log(2.0 * np.pi / wvec))
+        #     - 0.5 * spectrum_in.size * np.log(alpha_select)
+        # )
+
+        return cost
+
+
+    def _cost_function(self, optimisation_parameters):
+        r"""TBD
+
+        Negative log-posterior cost function for Bayesian optimisation.
+        """
+        required = {"h_n", "impurity_magnitude", "lambda_el"}
+        missing = required.difference(optimisation_parameters)
+        if missing:
+            raise ValueError(
+                f"Missing optimisation parameters: {sorted(missing)}"
+            )
+
+        h_n = optimisation_parameters["h_n"]
+        impurity_magnitude = optimisation_parameters["impurity_magnitude"]
+        lambda_el = optimisation_parameters["lambda_el"]
+
+        if self._class == "SpectralLinear":
+            required_lin = {"fermi_velocity", "fermi_wavevector"}
+            missing_lin = required_lin.difference(optimisation_parameters)
+            if missing_lin:
+                raise ValueError(
+                    "SpectralLinear requires optimisation_parameters to include "
+                    f"{sorted(missing_lin)}."
+                )
+
+            fermi_velocity = optimisation_parameters["fermi_velocity"]
+            fermi_wavevector = optimisation_parameters["fermi_wavevector"]
+
+        pass
+
+    @staticmethod
+    def _chi2kink_a2f(dvec, model_in, uvec, mu, wvec, V_Sigma, U,
                             alpha_min, alpha_max, alpha_num, a_guess, b_guess,
                             c_guess, d_guess, f_chi_squared, t_criterion, 
                             iter_max, MEM_core):
@@ -713,7 +918,39 @@ class SelfEnergy:
         spectrum_in, uvec = MEM_core(dvec, model_in, uvec, mu, alpha_select, 
                         wvec, V_Sigma, U, t_criterion, iter_max)
 
-        return spectrum_in
+        return spectrum_in, alpha_select
+
+
+    @staticmethod
+    def _el_el_self_energy(enel_range, k_BT, lambda_el, W, power):
+        """Electron–electron contribution to the self-energy."""
+        x = enel_range / W
+        denom = 1.0 - (np.pi * k_BT / W) ** 2
+
+        if denom == 0.0:
+            raise ZeroDivisionError(
+                "Invalid parameters: 1 - (π k_BT / W)^2 = 0."
+            )
+
+        pref = lambda_el / (W * denom)
+
+        if power == 2:
+            real_el = pref * x * ((np.pi * k_BT) ** 2 - W ** 2) / (1.0 + x ** 2)
+            imag_el = (pref * (enel_range ** 2 + (np.pi * k_BT) ** 2) 
+                       / (1.0 + x ** 2))
+
+        elif power == 4:
+            num = (
+                (np.pi * k_BT) ** 2 * (1.0 + x ** 2)
+                - W ** 2 * (1.0 - x ** 2)
+            )
+            real_el = pref * x * num / (1.0 + x ** 4)
+            imag_el = (pref * np.sqrt(2.0) * (enel_range ** 2 + (np.pi * k_BT)
+                        ** 2) / ( 1.0 + x ** 4))
+        else:
+            raise ValueError("El-el coupling not implemented for given power.")
+
+        return real_el, imag_el
 
 
 class CreateSelfEnergies:
