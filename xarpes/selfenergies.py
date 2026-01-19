@@ -32,7 +32,7 @@ class SelfEnergy:
             if len(properties) == 1:
                 properties = properties[0]
             else:
-                raise ValueError("`properties` must be a dict or a single " \
+                raise ValueError("`properties` must be a dict or a single "
                 "dict in a list.")
 
         # single source of truth for all params (+ their *_sigma)
@@ -84,10 +84,9 @@ class SelfEnergy:
     def _check_mass_velocity_exclusivity(self):
         """Ensure that fermi_velocity and bare_mass are not both set."""
         if (self._fermi_velocity is not None) and (self._bare_mass is not None):
-            raise ValueError(
-                "Cannot set both `fermi_velocity` and `bare_mass`: "
-                "choose one physical parametrization (SpectralLinear or SpectralQuadratic)."
-            )
+            raise ValueError("Cannot set both `fermi_velocity` and "
+            "`bare_mass`: choose one physical parametrization (SpectralLinear"
+            " or SpectralQuadratic).")
 
     # ---------------- core read-only axes ----------------
     @property
@@ -171,7 +170,7 @@ class SelfEnergy:
     @fermi_velocity.setter
     def fermi_velocity(self, x):
         if self._class == "SpectralQuadratic":
-            raise ValueError("`fermi_velocity` cannot be set for" \
+            raise ValueError("`fermi_velocity` cannot be set for"
             " SpectralQuadratic.")
         self._fermi_velocity = x
         self._parameters["fermi_velocity"] = x
@@ -276,13 +275,13 @@ class SelfEnergy:
                         "before accessing peak_positions and quantities that "
                         "depend on the latter."
                     )
-                kpar_mag = np.sqrt(self._ekin_range / PREF) * \
-                    np.sin(np.deg2rad(np.abs(self._peak)))
-                self._peak_positions = (-1.0 if self._side == "left" \
-                                        else 1.0) * kpar_mag
+                kpar_mag = (np.sqrt(self._ekin_range / PREF) *
+                    np.sin(np.deg2rad(np.abs(self._peak))))
+                self._peak_positions = ((-1.0 if self._side == "left"
+                                        else 1.0) * kpar_mag)
             else:
-                self._peak_positions = np.sqrt(self._ekin_range / PREF) \
-                * np.sin(np.deg2rad(self._peak))
+                self._peak_positions = (np.sqrt(self._ekin_range / PREF)
+                * np.sin(np.deg2rad(self._peak)))
         return self._peak_positions
     
 
@@ -292,9 +291,9 @@ class SelfEnergy:
         if self._peak_positions_sigma is None:
             if self._peak_sigma is None or self._ekin_range is None:
                 return None
-            self._peak_positions_sigma = (np.sqrt(self._ekin_range / PREF) \
-                * np.abs(np.cos(np.deg2rad(self._peak))) \
-                * np.deg2rad(self._peak_sigma))
+            self._peak_positions_sigma = ((np.sqrt(self._ekin_range / PREF)
+                * np.abs(np.cos(np.deg2rad(self._peak)))
+                * np.deg2rad(self._peak_sigma)))
         return self._peak_positions_sigma
     
 
@@ -355,12 +354,18 @@ class SelfEnergy:
                 )
             return np.abs(vF) * np.sqrt(ekin / PREF) * broad
 
-        mb = self._bare_mass if bare_mass is None else bare_mass
-        if mb is None:
-            raise AttributeError(
-                "Cannot compute `imag` (SpectralQuadratic): set `bare_mass` first."
-            )
-        return (ekin * broad) / np.abs(mb)
+        if self._class == "SpectralQuadratic":
+            mb = self._bare_mass if bare_mass is None else bare_mass
+            if mb is None:
+                raise AttributeError(
+                    "Cannot compute `imag` (SpectralQuadratic): set `bare_mass` "
+                    "first."
+                )
+            return (ekin * broad) / np.abs(mb)
+
+        raise NotImplementedError(
+            f"_compute_imag is not implemented for spectral class '{self._class}'."
+        )
 
 
     def _compute_imag_sigma(self, fermi_velocity=None, bare_mass=None):
@@ -380,13 +385,19 @@ class SelfEnergy:
                 )
             return np.abs(vF) * np.sqrt(ekin / PREF) * broad_sigma
 
-        mb = self._bare_mass if bare_mass is None else bare_mass
-        if mb is None:
-            raise AttributeError(
-                "Cannot compute `imag_sigma` (SpectralQuadratic): set `bare_mass` "
-                "first."
-            )
-        return (ekin * broad_sigma) / np.abs(mb)
+        if self._class == "SpectralQuadratic":
+            mb = self._bare_mass if bare_mass is None else bare_mass
+            if mb is None:
+                raise AttributeError(
+                    "Cannot compute `imag_sigma` (SpectralQuadratic): set "
+                    "`bare_mass` first."
+                )
+            return (ekin * broad_sigma) / np.abs(mb)
+
+        raise NotImplementedError(
+            f"_compute_imag_sigma is not implemented for spectral class "
+            f"'{self._class}'."
+        )
 
 
     def _compute_real(self, fermi_velocity=None, fermi_wavevector=None,
@@ -411,16 +422,20 @@ class SelfEnergy:
                 )
             return enel - vF * (kpar - kF)
 
-        mb = self._bare_mass if bare_mass is None else bare_mass
-        kF = (self._fermi_wavevector if fermi_wavevector is None
-            else fermi_wavevector)
-        if mb is None or kF is None:
-            raise AttributeError(
-                "Cannot compute `real` (SpectralQuadratic): set `bare_mass` and "
-                "`fermi_wavevector` first."
-            )
-        return enel - (PREF / mb) * (kpar**2 - kF**2)
+        if self._class == "SpectralQuadratic":
+            mb = self._bare_mass if bare_mass is None else bare_mass
+            kF = (self._fermi_wavevector if fermi_wavevector is None
+                else fermi_wavevector)
+            if mb is None or kF is None:
+                raise AttributeError(
+                    "Cannot compute `real` (SpectralQuadratic): set `bare_mass` "
+                    "and `fermi_wavevector` first."
+                )
+            return enel - (PREF / mb) * (kpar**2 - kF**2)
 
+        raise NotImplementedError(
+            f"_compute_real is not implemented for spectral class '{self._class}'."
+        )
 
     def _compute_real_sigma(self, fermi_velocity=None, fermi_wavevector=None,
                             bare_mass=None):
@@ -441,19 +456,24 @@ class SelfEnergy:
                 )
             return np.abs(vF) * kpar_sigma
 
-        mb = self._bare_mass if bare_mass is None else bare_mass
-        kF = (self._fermi_wavevector if fermi_wavevector is None
-            else fermi_wavevector)
-        if mb is None or kF is None:
-            raise AttributeError(
-                "Cannot compute `real_sigma` (SpectralQuadratic): set `bare_mass` "
-                "and `fermi_wavevector` first."
-            )
+        if self._class == "SpectralQuadratic":
+            mb = self._bare_mass if bare_mass is None else bare_mass
+            kF = (self._fermi_wavevector if fermi_wavevector is None
+                else fermi_wavevector)
+            if mb is None or kF is None:
+                raise AttributeError(
+                    "Cannot compute `real_sigma` (SpectralQuadratic): set "
+                    "`bare_mass` and `fermi_wavevector` first."
+                )
 
-        kpar = self.peak_positions
-        if kpar is None:
-            return None
-        return 2.0 * PREF * kpar_sigma * np.abs(kpar / mb)
+            kpar = self.peak_positions
+            if kpar is None:
+                return None
+            return 2.0 * PREF * kpar_sigma * np.abs(kpar / mb)
+
+        raise ValueError(
+            f"Unsupported spectral class '{self._class}' in _compute_real_sigma."
+        )
 
 
     def _evaluate_self_energy_arrays(self, fermi_velocity=None, fermi_wavevector=None,
@@ -653,11 +673,11 @@ class SelfEnergy:
 
 
     def extract_a2f(self, omega_min, omega_max, omega_num, omega_I, omega_M,
-                    omega_S, method='chi2kink', parts='both',
-                    alpha_min=1.0, alpha_max=9.0, alpha_num=10.0, mu=1.0,
+                    omega_S=1.0, method='chi2kink', parts='both',
+                    alpha_min=1.0, alpha_max=9.0, alpha_num=10, mu=1.0,
                     a_guess=1.0, b_guess=2.5, c_guess=3.0, d_guess=1.5,
                     ecut_left=0.0, ecut_right=None, f_chi_squared=None, 
-                    W=None, power=2, h_n=0.1, impurity_magnitude=0.0, 
+                    W=None, power=4, h_n=0.1, impurity_magnitude=0.0, 
                     lambda_el=0.0, sigma_svd=1e-4, t_criterion=1e-8, 
                     iter_max=1e4):
         r"""
@@ -742,16 +762,13 @@ class SelfEnergy:
         if lambda_el:
             if W is None:
                 if self._class == "SpectralQuadratic":
-                    W = (
-                        PREF * self._fermi_wavevector**2
-                        / (2.0 * self._bare_mass)
+                    W = (PREF * self._fermi_wavevector**2 / self._bare_mass
                     ) * KILO
                 else:
-                    raise ValueError(
-                        "lambda_el was provided, but W is None. For a "
-                        "linearised band (SpectralLinear), you must also "
-                        "provide W in meV: the electron–electron interaction scale."
-                    )
+                    raise ValueError("lambda_el was provided, but W is None. "
+                    "For a linearised band (SpectralLinear), you must also "
+                    "provide W in meV: the electron–electron interaction "
+                    "scale.")
 
             energies_el = energies_eV_masked * KILO
             real_el, imag_el = self._el_el_self_energy(
@@ -768,23 +785,23 @@ class SelfEnergy:
             imag_sigma = self.imag_sigma[mE] * KILO
             dvec = np.concatenate((real, imag))
             wvec = np.concatenate((real_sigma**(-2), imag_sigma**(-2)))
-            kernel = np.concatenate((np.real(kernel), -np.imag(kernel)))
+            H = np.concatenate((np.real(kernel), -np.imag(kernel)))
 
         elif parts == "real":
             real = self.real[mE] * KILO - real_el
             real_sigma = self.real_sigma[mE] * KILO
             dvec = real
             wvec = real_sigma**(-2)
-            kernel = np.real(kernel)
+            H = np.real(kernel)
 
         else:  # parts == "imag"
             imag = self.imag[mE] * KILO - impurity_magnitude - imag_el
             imag_sigma = self.imag_sigma[mE] * KILO
             dvec = imag
             wvec = imag_sigma**(-2)
-            kernel = -np.imag(kernel)
+            H = -np.imag(kernel)
 
-        V_Sigma, U, uvec = singular_value_decomposition(kernel, sigma_svd)
+        V_Sigma, U, uvec = singular_value_decomposition(H, sigma_svd)
 
         if method == "chi2kink":
             spectrum_in, _ = self._chi2kink_a2f(dvec, model_in, uvec, mu, wvec,
@@ -795,93 +812,170 @@ class SelfEnergy:
         spectrum = spectrum_in * omega_num / omega_max
         return spectrum, model
     
-    def bayesian_loop(
-        self, omega_min, omega_max, omega_num, omega_I, omega_M, omega_S,
-        method="chi2kink", parts="both", alpha_min=1.0, alpha_max=9.0,
-        alpha_num=10.0, mu=1.0, a_guess=1.0, b_guess=2.5, c_guess=3.0,
-        d_guess=1.5, f_chi_squared=None, W=None, power=2, ecut_left=0.0,
-        ecut_right=None, sigma_svd=1e-4, t_criterion=1e-8, iter_max=1e4,
-        h_n=1.0, impurity_magnitude=0.0, lambda_el=0.0, fermi_velocity=None,
-        fermi_wavevector=None, vary=(), bounds=None, opt_method="Nelder-Mead",
-        opt_options=None, opt_iter_max=200, 
-        scale_vF=1.0, scale_imp=1.0, scale_kF=1.0):
-        r"""TBD
 
+    def bayesian_loop(self, omega_min, omega_max, omega_num, omega_I, 
+        omega_M, omega_S=1.0, method="chi2kink", parts="both", alpha_min=1.0,
+        alpha_max=9.0, alpha_num=10, mu=1.0, a_guess=1.0, b_guess=2.5, 
+        c_guess=3.0, d_guess=1.5, f_chi_squared=None, W=None, power=4, 
+        ecut_left=0.0, ecut_right=None, sigma_svd=1e-4, t_criterion=1e-8, 
+        iter_max=1e4, h_n_min=1e-6, h_n=1.0, impurity_magnitude=0.0, 
+        lambda_el=0.0, fermi_velocity=None, fermi_wavevector=None,
+        bare_mass=None, vary=(),  opt_method="Nelder-Mead", opt_options=None,
+        opt_iter_max=200, scale_vF=1.0, scale_mb=1.0, scale_imp=1.0, 
+        scale_kF=1.0, scale_lambda_el=1.0, scale_hn=1.0):
+        r"""
         Bayesian outer loop calling `_cost_function()`.
 
-        If `vary` is non-empty, runs a SciPy optimization over those parameters.
-        Currently supports varying: "fermi_velocity" and "impurity_magnitude".
+        If `vary` is non-empty, runs a SciPy optimization over the selected
+        parameters in `vary`.
+
+        Supported entries in `vary` depend on `self._class`:
+
+        - Common: "fermi_wavevector", "impurity_magnitude", "lambda_el", "h_n"
+        - SpectralLinear: additionally "fermi_velocity"
+        - SpectralQuadratic: additionally "bare_mass"
+
+        Parameters
+        ----------
+        opt_options : dict (optional)
+            Dictionary of options passed directly to scipy.optimize.minimize.
+            User-supplied entries override default values (e.g. xatol, fatol
+            for Nelder–Mead).
         """
+        from scipy.optimize import minimize
+        from . import create_kernel_function, singular_value_decomposition
+
+        fermi_velocity, fermi_wavevector, bare_mass = self._prepare_bare(
+            fermi_velocity, fermi_wavevector, bare_mass)
+        
+        vary = tuple(vary) if vary is not None else ()
+
+        allowed = {"fermi_wavevector", "impurity_magnitude", "lambda_el", "h_n"}
 
         if self._class == "SpectralLinear":
-            if fermi_velocity is None:
-                if hasattr(self, "fermi_velocity"):
-                    fermi_velocity = self.fermi_velocity
-                else:
-                    raise ValueError(
-                        "SpectralLinear optimisation requires an initial "
-                        "fermi_velocity to be provided."
-                    )
-
-            if fermi_wavevector is None:
-                if hasattr(self, "fermi_wavevector"):
-                    fermi_wavevector = self.fermi_wavevector
-                else:
-                    raise ValueError(
-                        "SpectralLinear optimisation requires an initial "
-                        "fermi_wavevector to be provided."
-                    )
-
-        vary = tuple(vary) if vary is not None else ()
-        allowed = {"fermi_velocity", "fermi_wavevector", "impurity_magnitude"}
-        unknown = set(vary).difference(allowed)
-        if unknown:
-            raise ValueError(
-                f"Unsupported entries in vary: {sorted(unknown)}. Allowed: "
-                f"{sorted(allowed)}."
+            allowed.add("fermi_velocity")
+        elif self._class == "SpectralQuadratic":
+            allowed.add("bare_mass")
+        else:
+            raise NotImplementedError(
+                f"bayesian_loop does not support spectral class '{self._class}'."
             )
+                
+        # Cast potential floats to integers
+        omega_num = int(omega_num)
+        alpha_num = int(alpha_num)
+        iter_max = int(iter_max)
 
         vF0 = float(fermi_velocity) if fermi_velocity is not None else None
         kF0 = float(fermi_wavevector) if fermi_wavevector is not None else None
+        mb0 = float(bare_mass) if bare_mass is not None else None
         imp0 = float(impurity_magnitude)
+        h_n0 = float(h_n)
+        lae0 = float(lambda_el)
 
-        def _pack_x0():
-            x0 = []
-            for name in vary:
-                if name in {"fermi_velocity", "fermi_wavevector", "impurity_magnitude"}:
-                    x0.append(0.0)
-            return np.asarray(x0, dtype=float)
+        if lae0 < 0.0:
+            raise ValueError("Initial lambda_el must be >= 0.")
+        if imp0 < 0.0:
+            raise ValueError("Initial impurity_magnitude must be >= 0.")
+        if h_n0 < h_n_min:
+            raise ValueError("Initial h_n must be >= h_n_min.")
+        if kF0 is None:
+            raise ValueError("bayesian_loop requires an initial fermi_wavevector.")
+        if self._class == "SpectralLinear" and vF0 is None:
+            raise ValueError("bayesian_loop requires an initial fermi_velocity.")
+        if self._class == "SpectralQuadratic" and mb0 is None:
+            raise ValueError("bayesian_loop requires an initial bare_mass.")
+          
+        ecut_left_eV = ecut_left / KILO
+        ecut_right_eV = self.energy_resolution if ecut_right is None else ecut_right / KILO
+
+        energies_eV = self.enel_range
+        Emin = np.min(energies_eV)
+        Elow = Emin + ecut_left_eV
+        Ehigh = -ecut_right_eV
+        mE = (energies_eV >= Elow) & (energies_eV <= Ehigh)
+
+        if not np.any(mE):
+            raise ValueError(
+                "Energy cutoffs removed all points; adjust ecut_left/right."
+            )
+
+        energies_eV_masked = energies_eV[mE]
+        energies = energies_eV_masked * KILO
+
+        k_BT = K_B * self.temperature * KILO
+        omega_range = np.linspace(omega_min, omega_max, omega_num)
+
+        kernel_raw = create_kernel_function(energies, omega_range, k_BT)
+
+        if parts == "both":
+            kernel_used = np.concatenate((np.real(kernel_raw), -np.imag(kernel_raw)))
+        elif parts == "real":
+            kernel_used = np.real(kernel_raw)
+        else:  # parts == "imag"
+            kernel_used = -np.imag(kernel_raw)
+
+        V_Sigma, U, uvec0 = singular_value_decomposition(kernel_used, sigma_svd)
+
+        _precomp = {
+            "omega_range": omega_range,
+            "mE": mE,
+            "energies_eV_masked": energies_eV_masked,
+            "V_Sigma": V_Sigma,
+            "U": U,
+            "uvec0": uvec0,
+        } 
+        
+        def _reflect_min(xi, p0, p_min, scale):
+            """Map R -> [p_min, +inf) using linear reflection around p_min."""
+            return p_min + np.abs((float(p0) - p_min) + scale * float(xi))
 
         def _unpack_params(x):
-            params = {"h_n": h_n, "lambda_el": lambda_el}
+            params = {}
 
             i = 0
             for name in vary:
+                xi = float(x[i])
+
                 if name == "fermi_velocity":
                     if vF0 is None:
-                        raise ValueError(
-                            "Cannot vary fermi_velocity: no initial vF provided."
-                        )
-                    params["fermi_velocity"] = vF0 + scale_vF * float(x[i])
+                        raise ValueError("Cannot vary fermi_velocity: no " \
+                        "initial vF provided.")
+                    params["fermi_velocity"] = vF0 + scale_vF * xi
+
+                elif name == "bare_mass":
+                    if mb0 is None:
+                        raise ValueError("Cannot vary bare_mass: no initial "
+                        "bare_mass provided.")
+                    params["bare_mass"] = mb0 + scale_mb * xi
 
                 elif name == "fermi_wavevector":
                     if kF0 is None:
                         raise ValueError(
-                            "Cannot vary fermi_wavevector: no initial kF provided."
-                        )
-                    params["fermi_wavevector"] = kF0 + scale_kF * float(x[i])
+                            "Cannot vary fermi_wavevector: no initial kF " \
+                            "provided.")
+                    params["fermi_wavevector"] = kF0 + scale_kF * xi
 
                 elif name == "impurity_magnitude":
-                    params["impurity_magnitude"] = imp0 + scale_imp * float(x[i])
+                    params["impurity_magnitude"] = _reflect_min(xi, imp0, 0.0, scale_imp)
+
+                elif name == "lambda_el":
+                    params["lambda_el"] = _reflect_min(xi, lae0, 0.0, scale_lambda_el)
+
+                elif name == "h_n":
+                    params["h_n"] = _reflect_min(xi, h_n0, h_n_min, scale_hn)
 
                 i += 1
 
-            if "fermi_velocity" not in params:
-                params["fermi_velocity"] = vF0
-            if "fermi_wavevector" not in params:
-                params["fermi_wavevector"] = kF0
-            if "impurity_magnitude" not in params:
-                params["impurity_magnitude"] = imp0
+            params.setdefault("fermi_wavevector", kF0)
+            params.setdefault("impurity_magnitude", imp0)
+            params.setdefault("lambda_el", lae0)
+            params.setdefault("h_n", h_n0)
+
+            if self._class == "SpectralLinear":
+                params.setdefault("fermi_velocity", vF0)
+            elif self._class == "SpectralQuadratic":
+                params.setdefault("bare_mass", mb0)
 
             return params
 
@@ -890,30 +984,51 @@ class SelfEnergy:
                 "h_n": params["h_n"],
                 "impurity_magnitude": params["impurity_magnitude"],
                 "lambda_el": params["lambda_el"],
+                "fermi_wavevector": params["fermi_wavevector"],
             }
+
             if self._class == "SpectralLinear":
                 optimisation_parameters["fermi_velocity"] = params["fermi_velocity"]
-                optimisation_parameters["fermi_wavevector"] = params["fermi_wavevector"]
+            elif self._class == "SpectralQuadratic":
+                optimisation_parameters["bare_mass"] = params["bare_mass"]
+            else:
+                raise NotImplementedError(
+                    f"_evaluate_cost does not support class '{self._class}'."
+                )
 
             return self._cost_function(
-                optimisation_parameters, omega_min, omega_max, omega_num,
-                omega_I, omega_M, omega_S, method=method, parts=parts,
-                alpha_min=alpha_min, alpha_max=alpha_max, alpha_num=alpha_num,
-                mu=mu, a_guess=a_guess, b_guess=b_guess, c_guess=c_guess,
-                d_guess=d_guess, ecut_left=ecut_left, ecut_right=ecut_right,
-                f_chi_squared=f_chi_squared, W=W, power=power,
-                sigma_svd=sigma_svd, t_criterion=t_criterion, iter_max=iter_max,
+                optimisation_parameters, omega_min, omega_max, omega_num, omega_I,
+                omega_M, omega_S, method=method, parts=parts, alpha_min=alpha_min,
+                alpha_max=alpha_max, alpha_num=alpha_num, mu=mu, a_guess=a_guess,
+                b_guess=b_guess, c_guess=c_guess, d_guess=d_guess,
+                ecut_left=ecut_left, ecut_right=ecut_right,
+                f_chi_squared=f_chi_squared, W=W, power=power, sigma_svd=sigma_svd,
+                t_criterion=t_criterion, iter_max=iter_max, _precomp=_precomp,
             )
 
         last = {"cost": None, "spectrum": None, "model": None, "alpha": None}
 
+        iter_counter = {"n": 0}
+
         def obj(x):
+            iter_counter["n"] += 1
+
             params = _unpack_params(x)
             cost, spectrum, model, alpha_select = _evaluate_cost(params)
+
             last["cost"] = float(cost)
             last["spectrum"] = spectrum
             last["model"] = model
             last["alpha"] = float(alpha_select)
+
+            # --- DEBUG PRINT ---
+            msg = [f"Iter {iter_counter['n']:4d} | cost = {cost: .4e}"]
+            for key in sorted(params):
+                val = params[key]
+                msg.append(f"{key}={val:.4g}")
+            print(" | ".join(msg))
+            # -------------------
+
             return float(cost)
 
         if not vary:
@@ -921,16 +1036,14 @@ class SelfEnergy:
             cost, spectrum, model, alpha_select = _evaluate_cost(params)
             return cost, spectrum, model, alpha_select
 
-        from scipy.optimize import minimize
-
-        x0 = _pack_x0()
+        x0 = np.zeros(len(vary), dtype=float)
         options = {} if opt_options is None else dict(opt_options)
 
         options.setdefault("maxiter", int(opt_iter_max))
-        options.setdefault("xatol", 1e-6)
-        options.setdefault("fatol", 1e-6)
+        options.setdefault("xatol", 1e-4)
+        options.setdefault("fatol", 1e-4)
 
-        res = minimize(obj, x0, method=opt_method, bounds=bounds, options=options)
+        res = minimize(obj, x0, method=opt_method, options=options)
 
         if last["cost"] is None:
             params = _unpack_params(res.x)
@@ -948,13 +1061,86 @@ class SelfEnergy:
 
         return cost, spectrum, model, alpha_select
 
+    def _prepare_bare(self, fermi_velocity, fermi_wavevector, bare_mass):
+        """Validate class-compatible band parameters and infer missing defaults.
+
+        Enforces:
+            - SpectralLinear: bare_mass must be None; vF and kF must be available.
+            - SpectralQuadratic: fermi_velocity must be None; bare_mass and kF must
+            be available.
+
+        Returns
+        -------
+        fermi_velocity : float or None
+            Initial vF (Linear) or None (Quadratic).
+        fermi_wavevector : float
+            Initial kF.
+        bare_mass : float or None
+            Initial bare mass (Quadratic) or None (Linear).
+        """
+        if self._class == "SpectralLinear":
+            if bare_mass is not None:
+                raise ValueError(
+                    "SpectralLinear bayesian_loop does not accept `bare_mass`. "
+                    "Provide `fermi_velocity` instead."
+                )
+
+            if fermi_velocity is None:
+                fermi_velocity = getattr(self, "fermi_velocity", None)
+                if fermi_velocity is None:
+                    raise ValueError(
+                        "SpectralLinear optimisation requires an initial "
+                        "fermi_velocity to be provided."
+                    )
+
+            if fermi_wavevector is None:
+                fermi_wavevector = getattr(self, "fermi_wavevector", None)
+                if fermi_wavevector is None:
+                    raise ValueError(
+                        "SpectralLinear optimisation requires an initial "
+                        "fermi_wavevector to be provided."
+                    )
+
+            return float(fermi_velocity), float(fermi_wavevector), None
+
+        elif self._class == "SpectralQuadratic":
+            if fermi_velocity is not None:
+                raise ValueError(
+                    "SpectralQuadratic bayesian_loop does not accept "
+                    "`fermi_velocity`. Provide `bare_mass` instead."
+                )
+
+            if bare_mass is None:
+                bare_mass = getattr(self, "_bare_mass", None)
+                if bare_mass is None:
+                    raise ValueError(
+                        "SpectralQuadratic optimisation requires an initial "
+                        "bare_mass to be provided."
+                    )
+
+            if fermi_wavevector is None:
+                fermi_wavevector = getattr(self, "fermi_wavevector", None)
+                if fermi_wavevector is None:
+                    raise ValueError(
+                        "SpectralQuadratic optimisation requires an initial "
+                        "fermi_wavevector to be provided."
+                    )
+
+            return None, float(fermi_wavevector), float(bare_mass)
+
+        else:
+            raise NotImplementedError(
+            f"_prepare_bare is not implemented for spectral class "
+            "'{self._class}'.")
+
     def _cost_function(self, optimisation_parameters, omega_min, omega_max,
-                    omega_num, omega_I, omega_M, omega_S, method="chi2kink",
-                    parts="both", alpha_min=1.0, alpha_max=9.0, alpha_num=10.0,
+                    omega_num, omega_I, omega_M, omega_S=1.0, method="chi2kink",
+                    parts="both", alpha_min=1.0, alpha_max=9.0, alpha_num=10,
                     mu=1.0, a_guess=1.0, b_guess=2.5, c_guess=3.0, d_guess=1.5,
                     ecut_left=0.0, ecut_right=None, f_chi_squared=None, W=None,
-                    power=2, h_n=0.1, impurity_magnitude=None, lambda_el=None,
-                    sigma_svd=1e-4, t_criterion=1e-8, iter_max=1e4):
+                    power=4, h_n=0.1, impurity_magnitude=None, lambda_el=None,
+                    sigma_svd=1e-4, t_criterion=1e-8, iter_max=1e4,
+                   *, _precomp=None):
         r"""TBD
 
         Negative log-posterior cost function for Bayesian optimisation.
@@ -1029,42 +1215,34 @@ class SelfEnergy:
             if bare_mass is None and hasattr(self, "_bare_mass"):
                 bare_mass = self._bare_mass
 
-        from . import (
-            create_model_function, create_kernel_function,
-            singular_value_decomposition, MEM_core,
-        )
-
-        ecut_left_eV = ecut_left / KILO
-        if ecut_right is None:
-            ecut_right_eV = self.energy_resolution
-        else:
-            ecut_right_eV = ecut_right / KILO
+        from . import create_model_function, MEM_core
 
         if f_chi_squared is None:
             f_chi_squared = 2.5 if parts == "both" else 2.0
 
-        omega_range = np.linspace(omega_min, omega_max, omega_num)
+        if _precomp is None:
+            raise ValueError(
+                "_precomp is None in _cost_function. Pass the precomputed kernel/SVD "
+                "bundle from bayesian_loop."
+            )
+
+        omega_range = _precomp["omega_range"]
+        mE = _precomp["mE"]
+        energies_eV_masked = _precomp["energies_eV_masked"]
+
+        V_Sigma = _precomp["V_Sigma"]
+        U = _precomp["U"]
+        uvec = np.array(_precomp["uvec0"], copy=True)
+
+        if f_chi_squared is None:
+            f_chi_squared = 2.5 if parts == "both" else 2.0
+
         model = create_model_function(omega_range, omega_I, omega_M, omega_S, h_n)
 
         delta_omega = (omega_max - omega_min) / (omega_num - 1)
         model_in = model * delta_omega
 
-        energies_eV = self.enel_range
-        Emin = np.min(energies_eV)
-        Elow = Emin + ecut_left_eV
-        Ehigh = -ecut_right_eV
-        mE = (energies_eV >= Elow) & (energies_eV <= Ehigh)
-
-        if not np.any(mE):
-            raise ValueError(
-                "Energy cutoffs removed all points; adjust ecut_left/right."
-            )
-
-        energies_eV_masked = energies_eV[mE]
-        energies = energies_eV_masked * KILO
-
         k_BT = K_B * self.temperature * KILO
-        kernel = create_kernel_function(energies, omega_range, k_BT)
 
         if lambda_el:
             if W is None:
@@ -1076,12 +1254,10 @@ class SelfEnergy:
                             "inferred. Provide W (meV), or set `self._fermi_wavevector` "
                             "and pass `bare_mass`."
                         )
-                    W = (PREF * kF0**2 / (2.0 * bare_mass)) * KILO
+                    W = (PREF * kF0**2 / bare_mass) * KILO
                 else:
-                    raise ValueError(
-                        "lambda_el was provided, but W is None. For SpectralLinear "
-                        "you must provide W in meV."
-                    )
+                    raise ValueError("lambda_el was provided, but W is None. "
+                    "For SpectralLinear you must provide W in meV.")
 
             energies_el = energies_eV_masked * KILO
             real_el, imag_el = self._el_el_self_energy(
@@ -1110,19 +1286,14 @@ class SelfEnergy:
             imag_sig_m = imag_sigma[mE] * KILO
             dvec = np.concatenate((real_m, imag_m))
             wvec = np.concatenate((real_sig_m**(-2), imag_sig_m**(-2)))
-            kernel = np.concatenate((np.real(kernel), -np.imag(kernel)))
         elif parts == "real":
             real_sig_m = real_sigma[mE] * KILO
             dvec = real_m
             wvec = real_sig_m**(-2)
-            kernel = np.real(kernel)
         else:
             imag_sig_m = imag_sigma[mE] * KILO
             dvec = imag_m
             wvec = imag_sig_m**(-2)
-            kernel = -np.imag(kernel)
-
-        V_Sigma, U, uvec = singular_value_decomposition(kernel, sigma_svd)
 
         spectrum_in, alpha_select = self._chi2kink_a2f(
             dvec, model_in, uvec, mu, wvec, V_Sigma, U, alpha_min, alpha_max,
@@ -1155,139 +1326,6 @@ class SelfEnergy:
         spectrum = spectrum_in * omega_num / omega_max
 
         return (cost, spectrum, model, alpha_select)
-
-
-    @staticmethod
-    def _as_1d_float_array(x):
-        return np.asarray(x, dtype=float).ravel()
-
-    @staticmethod
-    def _validate_vary(vary, allowed):
-        if isinstance(vary, str):
-            vary = (vary,)
-        vary = tuple(vary)
-        unknown = [p for p in vary if p not in allowed]
-        if unknown:
-            raise ValueError(
-                f"Unknown parameters in vary: {unknown}. "
-                f"Allowed: {sorted(allowed)}"
-            )
-        return vary
-
-    @staticmethod
-    def _build_bounds(vary, bounds):
-        if bounds is None:
-            return [(None, None)] * len(vary)
-        if isinstance(bounds, dict):
-            return [bounds.get(p, (None, None)) for p in vary]
-        if len(bounds) != len(vary):
-            raise ValueError("Sequence bounds must match len(vary).")
-        return list(bounds)
-
-    def _get_param_value(self, name):
-        if name == "impurity_magnitude":
-            return float(self.impurity_magnitude)
-        if name == "fermi_velocity":
-            return float(self.fermi_velocity)
-        raise ValueError(f"Unknown parameter: {name}")
-
-    def _set_param_value(self, name, value):
-        if name == "impurity_magnitude":
-            self.impurity_magnitude = float(value)
-            return
-        if name == "fermi_velocity":
-            self.fermi_velocity = float(value)
-            return
-        raise ValueError(f"Unknown parameter: {name}")
-
-    def _pack_from_self(self, vary):
-        return np.array([self._get_param_value(p) for p in vary], dtype=float)
-
-    def _apply_vector(self, vary, x):
-        x = self._as_1d_float_array(x)
-        if len(x) != len(vary):
-            raise ValueError("x and vary have inconsistent lengths.")
-        for name, val in zip(vary, x):
-            self._set_param_value(name, val)
-
-    def optimize(
-        self, *, vary, cost_function, fixed=None, x0=None, bounds=None,
-        method="Nelder-Mead", options=None, tol=None, iter_max=None,
-        callback=None, return_best=False,
-    ):
-        """
-        Optimize a chosen subset of parameters with scipy.optimize.minimize.
-
-        cost_function must be callable as: cost_function(self, **params) -> float
-        params = varied params merged with `fixed` overrides.
-        """
-        from scipy.optimize import minimize
-
-        allowed = {"impurity_magnitude", "fermi_velocity"}
-        vary = self._validate_vary(vary, allowed)
-        fixed_params = {} if fixed is None else dict(fixed)
-
-        bnds = self._build_bounds(vary, bounds)
-        x0_vec = self._pack_from_self(vary) if x0 is None else self._as_1d_float_array(x0)
-        if len(x0_vec) != len(vary):
-            raise ValueError("x0 must match len(vary).")
-
-        opt_options = {} if options is None else dict(options)
-        if iter_max is not None:
-            opt_options.setdefault("maxiter", int(iter_max))
-
-        best_x = None
-        best_fun = np.inf
-
-        counter = {"n": 0}
-
-        def objective(x):
-            nonlocal best_x, best_fun
-            counter["n"] += 1
-
-            self._apply_vector(vary, x)
-            params = {p: self._get_param_value(p) for p in vary}
-            params.update(fixed_params)
-
-            val = float(cost_function(self, **params))
-
-            if return_best and val < best_fun:
-                best_fun = val
-                best_x = np.array(x, copy=True)
-
-            print(f"Eval {counter['n']:5d} | cost = {val:.6e}")
-
-            return val
-
-        def scipy_callback(xk):
-            if callback is not None:
-                callback(np.array(xk, copy=False))
-
-        if method == "Nelder-Mead":
-            n = len(x0_vec)
-            simplex = np.zeros((n + 1, n), dtype=float)
-            simplex[0] = x0_vec
-            for i in range(n):
-                simplex[i + 1] = x0_vec
-                simplex[i + 1, i] += 0.1 * max(abs(x0_vec[i]), 1.0)
-            opt_options["initial_simplex"] = simplex
-
-        res = minimize(
-            objective, x0_vec, method=method, tol=tol, options=opt_options,
-            callback=scipy_callback,
-        )
-
-        if res is not None:
-            params = _unpack_params(res.x)
-            self.impurity_magnitude = float(params["impurity_magnitude"])
-            self.fermi_velocity = float(params["fermi_velocity"])
-
-        self._apply_vector(vary, res.x)
-        if return_best:
-            res.best_x = best_x
-            res.best_fun = best_fun
-
-        return res
 
 
     @staticmethod
