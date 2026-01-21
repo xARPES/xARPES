@@ -710,10 +710,9 @@ class SelfEnergy:
         c_guess = float(mem_cfg["c_guess"])
         d_guess = float(mem_cfg["d_guess"])
         power = int(mem_cfg["power"])
-        lambda_el = int(mem_cfg["lambda_el"])
-        impurity_magnitude = int(mem_cfg["impurity_magnitude"])
+        lambda_el = float(mem_cfg["lambda_el"])
+        impurity_magnitude = float(mem_cfg["impurity_magnitude"])
         W = mem_cfg.get("W", None)
-
 
         if omega_S < 0.0:
             raise ValueError("omega_S must be >= 0.")
@@ -776,6 +775,7 @@ class SelfEnergy:
                     "band (SpectralLinear), you must also provide W in meV: "
                     "the electron–electron interaction  scale."
                     )
+            
 
             energies_el = energies_eV_masked * KILO
             real_el, imag_el = self._el_el_self_energy(
@@ -885,7 +885,11 @@ class SelfEnergy:
         h_n0 = float(mem_cfg["h_n"])
         h_n_min = float(mem_cfg.get("h_n_min", 1e-8))
 
-        loop_cfg = self._merge_defaults(xprs.loop_defaults, loop, None)
+        loop_overrides = {
+            key: val for key, val in mem_kwargs.items()
+            if (val is not None) and (key in xprs.loop_defaults)
+        }
+        loop_cfg = self._merge_defaults(xprs.loop_defaults, loop, loop_overrides)
 
         tole = float(loop_cfg["tole"])
         converge_iters = int(loop_cfg["converge_iters"])
@@ -896,7 +900,7 @@ class SelfEnergy:
         scale_kF = float(loop_cfg["scale_kF"])
         scale_lambda_el = float(loop_cfg["scale_lambda_el"])
         scale_hn = float(loop_cfg["scale_hn"])
-        
+
         from scipy.optimize import minimize
         from . import create_kernel_function, singular_value_decomposition
 
@@ -1002,9 +1006,10 @@ class SelfEnergy:
                     if kF0 is None:
                         raise ValueError(
                             "Cannot vary fermi_wavevector: no initial kF "
-                            "provided.")
+                            "provided."
+                        )
                     params["fermi_wavevector"] = kF0 + scale_kF * xi
-
+                    
                 elif name == "impurity_magnitude":
                     params["impurity_magnitude"] = _reflect_min(xi, imp0, 0.0, scale_imp)
 
@@ -1122,7 +1127,7 @@ class SelfEnergy:
 
             msg = [f"Iter {iter_counter['n']:4d} | cost = {cost: .4e}"]
             for key in sorted(params):
-                msg.append(f"{key}={params[key]:.4g}")
+                msg.append(f"{key}={params[key]:.8g}")
             print(" | ".join(msg))
 
             return cost_f
@@ -1137,9 +1142,9 @@ class SelfEnergy:
                 if self.tole is None or self.converge_iters <= 0:
                     return
 
-                params = _unpack_params(xk)
-                cost, spectrum, model, alpha_select = _evaluate_cost(params)
-                current = float(cost)
+                current = last_cost["cost"]
+                if current is None:
+                    return
 
                 best_cost = float(best["cost"])
                 if np.isfinite(best_cost) and abs(current - best_cost) < self.tole:
@@ -1370,15 +1375,28 @@ class SelfEnergy:
             missing_lin = required_lin.difference(optimisation_parameters)
             if missing_lin:
                 raise ValueError(
-                    "SpectralLinear requires optimisation_parameters to " \
-                    "include " f"{sorted(missing_lin)}."
+                    "SpectralLinear requires optimisation_parameters to include "
+                    f"{sorted(missing_lin)}."
                 )
             fermi_velocity = optimisation_parameters["fermi_velocity"]
             fermi_wavevector = optimisation_parameters["fermi_wavevector"]
-        else:
+
+        elif self._class == "SpectralQuadratic":
+            if "fermi_wavevector" not in optimisation_parameters:
+                raise ValueError(
+                    "SpectralQuadratic requires optimisation_parameters to include "
+                    "'fermi_wavevector'."
+                )
+            fermi_wavevector = optimisation_parameters["fermi_wavevector"]
+
             bare_mass = optimisation_parameters.get("bare_mass", None)
-            if bare_mass is None and hasattr(self, "_bare_mass"):
-                bare_mass = self._bare_mass
+            if bare_mass is None:
+                bare_mass = getattr(self, "_bare_mass", None)
+
+        else:
+            raise NotImplementedError(
+                f"_cost_function does not support class '{self._class}'."
+            )
 
         from . import create_model_function, MEM_core
 
@@ -1412,19 +1430,18 @@ class SelfEnergy:
         if lambda_el:
             if W is None:
                 if self._class == "SpectralQuadratic":
-                    kF0 = getattr(self, "_fermi_wavevector", None)
-                    if kF0 is None or bare_mass is None:
+                    if fermi_wavevector is None or bare_mass is None:
                         raise ValueError(
-                            "lambda_el is nonzero, but W is None and cannot " \
-                            "be inferred. Provide W (meV), or set " \
-                            "`self._fermi_wavevector` and pass `bare_mass`."
+                            "lambda_el is nonzero, but W is None and cannot be "
+                            "inferred. Provide W (meV), or pass both "
+                            "`fermi_wavevector` and `bare_mass`."
                         )
-                    W = (PREF * kF0**2 / bare_mass) * KILO
+                    W = (PREF * fermi_wavevector**2 / bare_mass) * KILO
                 else:
                     raise ValueError(
-                        "lambda_el was provided, but W is None. For " \
+                        "lambda_el was provided, but W is None. For "
                         "SpectralLinear you must provide W in meV."
-                        )
+                    )
 
             energies_el = energies_eV_masked * KILO
             real_el, imag_el = self._el_el_self_energy(
@@ -1519,6 +1536,11 @@ class SelfEnergy:
             
             T = V_Sigma @ (U.T @ spectrum_in)
             chi_squared[i] = wvec @ ((T - dvec) ** 2)
+
+        if (not np.all(np.isfinite(chi_squared))) or np.any(chi_squared <= 0.0):
+            raise ValueError(
+                "chi_squared contains non-finite or non-positive values."
+            )
 
         log_alpha = np.log10(alpha_range)
         log_chi_squared = np.log10(chi_squared)
