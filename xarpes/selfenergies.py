@@ -33,7 +33,7 @@ class SelfEnergy:
                 properties = properties[0]
             else:
                 raise ValueError(
-            "`properties` must be a dict or a single dict in a list."
+                    "`properties` must be a dict or a single dict in a list."
              )
 
         # single source of truth for all params (+ their *_sigma)
@@ -282,8 +282,10 @@ class SelfEnergy:
                         "before accessing peak_positions and quantities that "
                         "depend on the latter."
                     )
-                kpar_mag = (np.sqrt(self._ekin_range / PREF) *
-                    np.sin(np.deg2rad(np.abs(self._peak))))
+                kpar_mag = (
+                    np.sqrt(self._ekin_range / PREF)
+                    * np.sin(np.deg2rad(np.abs(self._peak)))
+                )
                 self._peak_positions = ((-1.0 if self._side == "left"
                                         else 1.0) * kpar_mag)
             else:
@@ -298,9 +300,11 @@ class SelfEnergy:
         if self._peak_positions_sigma is None:
             if self._peak_sigma is None or self._ekin_range is None:
                 return None
-            self._peak_positions_sigma = ((np.sqrt(self._ekin_range / PREF)
+            self._peak_positions_sigma = (
+                np.sqrt(self._ekin_range / PREF)
                 * np.abs(np.cos(np.deg2rad(self._peak)))
-                * np.deg2rad(self._peak_sigma)))
+                * np.deg2rad(self._peak_sigma)
+            )
         return self._peak_positions_sigma
     
 
@@ -767,8 +771,9 @@ class SelfEnergy:
         if lambda_el:
             if W is None:
                 if self._class == "SpectralQuadratic":
-                    W = (PREF * self._fermi_wavevector**2 / self._bare_mass
-                    ) * KILO
+                    W = (
+                        PREF * self._fermi_wavevector**2 / self._bare_mass
+                        ) * KILO
                 else:
                     raise ValueError(
                     "lambda_el was provided, but W is None. For a linearised "
@@ -811,10 +816,11 @@ class SelfEnergy:
         V_Sigma, U, uvec = singular_value_decomposition(H, sigma_svd)
 
         if method == "chi2kink":
-            spectrum_in, _ = self._chi2kink_a2f(dvec, model_in, uvec, mu, wvec,
-                V_Sigma, U, alpha_min, alpha_max, alpha_num, a_guess, b_guess,
-                 c_guess, d_guess, f_chi_squared, t_criterion, iter_max, 
-                 MEM_core)
+            spectrum_in, _ = self._chi2kink_a2f(
+                    dvec, model_in, uvec, mu, wvec, V_Sigma, U, alpha_min,
+                    alpha_max, alpha_num, a_guess, b_guess, c_guess, d_guess,
+                    f_chi_squared, t_criterion, iter_max, MEM_core
+                    )
 
         spectrum = spectrum_in * omega_num / omega_max
         return spectrum, model
@@ -837,12 +843,24 @@ class SelfEnergy:
         - SpectralLinear: additionally "fermi_velocity"
         - SpectralQuadratic: additionally "bare_mass"
 
+        Convergence behaviour
+        ---------------------
+        By default, convergence is controlled by a *custom patience criterion*:
+        the optimization terminates when the absolute difference between the
+        current cost and the best cost seen so far is smaller than `tole` for
+        `converge_iters` consecutive iterations.
+
+        To instead rely on SciPy's native convergence criteria (e.g. Nelder–Mead
+        `xatol` / `fatol`), disable the custom criterion by setting
+        `converge_iters=0` or `tole=None`. In that case, SciPy termination options
+        supplied via `opt_options` are used.
+
         Parameters
         ----------
         opt_options : dict (optional)
-            Dictionary of options passed directly to scipy.optimize.minimize.
-            User-supplied entries override default values (e.g. xatol, fatol
-            for Nelder–Mead).
+            Dictionary of options passed directly to `scipy.optimize.minimize`.
+            These are only used for convergence if the custom criterion is
+            disabled (see above).
         """
         fermi_velocity, fermi_wavevector, bare_mass = self._prepare_bare(
             fermi_velocity, fermi_wavevector, bare_mass)
@@ -901,8 +919,19 @@ class SelfEnergy:
         scale_lambda_el = float(loop_cfg["scale_lambda_el"])
         scale_hn = float(loop_cfg["scale_hn"])
 
-        from scipy.optimize import minimize
-        from . import create_kernel_function, singular_value_decomposition
+        rollback_steps = int(loop_cfg.get("rollback_steps"))
+        max_retries = int(loop_cfg.get("max_retries"))
+        relative_best = float(loop_cfg.get("relative_best"))
+        min_steps_for_regression = int(loop_cfg.get("min_steps_for_regression"))
+
+        if rollback_steps < 0:
+            raise ValueError("rollback_steps must be >= 0.")
+        if max_retries < 0:
+            raise ValueError("max_retries must be >= 0.")
+        if relative_best <= 0.0:
+            raise ValueError("relative_best must be > 0.")
+        if min_steps_for_regression < 0:
+            raise ValueError("min_steps_for_regression must be >= 0.")
 
         vF0 = float(fermi_velocity) if fermi_velocity is not None else None
         kF0 = float(fermi_wavevector) if fermi_wavevector is not None else None
@@ -930,6 +959,9 @@ class SelfEnergy:
                 )
         if self._class == "SpectralQuadratic" and mb0 is None:
             raise ValueError("bayesian_loop requires an initial bare_mass.")
+        
+        from scipy.optimize import minimize
+        from . import create_kernel_function, singular_value_decomposition
           
         ecut_left = float(mem_cfg["ecut_left"])
         ecut_right = mem_cfg["ecut_right"]
@@ -1064,6 +1096,9 @@ class SelfEnergy:
         class ConvergenceException(RuntimeError):
             """Raised when optimisation has converged successfully."""
 
+        class RegressionException(RuntimeError):
+            """Raised when optimizer regresses toward the initial guess."""
+
         if converge_iters is None:
             converge_iters = 0
         converge_iters = int(converge_iters)
@@ -1076,7 +1111,7 @@ class SelfEnergy:
             raise ValueError("converge_iters must be >= 0.")
 
         # Track best solution seen across all obj calls (not just last).
-        best = {
+        best_global = {
             "x": None,
             "params": None,
             "cost": np.inf,
@@ -1085,10 +1120,13 @@ class SelfEnergy:
             "alpha": None,
         }
 
+        history = []
+
         # Cache most recent evaluation so the callback can read a cost without
         # forcing an extra objective evaluation.
         last_x = {"x": None}
         last_cost = {"cost": None}
+        initial_cost = {"cost": None}
 
         iter_counter = {"n": 0}
 
@@ -1103,11 +1141,30 @@ class SelfEnergy:
             return out
 
         def obj(x):
+            import warnings
+
             iter_counter["n"] += 1
 
             params = _unpack_params(x)
-            cost, spectrum, model, alpha_select = _evaluate_cost(params)
+
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", RuntimeWarning)
+                try:
+                    cost, spectrum, model, alpha_select = _evaluate_cost(params)
+                except RuntimeWarning as exc:
+                    raise ValueError(f"RuntimeWarning during cost eval: {exc}") from exc
             cost_f = float(cost)
+
+            history.append(
+                {
+                    "x": np.array(x, dtype=float, copy=True),
+                    "params": _clean_params(params),
+                    "cost": cost_f,
+                    "spectrum": spectrum,
+                    "model": model,
+                    "alpha": float(alpha_select),
+                }
+            )
 
             last["cost"] = cost_f
             last["spectrum"] = spectrum
@@ -1117,13 +1174,16 @@ class SelfEnergy:
             last_x["x"] = np.array(x, dtype=float, copy=True)
             last_cost["cost"] = cost_f
 
-            if cost_f < best["cost"]:
-                best["x"] = np.array(x, dtype=float, copy=True)
-                best["cost"] = cost_f
-                best["params"] = _clean_params(params)
-                best["spectrum"] = spectrum
-                best["model"] = model
-                best["alpha"] = float(alpha_select)
+            if initial_cost["cost"] is None:
+                initial_cost["cost"] = cost_f
+
+            if cost_f < best_global["cost"]:
+                best_global["x"] = np.array(x, dtype=float, copy=True)
+                best_global["cost"] = cost_f
+                best_global["params"] = _clean_params(params)
+                best_global["spectrum"] = spectrum
+                best_global["model"] = model
+                best_global["alpha"] = float(alpha_select)
 
             msg = [f"Iter {iter_counter['n']:4d} | cost = {cost: .4e}"]
             for key in sorted(params):
@@ -1133,12 +1193,16 @@ class SelfEnergy:
             return cost_f
 
         class TerminationCallback:
-            def __init__(self, tole, converge_iters):
+            def __init__(self, tole, converge_iters, min_steps_for_regression):
                 self.tole = None if tole is None else float(tole)
                 self.converge_iters = int(converge_iters)
+                self.min_steps_for_regression = int(min_steps_for_regression)
                 self.iter_count = 0
+                self.call_count = 0
 
             def __call__(self, xk):
+                self.call_count += 1
+
                 if self.tole is None or self.converge_iters <= 0:
                     return
 
@@ -1157,8 +1221,30 @@ class SelfEnergy:
                         f"Converged: |cost-best| < {self.tole:g} for "
                         f"{self.converge_iters} iterations."
                     )
+                
+                if self.call_count < self.min_steps_for_regression:
+                    return
 
-        callback = TerminationCallback(tole=tole, converge_iters=converge_iters)
+                current = float(current)
+                init = initial_cost["cost"]
+                if init is None:
+                    return
+
+                best_cost = float(best["cost"])
+                if not np.isfinite(best_cost):
+                    return
+
+                if abs(current - init) * relative_best < abs(current - best_cost):
+                    raise RegressionException(
+                        "Regression toward initial guess detected."
+                    )
+
+
+        callback = TerminationCallback(
+            tole=tole,
+            converge_iters=converge_iters,
+            min_steps_for_regression=min_steps_for_regression,
+        )
 
         if not vary:
             params = _unpack_params(np.zeros(0, dtype=float))
@@ -1166,31 +1252,88 @@ class SelfEnergy:
             return cost, spectrum, model, alpha_select
 
         x0 = np.zeros(len(vary), dtype=float)
-        
+
         options = {} if opt_options is None else dict(opt_options)
         options.setdefault("maxiter", int(opt_iter_max))
 
         use_patience = (tole is not None) and (int(converge_iters) > 0)
-        if not use_patience:
-            options.setdefault("xatol", 1e-4)
-            options.setdefault("fatol", 1e-4)
+        if use_patience:
+            options.pop("xatol", None)
+            options.pop("fatol", None)
 
-        try:
-            res = minimize(obj, x0, method=opt_method, options=options,
-                           callback=callback)
-        except ConvergenceException as exc:
-            print(str(exc))
-            res = None
+        retry_count = 0
+        res = None
 
-        if best["params"] is None:
+        while retry_count <= max_retries:
+            best = {
+                "x": None,
+                "params": None,
+                "cost": np.inf,
+                "spectrum": None,
+                "model": None,
+                "alpha": None,
+            }
+            last_x["x"] = None
+            last_cost["cost"] = None
+            initial_cost["cost"] = None
+            iter_counter["n"] = 0
+            history.clear()
+
+            callback = TerminationCallback(
+                tole=tole,
+                converge_iters=converge_iters,
+                min_steps_for_regression=min_steps_for_regression,
+            )
+
+            try:
+                res = minimize(
+                    obj,
+                    x0,
+                    method=opt_method,
+                    options=options,
+                    callback=callback,
+                )
+                break
+
+            except ConvergenceException as exc:
+                print(str(exc))
+                res = None
+                break
+
+            except RegressionException as exc:
+                print(f"{exc} Rolling back {rollback_steps} steps.")
+                retry_count += 1
+
+                if rollback_steps <= 0 or not history:
+                    continue
+
+                back = min(int(rollback_steps), len(history))
+                x0 = np.array(history[-back]["x"], dtype=float, copy=True)
+                continue
+
+            except ValueError as exc:
+                print(f"ValueError encountered: {exc}. Rolling back.")
+                retry_count += 1
+
+                if rollback_steps <= 0 or not history:
+                    continue
+
+                back = min(int(rollback_steps), len(history))
+                x0 = np.array(history[-back]["x"], dtype=float, copy=True)
+                continue
+
+        if retry_count > max_retries:
+            print("Max retries reached. Parameters may not be optimal.")
+
+        if best_global["params"] is None:
             params = _unpack_params(x0)
             cost, spectrum, model, alpha_select = _evaluate_cost(params)
         else:
-            params = best["params"]
-            cost = best["cost"]
-            spectrum = best["spectrum"]
-            model = best["model"]
-            alpha_select = best["alpha"]
+            params = best_global["params"]
+            cost = best_global["cost"]
+            spectrum = best_global["spectrum"]
+            model = best_global["model"]
+            alpha_select = best_global["alpha"]
 
         args = ", ".join(
             f"{key}={params[key]:.10g}" if isinstance(params[key], float)
@@ -1201,6 +1344,7 @@ class SelfEnergy:
         print(args)
 
         return cost, spectrum, model, alpha_select, params
+
 
     @staticmethod
     def _merge_defaults(defaults, override_dict=None, override_kwargs=None):
@@ -1285,7 +1429,7 @@ class SelfEnergy:
             "'{self._class}'.")
 
     def _cost_function(self, *, optimisation_parameters, omega_min, omega_max,
-                    omega_num, omega_I,omega_M, mem_cfg, _precomp):
+                    omega_num, omega_I, omega_M, mem_cfg, _precomp):
         r"""TBD
 
         Negative log-posterior cost function for Bayesian optimisation.
@@ -1338,9 +1482,6 @@ class SelfEnergy:
         W = mem_cfg.get("W", None)
         t_criterion = float(mem_cfg["t_criterion"])
         iter_max = int(mem_cfg["iter_max"])
-
-        impurity_magnitude = float(mem_cfg["impurity_magnitude"])
-        lambda_el = float(mem_cfg["lambda_el"])
 
         if f_chi_squared is None:
             f_chi_squared = 2.5 if parts == "both" else 2.0

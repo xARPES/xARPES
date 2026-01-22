@@ -68,4 +68,8 @@ loop_defaults = {
     "scale_lambda_el": 1.0,
     "scale_hn": 1.0,
     "opt_iter_max": 1e4,
+    "rollback_steps": 10,
+    "max_retries": 100,
+    "relative_best": 10.0,
+    "min_steps_for_regression": 25,
 }
