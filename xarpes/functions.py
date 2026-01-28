@@ -187,53 +187,73 @@ def error_function(p, xdata, ydata, function, resolution, yerr, extra_args):
     return residual
 
 
-def fit_leastsq(p0, xdata, ydata, function, resolution=None,
-                yerr=None, *extra_args):
-    r"""Wrapper around scipy.optimize.leastsq.
+def fit_leastsq(p0, xdata, ydata, function, resolution=None, yerr=None,
+                bounds=None, *extra_args):
+    r"""Wrapper around SciPy least-squares solvers.
+
+    Uses `scipy.optimize.leastsq` if bounds is None (legacy behavior).
+    Uses `scipy.optimize.least_squares` if bounds is provided.
 
     Parameters
     ----------
-    p0 : ndarray
-        Initial guess for parameters to be optimized.
-    xdata : ndarray
-        Abscissa values the function is evaluated on.
-    ydata : ndarray
-        Measured values to compare to.
-    function : callable
-        Function or class with __call__ method to evaluate.
-    resolution : float or None, optional
-        Convolution resolution (sigma), if applicable.
-    yerr : ndarray or None, optional
-        Standard deviations of ydata. Defaults to ones if None.
-    extra_args : tuple
-        Additional arguments passed to the function.
-
-    Returns
-    -------
-    pfit_leastsq : ndarray
-        Optimized parameters.
-    pcov : ndarray or float
-        Scaled covariance matrix of the optimized parameters.
-        If the covariance could not be estimated, returns np.inf.
+    bounds : 2-tuple of array_like, optional
+        Lower/upper bounds on parameters. Use -np.inf/np.inf for unbounded
+        entries. If provided, switches solver to `least_squares`.
     """
-    from scipy.optimize import leastsq
+    from scipy.optimize import leastsq, least_squares
 
     if yerr is None:
         yerr = np.ones_like(ydata)
 
-    pfit, pcov, infodict, errmsg, success = leastsq(
-        error_function,
+    if bounds is None:
+        pfit, pcov, infodict, errmsg, success = leastsq(
+            error_function,
+            p0,
+            args=(xdata, ydata, function, resolution, yerr, extra_args),
+            full_output=1,
+        )
+
+        if (len(ydata) > len(p0)) and pcov is not None:
+            resid = error_function(
+                pfit, xdata, ydata, function, resolution, yerr, extra_args
+            )
+            s_sq = (resid ** 2).sum() / (len(ydata) - len(p0))
+            pcov *= s_sq
+        else:
+            pcov = np.inf
+
+        return pfit, pcov
+
+    # --- bounded variant via least_squares
+    lower, upper = bounds
+
+    def _residuals(p):
+        return error_function(
+            p, xdata, ydata, function, resolution, yerr, extra_args
+        )
+
+    res = least_squares(
+        _residuals,
         p0,
-        args=(xdata, ydata, function, resolution, yerr, extra_args),
-        full_output=1
+        bounds=(lower, upper),
+        method="trf",
     )
 
-    if (len(ydata) > len(p0)) and pcov is not None:
-        s_sq = (
-            error_function(pfit, xdata, ydata, function, resolution,
-                           yerr, extra_args) ** 2
-        ).sum() / (len(ydata) - len(p0))
-        pcov *= s_sq
+    pfit = res.x
+
+    # Covariance estimate from J^T J (scaled by residual variance)
+    m = len(ydata)
+    n = len(p0)
+
+    if (m > n) and res.jac is not None and res.jac.size:
+        resid = res.fun
+        s_sq = (resid ** 2).sum() / (m - n)
+
+        try:
+            jtj = res.jac.T @ res.jac
+            pcov = np.linalg.inv(jtj) * s_sq
+        except np.linalg.LinAlgError:
+            pcov = np.inf
     else:
         pcov = np.inf
 

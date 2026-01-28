@@ -748,7 +748,7 @@ class BandMap:
 
         popt, pcov = fit_leastsq(
         parameters, energy_range, integrated_intensity, fdir_initial,
-        self.energy_resolution, None, *extra_args)
+        self.energy_resolution, None, None, *extra_args)
 
         # Update hnuminPhi; automatically sets self.enel
         self.hnuminPhi = popt[0]
@@ -848,7 +848,7 @@ class BandMap:
             
             parameters, pcov = fit_leastsq(
             parameters, energy_range, edge, fdir_initial,
-            self.energy_resolution, None, *extra_args)
+            self.energy_resolution, None, None, *extra_args)
 
             nmps[indx] = parameters[0]
             stds[indx] = np.sqrt(np.diag(pcov)[0])

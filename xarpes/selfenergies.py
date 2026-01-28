@@ -34,7 +34,7 @@ class SelfEnergy:
             else:
                 raise ValueError(
                     "`properties` must be a dict or a single dict in a list."
-             )
+                )
 
         # single source of truth for all params (+ their *_sigma)
         self._properties = dict(properties or {})
@@ -84,12 +84,19 @@ class SelfEnergy:
         self._imag = None
         self._imag_sigma = None
 
+        # lazy caches for α²F(ω) extraction results
+        self._a2f_spectrum = None
+        self._a2f_model = None
+        self._a2f_omega_range = None
+        self._a2f_alpha_select = None
+        self._a2f_cost = None
+
     def _check_mass_velocity_exclusivity(self):
         """Ensure that fermi_velocity and bare_mass are not both set."""
         if (self._fermi_velocity is not None) and (self._bare_mass is not None):
             raise ValueError(
-            "Cannot set both `fermi_velocity` and  `bare_mass`: choose one "
-            "physical parametrization (SpectralLinear or SpectralQuadratic)."
+                "Cannot set both `fermi_velocity` and  `bare_mass`: choose one "
+                "physical parametrization (SpectralLinear or SpectralQuadratic)."
             )
 
     # ---------------- core read-only axes ----------------
@@ -289,8 +296,10 @@ class SelfEnergy:
                 self._peak_positions = ((-1.0 if self._side == "left"
                                         else 1.0) * kpar_mag)
             else:
-                self._peak_positions = (np.sqrt(self._ekin_range / PREF)
-                * np.sin(np.deg2rad(self._peak)))
+                self._peak_positions = (
+                    np.sqrt(self._ekin_range / PREF)
+                    * np.sin(np.deg2rad(self._peak))
+                )
         return self._peak_positions
     
 
@@ -346,6 +355,31 @@ class SelfEnergy:
                 return None
             self._real_sigma = self._compute_real_sigma()
         return self._real_sigma
+    
+    @property
+    def a2f_spectrum(self):
+        """Cached α²F(ω) spectrum from last extraction (or None)."""
+        return self._a2f_spectrum
+
+    @property
+    def a2f_model(self):
+        """Cached MEM model spectrum from last extraction (or None)."""
+        return self._a2f_model
+
+    @property
+    def a2f_omega_range(self):
+        """Cached ω grid for the last extraction (or None)."""
+        return self._a2f_omega_range
+
+    @property
+    def a2f_alpha_select(self):
+        """Cached selected alpha from last extraction (or None)."""
+        return self._a2f_alpha_select
+
+    @property
+    def a2f_cost(self):
+        """Cached cost from last bayesian_loop (or None)."""
+        return self._a2f_cost
 
 
     def _compute_imag(self, fermi_velocity=None, bare_mass=None):
@@ -724,22 +758,24 @@ class SelfEnergy:
             f_chi_squared = 2.5 if parts == "both" else 2.0
         else:
             f_chi_squared = float(f_chi_squared)
+        if d_guess <= 0.0:
+            raise ValueError(
+                "chi2kink requires d_guess > 0 to fix the logistic sign "
+                "ambiguity."
+            )
 
         h_n = mem_cfg.get("h_n", None)
         if h_n is None:
             raise ValueError(
-                "`h_n` must be provided explicitly (h_n=... or mem={'h_n': ...}). "
-                "No default is assumed."
+                "`optimisation_parameters` must include 'h_n' for cost evaluation."
             )
 
         from . import (create_model_function, create_kernel_function,
                        singular_value_decomposition, MEM_core)
 
         omega_range = np.linspace(omega_min, omega_max, omega_num)
+        model = create_model_function(omega_range, omega_I, omega_M, omega_S, h_n)
 
-        model = create_model_function(omega_range, omega_I, omega_M, omega_S,
-                                       h_n)
-        
         delta_omega = (omega_max - omega_min) / (omega_num - 1)
         model_in = model * delta_omega
 
@@ -763,7 +799,6 @@ class SelfEnergy:
 
         energies_eV_masked = energies_eV[mE]
         energies = energies_eV_masked * KILO
-
         k_BT = K_B * self.temperature * KILO
 
         kernel = create_kernel_function(energies, omega_range, k_BT)
@@ -780,7 +815,6 @@ class SelfEnergy:
                     "band (SpectralLinear), you must also provide W in meV: "
                     "the electron–electron interaction  scale."
                     )
-            
 
             energies_el = energies_eV_masked * KILO
             real_el, imag_el = self._el_el_self_energy(
@@ -798,14 +832,12 @@ class SelfEnergy:
             dvec = np.concatenate((real, imag))
             wvec = np.concatenate((real_sigma**(-2), imag_sigma**(-2)))
             H = np.concatenate((np.real(kernel), -np.imag(kernel)))
-
         elif parts == "real":
             real = self.real[mE] * KILO - real_el
             real_sigma = self.real_sigma[mE] * KILO
             dvec = real
             wvec = real_sigma**(-2)
             H = np.real(kernel)
-
         else:  # parts == "imag"
             imag = self.imag[mE] * KILO - impurity_magnitude - imag_el
             imag_sigma = self.imag_sigma[mE] * KILO
@@ -816,14 +848,22 @@ class SelfEnergy:
         V_Sigma, U, uvec = singular_value_decomposition(H, sigma_svd)
 
         if method == "chi2kink":
-            spectrum_in, _ = self._chi2kink_a2f(
+            spectrum_in, alpha_select = self._chi2kink_a2f(
                     dvec, model_in, uvec, mu, wvec, V_Sigma, U, alpha_min,
                     alpha_max, alpha_num, a_guess, b_guess, c_guess, d_guess,
                     f_chi_squared, t_criterion, iter_max, MEM_core
                     )
 
         spectrum = spectrum_in * omega_num / omega_max
-        return spectrum, model
+
+        # Store for the class methods
+        self._a2f_spectrum = spectrum
+        self._a2f_model = model
+        self._a2f_omega_range = omega_range
+        self._a2f_alpha_select = alpha_select
+        self._a2f_cost = None
+
+        return spectrum, model, omega_range, alpha_select
     
 
     def bayesian_loop(self, *, omega_min, omega_max, omega_num, omega_I, 
@@ -1193,12 +1233,15 @@ class SelfEnergy:
             print(" | ".join(msg))
 
             return cost_f
-
+        
         class TerminationCallback:
-            def __init__(self, tole, converge_iters, min_steps_for_regression):
+            def __init__(self, tole, converge_iters,
+                         min_steps_for_regression):
                 self.tole = None if tole is None else float(tole)
                 self.converge_iters = int(converge_iters)
-                self.min_steps_for_regression = int(min_steps_for_regression)
+                self.min_steps_for_regression = int(
+                    min_steps_for_regression
+                )
                 self.iter_count = 0
                 self.call_count = 0
 
@@ -1212,35 +1255,40 @@ class SelfEnergy:
                 if current is None:
                     return
 
-                best_cost = float(best["cost"])
-                if np.isfinite(best_cost) and abs(current - best_cost) < self.tole:
-                    self.iter_count += 1
-                else:
-                    self.iter_count = 0
+                best_cost = float(best_global["cost"])
+                if np.isfinite(best_cost):
+                    if abs(current - best_cost) < self.tole:
+                        self.iter_count += 1
+                    else:
+                        self.iter_count = 0
 
                 if self.iter_count >= self.converge_iters:
                     raise ConvergenceException(
-                        f"Converged: |cost-best| < {self.tole:g} for "
+                        "Converged: |cost-best| < "
+                        f"{self.tole:g} for "
                         f"{self.converge_iters} iterations."
                     )
-                
+
                 if self.call_count < self.min_steps_for_regression:
                     return
 
-                current = float(current)
-                init = initial_cost["cost"]
-                if init is None:
+                init_cost = initial_cost["cost"]
+                if init_cost is None:
                     return
 
-                best_cost = float(best["cost"])
+                current = float(current)
+                init_cost = float(init_cost)
+
                 if not np.isfinite(best_cost):
                     return
 
-                if abs(current - init) * relative_best < abs(current - best_cost):
+                if (
+                    abs(current - init_cost) * relative_best
+                    < abs(current - best_cost)
+                ):
                     raise RegressionException(
                         "Regression toward initial guess detected."
                     )
-
 
         callback = TerminationCallback(
             tole=tole,
@@ -1345,7 +1393,14 @@ class SelfEnergy:
         print("Optimised parameters:")
         print(args)
 
-        return cost, spectrum, model, alpha_select, params
+        # store inside class methods
+        self._a2f_spectrum = spectrum
+        self._a2f_model = model
+        self._a2f_omega_range = omega_range
+        self._a2f_alpha_select = alpha_select
+        self._a2f_cost = cost
+
+        return spectrum, model, omega_range, alpha_select, cost, params
 
 
     @staticmethod
@@ -1495,6 +1550,10 @@ class SelfEnergy:
             raise ValueError(
                 "`h_n` must be provided explicitly (h_n=... or mem={'h_n': ...}). "
                 "No default is assumed."
+            )
+        if d_guess <= 0.0:
+            raise ValueError(
+                "chi2kink requires d_guess > 0 to fix the logistic sign ambiguity."
             )
 
         if parts not in {"both", "real", "imag"}:
