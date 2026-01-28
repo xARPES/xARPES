@@ -746,7 +746,7 @@ class BandMap:
 
         extra_args = (self.temperature,)
 
-        popt, pcov = fit_least_squares(
+        popt, pcov, success = fit_least_squares(
             p0=parameters, xdata=energy_range, ydata=integrated_intensity,
             function=fdir_initial, resolution=self.energy_resolution,
             yerr=None, bounds=None, extra_args=extra_args)
@@ -847,7 +847,7 @@ class BandMap:
         for indx in range(angle_max_index - angle_min_index + 1):
             edge = Intensities[:, indx]
             
-            parameters, pcov = fit_least_squares(
+            parameters, pcov, success = fit_least_squares(
                 p0=parameters, xdata=energy_range, ydata=edge,
                 function=fdir_initial, resolution=self.energy_resolution,
                 yerr=None, bounds=None, extra_args=extra_args)
@@ -863,7 +863,7 @@ class BandMap:
         
         lin_fun = Linear(offset_guess, slope_guess, 'Linear')
                     
-        popt, pcov = fit_least_squares(p0=parameters, xdata=angle_range, 
+        popt, pcov, success = fit_least_squares(p0=parameters, xdata=angle_range, 
                         ydata=nmps, function=lin_fun, resolution=None,
                                  yerr=stds, bounds=None)
 

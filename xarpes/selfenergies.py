@@ -717,16 +717,35 @@ class SelfEnergy:
 
         return fig
 
-
+    @add_fig_kwargs
     def extract_a2f(self, *, omega_min, omega_max, omega_num, omega_I, omega_M,
-                    mem=None, **mem_kwargs):
+                    mem=None, ax=None, **mem_kwargs):
         r"""
         Extract Eliashberg function α²F(ω) from the self-energy. While working
         with band maps and MDCs is more intuitive in eV, the self-energy
         extraction is performed in eV.
 
+        Parameters
+        ----------
+        ax : Matplotlib-Axes or None
+            Axis to plot on. Created if not provided by the user. (Not used yet;
+            reserved for future plotting.)
+
+        Returns
+        -------
+        spectrum : ndarray
+            Extracted α²F(ω).
+        model : ndarray
+            MEM model spectrum.
+        omega_range : ndarray
+            ω grid used for the extraction.
+        alpha_select : float
+            Selected alpha returned by the chi2kink procedure.
         """
         from . import settings_parameters as xprs
+
+        # Reserve the plot API now; not used yet, but this matches xARPES style.
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
 
         mem_cfg = self._merge_defaults(xprs.mem_defaults, mem, mem_kwargs)
 
@@ -806,14 +825,12 @@ class SelfEnergy:
         if lambda_el:
             if W is None:
                 if self._class == "SpectralQuadratic":
-                    W = (
-                        PREF * self._fermi_wavevector**2 / self._bare_mass
-                        ) * KILO
+                    W = (PREF * self._fermi_wavevector**2 / self._bare_mass) * KILO
                 else:
                     raise ValueError(
-                    "lambda_el was provided, but W is None. For a linearised "
-                    "band (SpectralLinear), you must also provide W in meV: "
-                    "the electron–electron interaction  scale."
+                        "lambda_el was provided, but W is None. For a linearised "
+                        "band (SpectralLinear), you must also provide W in meV: "
+                        "the electron–electron interaction  scale."
                     )
 
             energies_el = energies_eV_masked * KILO
@@ -848,22 +865,55 @@ class SelfEnergy:
         V_Sigma, U, uvec = singular_value_decomposition(H, sigma_svd)
 
         if method == "chi2kink":
-            spectrum_in, alpha_select = self._chi2kink_a2f(
-                    dvec, model_in, uvec, mu, wvec, V_Sigma, U, alpha_min,
-                    alpha_max, alpha_num, a_guess, b_guess, c_guess, d_guess,
-                    f_chi_squared, t_criterion, iter_max, MEM_core
-                    )
+            (spectrum_in, alpha_select, fit_curve, guess_curve,
+            chi2kink_result) = self._chi2kink_a2f(
+                dvec, model_in, uvec, mu, wvec, V_Sigma, U, alpha_min,
+                alpha_max, alpha_num, a_guess, b_guess, c_guess, d_guess,
+                f_chi_squared, t_criterion, iter_max, MEM_core
+            )
+        else:
+            raise NotImplementedError(
+                f"extract_a2f does not support method='{method}'."
+            )
 
+        # --- Plot on ax: always raw chi2 + guess; add fit only if success ---
+        alpha_range = chi2kink_result["alpha_range"]
+        alpha0 = float(alpha_range[0])
+        x_plot = np.log10(alpha_range / alpha0)
+        y_chi2 = chi2kink_result["log_chi_squared"]
+
+        ax.set_xlabel(r"log$_{10}(\alpha)$ (-)")
+        ax.set_ylabel(r"log$_{10}(\chi^2)$ (-)")
+
+        ax.plot(x_plot, y_chi2, label="data")
+        ax.plot(x_plot, guess_curve, label="guess")
+
+        if chi2kink_result["success"]:
+            ax.plot(x_plot, fit_curve, label="fit")
+            ax.axvline(
+                np.log10(alpha_select / alpha0),
+                linestyle="--",
+                label=r"$\alpha_{\rm sel}$",
+            )
+        ax.legend()
+
+        # Abort extraction if fit failed (you asked to terminate in that case)
+        if not chi2kink_result["success"]:
+            raise RuntimeError(
+                "chi2kink logistic fit failed; aborting extract_a2f after "
+                "plotting chi2 and guess."
+            )
+
+        # From here on, we know spectrum_in and alpha_select exist
         spectrum = spectrum_in * omega_num / omega_max
 
-        # Store for the class methods
         self._a2f_spectrum = spectrum
         self._a2f_model = model
         self._a2f_omega_range = omega_range
         self._a2f_alpha_select = alpha_select
         self._a2f_cost = None
 
-        return spectrum, model, omega_range, alpha_select
+        return fig, spectrum, model, omega_range, alpha_select
     
 
     def bayesian_loop(self, *, omega_min, omega_max, omega_num, omega_I, 
@@ -1545,12 +1595,6 @@ class SelfEnergy:
         else:
             f_chi_squared = float(f_chi_squared)
 
-        h_n = mem_cfg.get("h_n", None)
-        if h_n is None:
-            raise ValueError(
-                "`h_n` must be provided explicitly (h_n=... or mem={'h_n': ...}). "
-                "No default is assumed."
-            )
         if d_guess <= 0.0:
             raise ValueError(
                 "chi2kink requires d_guess > 0 to fix the logistic sign ambiguity."
@@ -1716,26 +1760,44 @@ class SelfEnergy:
 
 
     @staticmethod
-    def _chi2kink_a2f(dvec, model_in, uvec, mu, wvec, V_Sigma, U,
-                            alpha_min, alpha_max, alpha_num, a_guess, b_guess,
-                            c_guess, d_guess, f_chi_squared, t_criterion, 
-                            iter_max, MEM_core):
-        r"""Compute MEM spectrum using the chi2kink alpha-selection procedure.
+    def _chi2kink_a2f(dvec, model_in, uvec, mu, wvec, V_Sigma, U, alpha_min,
+                    alpha_max, alpha_num, a_guess, b_guess, c_guess, d_guess,
+                    f_chi_squared, t_criterion, iter_max, MEM_core, *,
+                    plot=None):
+        r"""
+        Compute MEM spectrum using the chi2-kink alpha-selection procedure.
 
-        Returns
-        -------
-        spectrum_in : ndarray
-            Selected spectrum from MEM_core evaluated at the chi2kink alpha.
+        Notes
+        -----
+        This routine contains extensive logic to detect failure modes of the
+        chi2-kink logistic fit, including (but not limited to):
+
+        - non-finite or non-positive chi² values,
+        - lack of meaningful parameter updates relative to the initial guess,
+        - absence of improvement in the residual sum of squares,
+        - numerical instabilities or overflows in the logistic model,
+        - invalid or non-finite alpha selection.
+
+        Despite these safeguards, it is **not possible to guarantee** that all
+        failure modes are detected in a nonlinear least-squares problem.
+        Consequently, a reported success should be interpreted as a *necessary*
+        but *not sufficient* condition for physical or numerical reliability.
+
+        Callers **must** inspect the returned ``success`` flag (contained in
+        ``chi2kink_result``) before using the fitted curve, selected alpha, or
+        MEM spectrum. When ``success`` is False, the returned quantities are
+        limited to those required for diagnostic plotting only.
         """
-        from . import (fit_least_squares, chi2kink_logistic)
+        from . import fit_least_squares, chi2kink_logistic
 
-        alpha_range = np.logspace(alpha_min, alpha_max, alpha_num)
+        alpha_range = np.logspace(alpha_min, alpha_max, int(alpha_num))
         chi_squared = np.empty_like(alpha_range, dtype=float)
 
         for i, alpha in enumerate(alpha_range):
-            spectrum_in, uvec = MEM_core(dvec, model_in, uvec, mu, alpha, 
-                wvec, V_Sigma, U, t_criterion, iter_max)
-            
+            spectrum_in, uvec = MEM_core(
+                dvec, model_in, uvec, mu, alpha, wvec, V_Sigma, U,
+                t_criterion, iter_max
+            )
             T = V_Sigma @ (U.T @ spectrum_in)
             chi_squared[i] = wvec @ ((T - dvec) ** 2)
 
@@ -1748,18 +1810,79 @@ class SelfEnergy:
         log_chi_squared = np.log10(chi_squared)
 
         p0 = np.array([a_guess, b_guess, c_guess, d_guess], dtype=float)
-        pfit, pcov = fit_least_squares(
+        pfit, pcov, lsq_success = fit_least_squares(
             p0, log_alpha, log_chi_squared, chi2kink_logistic
         )
 
-        cout = pfit[2]
-        dout = pfit[3]
-        alpha_select = 10 ** (cout - f_chi_squared / dout)
+        with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+            guess_curve = chi2kink_logistic(log_alpha, *p0)
 
-        spectrum_in, uvec = MEM_core(dvec, model_in, uvec, mu, alpha_select, 
-                        wvec, V_Sigma, U, t_criterion, iter_max)
+        # Start from the necessary requirement: least_squares must say success
+        success = bool(lsq_success)
 
-        return spectrum_in, alpha_select
+        # If the guess itself blows up, we can't trust anything
+        if not np.all(np.isfinite(guess_curve)):
+            success = False
+
+        fit_curve_tmp = None
+        if success:
+            pfit = np.asarray(pfit, dtype=float)
+
+            if np.allclose(pfit, p0, rtol=1e-12, atol=0.0):
+                success = False
+            else:
+                with np.errstate(over="ignore", invalid="ignore",
+                                 divide="ignore"):
+                    fit_curve_tmp = chi2kink_logistic(log_alpha, *pfit)
+
+                if not np.all(np.isfinite(fit_curve_tmp)):
+                    success = False
+                else:
+                    r0 = guess_curve - log_chi_squared
+                    r1 = fit_curve_tmp - log_chi_squared
+                    sse0 = float(r0 @ r0)
+                    sse1 = float(r1 @ r1)
+
+                    tol = 1e-12 * max(1.0, sse0)
+                    if (not np.isfinite(sse1)) or (sse1 >= sse0 - tol):
+                        success = False
+
+        alpha_select = None
+        fit_curve = None
+        spectrum_out = None
+
+        if success:
+            fit_curve = fit_curve_tmp
+
+            cout = float(pfit[2])
+            dout = float(pfit[3])
+            exp10 = cout - float(f_chi_squared) / dout
+
+            if (not np.isfinite(exp10)) or (exp10 < -308.0) or (exp10 > 308.0):
+                success = False
+                fit_curve = None
+            else:
+                with np.errstate(over="raise", invalid="raise"):
+                    alpha_select = float(np.power(10.0, exp10))
+
+                spectrum_out, uvec = MEM_core(
+                    dvec, model_in, uvec, mu, alpha_select, wvec, V_Sigma, U,
+                    t_criterion, iter_max
+                )
+
+        chi2kink_result = {
+            "alpha_range": alpha_range,
+            "chi_squared": chi_squared,
+            "log_alpha": log_alpha,
+            "log_chi_squared": log_chi_squared,
+            "p0": p0,
+            "pfit": pfit,
+            "pcov": pcov,
+            "success": bool(success),
+            "alpha_select": alpha_select,
+        }
+
+        return spectrum_out, alpha_select, fit_curve, guess_curve, chi2kink_result
 
 
     @staticmethod

@@ -194,7 +194,8 @@ def fit_least_squares(p0, xdata, ydata, function, resolution=None, yerr=None,
     Default behavior is Levenberg–Marquardt (`method="lm"`) when unbounded.
     If `bounds` is provided, switches to trust-region reflective (`"trf"`).
 
-    Returns (pfit, pcov) in the same style as the old `leastsq` wrapper.
+    Returns (pfit, pcov, success) in the same style as the old `leastsq`
+    wrapper, with an additional boolean `success` from SciPy.
     """
     from scipy.optimize import least_squares
 
@@ -215,11 +216,12 @@ def fit_least_squares(p0, xdata, ydata, function, resolution=None, yerr=None,
         res = least_squares(_residuals, p0, method="trf", bounds=bounds)
 
     pfit = res.x
+    success = bool(getattr(res, "success", False))
 
     m = len(ydata)
     n = pfit.size
 
-    if (m > n) and res.jac is not None and res.jac.size:
+    if (m > n) and (res.jac is not None) and res.jac.size:
         resid = res.fun
         s_sq = (resid ** 2).sum() / (m - n)
 
@@ -231,7 +233,7 @@ def fit_least_squares(p0, xdata, ydata, function, resolution=None, yerr=None,
     else:
         pcov = np.inf
 
-    return pfit, pcov
+    return pfit, pcov, success
 
 
 
