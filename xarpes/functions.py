@@ -149,7 +149,7 @@ def extend_function(abscissa_range, abscissa_resolution):
 
 
 def error_function(p, xdata, ydata, function, resolution, yerr, extra_args):
-    r"""The error function used inside the fit_leastsq function.
+    r"""The error function used inside the fit_least_squares function.
 
     Parameters
     ----------
@@ -187,7 +187,7 @@ def error_function(p, xdata, ydata, function, resolution, yerr, extra_args):
     return residual
 
 
-def fit_leastsq(p0, xdata, ydata, function, resolution=None, yerr=None,
+def fit_least_squares(p0, xdata, ydata, function, resolution=None, yerr=None,
                 *extra_args, bounds=None):
     r"""Least-squares fit using `scipy.optimize.least_squares`.
 

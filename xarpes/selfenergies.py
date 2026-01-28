@@ -1727,7 +1727,7 @@ class SelfEnergy:
         spectrum_in : ndarray
             Selected spectrum from MEM_core evaluated at the chi2kink alpha.
         """
-        from . import (fit_leastsq, chi2kink_logistic)
+        from . import (fit_least_squares, chi2kink_logistic)
 
         alpha_range = np.logspace(alpha_min, alpha_max, alpha_num)
         chi_squared = np.empty_like(alpha_range, dtype=float)
@@ -1748,7 +1748,7 @@ class SelfEnergy:
         log_chi_squared = np.log10(chi_squared)
 
         p0 = np.array([a_guess, b_guess, c_guess, d_guess], dtype=float)
-        pfit, pcov = fit_leastsq(
+        pfit, pcov = fit_least_squares(
             p0, log_alpha, log_chi_squared, chi2kink_logistic
         )
 

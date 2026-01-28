@@ -14,7 +14,7 @@
 import numpy as np
 from igor2 import binarywave
 from .plotting import get_ax_fig_plt, add_fig_kwargs
-from .functions import fit_leastsq, extend_function
+from .functions import fit_least_squares, extend_function
 from .distributions import FermiDirac, Linear
 from .constants import PREF
 
@@ -746,7 +746,7 @@ class BandMap:
 
         extra_args = (self.temperature,)
 
-        popt, pcov = fit_leastsq(
+        popt, pcov = fit_least_squares(
         parameters, energy_range, integrated_intensity, fdir_initial,
         self.energy_resolution, None, None, *extra_args)
 
@@ -846,7 +846,7 @@ class BandMap:
         for indx in range(angle_max_index - angle_min_index + 1):
             edge = Intensities[:, indx]
             
-            parameters, pcov = fit_leastsq(
+            parameters, pcov = fit_least_squares(
             parameters, energy_range, edge, fdir_initial,
             self.energy_resolution, None, None, *extra_args)
 
@@ -861,7 +861,7 @@ class BandMap:
         
         lin_fun = Linear(offset_guess, slope_guess, 'Linear')
                     
-        popt, pcov = fit_leastsq(parameters, angle_range, nmps, lin_fun, None,
+        popt, pcov = fit_least_squares(parameters, angle_range, nmps, lin_fun, None,
                                  stds)
 
         linsp = lin_fun(angle_range, popt[0], popt[1])
