@@ -587,15 +587,37 @@ class SelfEnergy:
         imag_label = rf"$-\Sigma_{{\mathrm{{{safe_label}}}}}''(E)$"
 
         return real_label, imag_label
+    
+    def _a2f_legend_labels(self):
+        """Return (a2f_label, model_label) for legend with safe subscripts."""
+        se_label = getattr(self, "label", None)
+
+        if se_label is None:
+            return r"$\alpha^2F(\omega)$", r"$m(\omega)$"
+
+        safe_label = str(se_label).replace("_", r"\_")
+        if safe_label == "":
+            return r"$\alpha^2F(\omega)$", r"$m(\omega)$"
+
+        a2f_label = rf"$\alpha^2F_{{\mathrm{{{safe_label}}}}}(\omega)$"
+        model_label = rf"$m_{{\mathrm{{{safe_label}}}}}(\omega)$"
+        return a2f_label, model_label
 
     @add_fig_kwargs
-    def plot_real(self, ax=None, **kwargs):
+    def plot_real(self, ax=None, scale="eV", resolution_range="absent", **kwargs):
         r"""Plot the real part Σ' of the self-energy as a function of E-μ.
 
         Parameters
         ----------
         ax : Matplotlib-Axes or None
             Axis to plot on. Created if not provided by the user.
+        scale : {"eV", "meV"}
+            Units for both axes. If "meV", x and y (and yerr) are multiplied by
+            `KILO`.
+        resolution_range : {"absent", "applied"}
+            If "applied", removes points with |E-μ| <= energy_resolution (around
+            the chemical potential). The energy resolution is taken from
+            ``self.energy_resolution`` (in eV) and scaled consistently with `scale`.
         **kwargs :
             Additional keyword arguments passed to ``ax.errorbar``.
 
@@ -608,9 +630,30 @@ class SelfEnergy:
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
+        if scale not in ("eV", "meV"):
+            raise ValueError("scale must be either 'eV' or 'meV'.")
+        if resolution_range not in ("absent", "applied"):
+            raise ValueError("resolution_range must be 'absent' or 'applied'.")
+
+        factor = KILO if scale == "meV" else 1.0
+
         x = self.enel_range
         y = self.real
         y_sigma = self.real_sigma
+
+        if x is not None:
+            x = factor * np.asarray(x, dtype=float)
+        if y is not None:
+            y = factor * np.asarray(y, dtype=float)
+
+        if resolution_range == "applied" and x is not None and y is not None:
+            res = self.energy_resolution
+            if res is not None:
+                keep = np.abs(x) > (factor * float(res))
+                x = x[keep]
+                y = y[keep]
+                if y_sigma is not None:
+                    y_sigma = np.asarray(y_sigma, dtype=float)[keep]
 
         real_label, _ = self._se_legend_labels()
         kwargs.setdefault("label", real_label)
@@ -621,23 +664,33 @@ class SelfEnergy:
                     "Warning: some Σ'(E) uncertainty values are missing. "
                     "Error bars omitted at those energies."
                 )
-            kwargs.setdefault("yerr", xprs.sigma_confidence * y_sigma)
+            kwargs.setdefault("yerr", xprs.sigma_confidence * factor * y_sigma)
 
         ax.errorbar(x, y, **kwargs)
-        ax.set_xlabel(r"$E-\mu$ (eV)")
-        ax.set_ylabel(r"$\Sigma'(E)$ (eV)")
+
+        x_unit = "meV" if scale == "meV" else "eV"
+        ax.set_xlabel(rf"$E-\mu$ ({x_unit})")
+        ax.set_ylabel(rf"$\Sigma'(E)$ ({x_unit})")
         ax.legend()
 
         return fig
 
+
     @add_fig_kwargs
-    def plot_imag(self, ax=None, **kwargs):
+    def plot_imag(self, ax=None, scale="eV", resolution_range="absent", **kwargs):
         r"""Plot the imaginary part -Σ'' of the self-energy vs. E-μ.
 
         Parameters
         ----------
         ax : Matplotlib-Axes or None
             Axis to plot on. Created if not provided by the user.
+        scale : {"eV", "meV"}
+            Units for both axes. If "meV", x and y (and yerr) are multiplied by
+            `KILO`.
+        resolution_range : {"absent", "applied"}
+            If "applied", removes points with |E-μ| <= energy_resolution (around
+            the chemical potential). The energy resolution is taken from
+            ``self.energy_resolution`` (in eV) and scaled consistently with `scale`.
         **kwargs :
             Additional keyword arguments passed to ``ax.errorbar``.
 
@@ -650,9 +703,30 @@ class SelfEnergy:
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
+        if scale not in ("eV", "meV"):
+            raise ValueError("scale must be either 'eV' or 'meV'.")
+        if resolution_range not in ("absent", "applied"):
+            raise ValueError("resolution_range must be 'absent' or 'applied'.")
+
+        factor = KILO if scale == "meV" else 1.0
+
         x = self.enel_range
         y = self.imag
         y_sigma = self.imag_sigma
+
+        if x is not None:
+            x = factor * np.asarray(x, dtype=float)
+        if y is not None:
+            y = factor * np.asarray(y, dtype=float)
+
+        if resolution_range == "applied" and x is not None and y is not None:
+            res = self.energy_resolution
+            if res is not None:
+                keep = np.abs(x) > (factor * float(res))
+                x = x[keep]
+                y = y[keep]
+                if y_sigma is not None:
+                    y_sigma = np.asarray(y_sigma, dtype=float)[keep]
 
         _, imag_label = self._se_legend_labels()
         kwargs.setdefault("label", imag_label)
@@ -663,21 +737,46 @@ class SelfEnergy:
                     "Warning: some -Σ''(E) uncertainty values are missing. "
                     "Error bars omitted at those energies."
                 )
-            kwargs.setdefault("yerr", xprs.sigma_confidence * y_sigma)
+            kwargs.setdefault("yerr", xprs.sigma_confidence * factor * y_sigma)
 
         ax.errorbar(x, y, **kwargs)
-        ax.set_xlabel(r"$E-\mu$ (eV)")
-        ax.set_ylabel(r"$-\Sigma''(E)$ (eV)")
+
+        x_unit = "meV" if scale == "meV" else "eV"
+        ax.set_xlabel(rf"$E-\mu$ ({x_unit})")
+        ax.set_ylabel(rf"$-\Sigma''(E)$ ({x_unit})")
         ax.legend()
 
         return fig
 
+
     @add_fig_kwargs
-    def plot_both(self, ax=None, **kwargs):
-        r"""Plot Σ'(E) and -Σ''(E) vs. E-μ on the same axis."""
+    def plot_both(self, ax=None, scale="eV", resolution_range="absent", **kwargs):
+        r"""Plot Σ'(E) and -Σ''(E) vs. E-μ on the same axis.
+
+        Parameters
+        ----------
+        ax : Matplotlib-Axes or None
+            Axis to plot on. Created if not provided by the user.
+        scale : {"eV", "meV"}
+            Units for both axes. If "meV", x, y, and yerr are multiplied by
+            `KILO`.
+        resolution_range : {"absent", "applied"}
+            If "applied", removes points with |E-μ| <= energy_resolution (around
+            the chemical potential). The energy resolution is taken from
+            ``self.energy_resolution`` (in eV) and scaled consistently with `scale`.
+        **kwargs :
+            Additional keyword arguments passed to ``ax.errorbar``.
+        """
         from . import settings_parameters as xprs
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        if scale not in ("eV", "meV"):
+            raise ValueError("scale must be either 'eV' or 'meV'.")
+        if resolution_range not in ("absent", "applied"):
+            raise ValueError("resolution_range must be 'absent' or 'applied'.")
+
+        factor = KILO if scale == "meV" else 1.0
 
         x = self.enel_range
         real = self.real
@@ -685,9 +784,29 @@ class SelfEnergy:
         real_sigma = self.real_sigma
         imag_sigma = self.imag_sigma
 
+        if x is not None:
+            x = factor * np.asarray(x, dtype=float)
+        if real is not None:
+            real = factor * np.asarray(real, dtype=float)
+        if imag is not None:
+            imag = factor * np.asarray(imag, dtype=float)
+
+        if resolution_range == "applied" and x is not None:
+            res = self.energy_resolution
+            if res is not None:
+                keep = np.abs(x) > (factor * float(res))
+                x = x[keep]
+                if real is not None:
+                    real = real[keep]
+                if imag is not None:
+                    imag = imag[keep]
+                if real_sigma is not None:
+                    real_sigma = np.asarray(real_sigma, dtype=float)[keep]
+                if imag_sigma is not None:
+                    imag_sigma = np.asarray(imag_sigma, dtype=float)[keep]
+
         real_label, imag_label = self._se_legend_labels()
 
-        # --- plot Σ'
         kw_real = dict(kwargs)
         if real_sigma is not None:
             if np.isnan(real_sigma).any():
@@ -695,11 +814,10 @@ class SelfEnergy:
                     "Warning: some Σ'(E) uncertainty values are missing. "
                     "Error bars omitted at those energies."
                 )
-            kw_real.setdefault("yerr", xprs.sigma_confidence * real_sigma)
+            kw_real.setdefault("yerr", xprs.sigma_confidence * factor * real_sigma)
         kw_real.setdefault("label", real_label)
         ax.errorbar(x, real, **kw_real)
 
-        # --- plot -Σ''
         kw_imag = dict(kwargs)
         if imag_sigma is not None:
             if np.isnan(imag_sigma).any():
@@ -707,15 +825,156 @@ class SelfEnergy:
                     "Warning: some -Σ''(E) uncertainty values are missing. "
                     "Error bars omitted at those energies."
                 )
-            kw_imag.setdefault("yerr", xprs.sigma_confidence * imag_sigma)
+            kw_imag.setdefault("yerr", xprs.sigma_confidence * factor * imag_sigma)
         kw_imag.setdefault("label", imag_label)
         ax.errorbar(x, imag, **kw_imag)
 
-        ax.set_xlabel(r"$E-\mu$ (eV)")
-        ax.set_ylabel(r"$\Sigma'(E),\ -\Sigma''(E)$ (eV)")
+        x_unit = "meV" if scale == "meV" else "eV"
+        ax.set_xlabel(rf"$E-\mu$ ({x_unit})")
+        ax.set_ylabel(rf"$\Sigma'(E),\ -\Sigma''(E)$ ({x_unit})")
         ax.legend()
 
         return fig
+
+    @add_fig_kwargs
+    def plot_a2f(self, ax=None, abscissa="forward", **kwargs):
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        xlim_in = ax.get_xlim()
+        ylim_in = ax.get_ylim()
+
+        if abscissa not in ("forward", "reversed"):
+            raise ValueError("abscissa must be either 'forward' or 'reversed'.")
+
+        omega = self.a2f_omega_range
+        spectrum = self.a2f_spectrum
+
+        if omega is None or spectrum is None:
+            raise AttributeError(
+                "No cached α²F(ω) spectrum found. Run `extract_a2f()` or "
+                "`bayesian_loop()` first."
+            )
+
+        if abscissa == "reversed":
+            omega = -omega[::-1]
+            spectrum = spectrum[::-1]
+
+        a2f_label, _ = self._a2f_legend_labels()
+        kwargs.setdefault("label", a2f_label)
+        ax.plot(omega, spectrum, **kwargs)
+
+        ax.set_xlabel(r"$\omega$ (meV)")
+        ax.set_ylabel(r"$\alpha^2F(\omega)$ (-)")
+
+        self._apply_spectra_axis_defaults(ax, omega, abscissa, xlim_in, ylim_in)
+
+        ax.legend()
+        return fig
+
+    @add_fig_kwargs
+    def plot_model(self, ax=None, abscissa="forward", **kwargs):
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        xlim_in = ax.get_xlim()
+        ylim_in = ax.get_ylim()
+
+        if abscissa not in ("forward", "reversed"):
+            raise ValueError("abscissa must be either 'forward' or 'reversed'.")
+
+        omega = self.a2f_omega_range
+        model = self.a2f_model
+
+        if omega is None or model is None:
+            raise AttributeError(
+                "No cached model spectrum found. Run `extract_a2f()` or "
+                "`bayesian_loop()` first."
+            )
+
+        if abscissa == "reversed":
+            omega = -omega[::-1]
+            model = model[::-1]
+
+        _, model_label = self._a2f_legend_labels()
+        kwargs.setdefault("label", model_label)
+        ax.plot(omega, model, **kwargs)
+
+        ax.set_xlabel(r"$\omega$ (meV)")
+        ax.set_ylabel(r"$m(\omega)$ (-)")
+
+        self._apply_spectra_axis_defaults(ax, omega, abscissa, xlim_in, ylim_in)
+
+        ax.legend()
+        return fig
+    
+    @add_fig_kwargs
+    def plot_spectra(self, ax=None, abscissa="forward", **kwargs):
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        xlim_in = ax.get_xlim()
+        ylim_in = ax.get_ylim()
+
+        if abscissa not in ("forward", "reversed"):
+            raise ValueError("abscissa must be either 'forward' or 'reversed'.")
+
+        omega = self.a2f_omega_range
+        spectrum = self.a2f_spectrum
+        model = self.a2f_model
+
+        if omega is None or spectrum is None or model is None:
+            raise AttributeError(
+                "No cached spectra found. Run `extract_a2f()` or `bayesian_loop()` "
+                "first."
+            )
+
+        if abscissa == "reversed":
+            omega = -omega[::-1]
+            spectrum = spectrum[::-1]
+            model = model[::-1]
+
+        kw_a2f = dict(kwargs)
+        kw_model = dict(kwargs)
+        a2f_label, model_label = self._a2f_legend_labels()
+        kw_a2f.setdefault("label", a2f_label)
+        kw_model.setdefault("label", model_label)
+
+        ax.plot(omega, spectrum, **kw_a2f)
+        ax.plot(omega, model, **kw_model)
+
+        self._apply_spectra_axis_defaults(ax, omega, abscissa, xlim_in, ylim_in)
+
+        ax.set_xlabel(r"$\omega$ (meV)")
+        ax.set_ylabel(r"$\alpha^2F_n(\omega),~m_n(\omega)~(-)$")
+        ax.legend()
+
+        return fig
+
+    @staticmethod
+    def _apply_spectra_axis_defaults(ax, omega, abscissa, xlim_in, ylim_in):
+        """Apply default spectra x-range and y-min, without stomping overrides.
+
+        Defaults are applied only if the incoming axis limits were Matplotlib's
+        defaults (0, 1), i.e. the caller did not pre-set them.
+        """
+        if abscissa not in ("forward", "reversed"):
+            raise ValueError("abscissa must be either 'forward' or 'reversed'.")
+
+        omega_max = float(np.max(np.abs(omega)))
+
+        # --- X defaults (only if user did not pre-set xlim)
+        x0, x1 = xlim_in
+        x_is_default = np.isclose(x0, 0.0) and np.isclose(x1, 1.0)
+        if x_is_default:
+            if abscissa == "forward":
+                ax.set_xlim(0.0, omega_max)
+            else:
+                ax.set_xlim(-omega_max, 0.0)
+
+        # --- Y default: set only the bottom to 0 (only if user did not pre-set)
+        y0, y1 = ylim_in
+        y_is_default = np.isclose(y0, 0.0) and np.isclose(y1, 1.0)
+        if y_is_default:
+            ax.set_ylim(bottom=0.0)
+
 
     @add_fig_kwargs
     def extract_a2f(self, *, omega_min, omega_max, omega_num, omega_I, omega_M,
@@ -1452,15 +1711,17 @@ class SelfEnergy:
 
         return spectrum, model, omega_range, alpha_select, cost, params
 
-
     @staticmethod
     def _merge_defaults(defaults, override_dict=None, override_kwargs=None):
         """Merge defaults with dict + kwargs overrides (kwargs win)."""
         cfg = dict(defaults)
-        if override_dict:
+
+        if override_dict is not None:
             cfg.update(dict(override_dict))
-        if override_kwargs:
+
+        if override_kwargs is not None:
             cfg.update({k: v for k, v in override_kwargs.items() if v is not None})
+
         return cfg
 
     def _prepare_bare(self, fermi_velocity, fermi_wavevector, bare_mass):
@@ -1725,7 +1986,8 @@ class SelfEnergy:
             dvec = imag_m
             wvec = imag_sig_m**(-2)
 
-        spectrum_in, alpha_select = self._chi2kink_a2f(
+        (spectrum_in, alpha_select, fit_curve, guess_curve,
+            chi2kink_result) = self._chi2kink_a2f(
             dvec, model_in, uvec, mu, wvec, V_Sigma, U, alpha_min, alpha_max,
             alpha_num, a_guess, b_guess, c_guess, d_guess, f_chi_squared,
             t_criterion, iter_max, MEM_core,
