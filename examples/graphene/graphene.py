@@ -156,14 +156,15 @@ fig = plt.figure(figsize=(6, 5)); ax = fig.gca()
 
 fig = self_energy.plot_spectra(ax=ax)
 
-spectrum, model, omega_range, alpha_select, cost, params = self_energy.bayesian_loop(omega_min=0.5,
-            omega_max=250, omega_num=250, omega_I=50, omega_M=200, omega_S=1.0,
-            W=1500, power=4, fermi_velocity=2.8590436, fermi_wavevector=0.358010499,
-            h_n=0.0802309738, impurity_magnitude=120.902261, lambda_el=0,
-             vary=("impurity_magnitude", "lambda_el", "fermi_wavevector", "fermi_velocity", "h_n"), 
-            converge_iters=10, tole=1e-2, scale_vF=1.0, scale_imp=1.0, scale_kF=0.1, 
-            scale_lambda_el=1.0, scale_hn=10.0, 
-            print_lines=10)
+with xarpes.trim_notebook_output(print_lines=10):
+    spectrum, model, omega_range, alpha_select, cost, params = self_energy.bayesian_loop(omega_min=0.5,
+                omega_max=250, omega_num=250, omega_I=50, omega_M=200, omega_S=1.0,
+                W=1500, power=4, fermi_velocity=2.8590436, fermi_wavevector=0.358010499,
+                h_n=0.0802309738, impurity_magnitude=120.902261, lambda_el=0,
+                vary=("impurity_magnitude", "lambda_el", "fermi_wavevector", "fermi_velocity", "h_n"), 
+                converge_iters=10, tole=1e-2, scale_vF=1.0, scale_imp=1.0, scale_kF=0.1, 
+                scale_lambda_el=1.0, scale_hn=10.0, 
+                print_lines=10)
 
 # The following cell performs some testing on the electron-electron self-energy expressions
 

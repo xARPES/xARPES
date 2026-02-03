@@ -236,7 +236,6 @@ def fit_least_squares(p0, xdata, ydata, function, resolution=None, yerr=None,
     return pfit, pcov, success
 
 
-
 def download_examples():
     """Downloads the examples folder from the main xARPES repository only if it
     does not already exist in the current directory. Prints executed steps and a
@@ -626,3 +625,167 @@ def chi2kink_logistic(x, a, b, c, d):
         phi[mneg] = a + b * expz / (1.0 + expz)
 
     return phi
+
+def _in_ipython():
+    try:
+        from IPython import get_ipython
+    except Exception:
+        return False
+    return get_ipython() is not None
+
+
+class _LineBuffer:
+    """Capture text as lines, keeping only head + tail and total count."""
+    def __init__(self, head=10, tail=10):
+        from collections import deque
+        self.head = int(head)
+        self.tail = int(tail)
+        self._head_lines = []
+        self._tail_lines = deque(maxlen=self.tail)
+        self._partial = ""
+        self._n_lines = 0
+
+    def feed(self, text):
+        if not text:
+            return
+
+        # Normalize carriage returns (progress bars etc.)
+        text = str(text).replace("\r", "\n")
+
+        # Prepend any partial line from previous write.
+        text = self._partial + text
+        parts = text.split("\n")
+
+        # If text does not end with '\n', last part is partial.
+        self._partial = parts.pop()  # may be "" if ended with newline
+
+        for line in parts:
+            # Record completed line
+            self._n_lines += 1
+            if len(self._head_lines) < self.head:
+                self._head_lines.append(line)
+            else:
+                if self.tail > 0:
+                    self._tail_lines.append(line)
+
+    def finalize(self):
+        # If there is an unfinished line, treat it as a line.
+        if self._partial.strip() != "":
+            self.feed("\n")  # forces it into completed lines
+        self._partial = ""
+
+    def summary(self):
+        self.finalize()
+
+        n = self._n_lines
+        if n == 0:
+            return ""
+
+        # If total small, reconstruct from head + tail if possible
+        if n <= self.head + self.tail:
+            # We didn't keep all middle lines, but if n <= head+tail we kept all.
+            # For n <= head, tail may be empty; for n > head, tail contains rest.
+            out = list(self._head_lines)
+            if n > len(self._head_lines):
+                out.extend(list(self._tail_lines))
+            return "\n".join(out)
+
+        omitted = n - self.head - self.tail
+        head_txt = "\n".join(self._head_lines)
+        tail_txt = "\n".join(list(self._tail_lines))
+        return (
+            f"{head_txt}\n"
+            f"... ({omitted} lines omitted) ...\n"
+            f"{tail_txt}"
+        )
+
+
+def trim_notebook_output(print_lines=10, *, enabled=True, clear=True,
+                         capture_stderr=True, sleep_s=0.05):
+    """Context manager: show live prints, then keep only head/tail in notebooks.
+
+    In plain scripts (no IPython), this is a no-op.
+    """
+    from contextlib import contextmanager
+
+    @contextmanager
+    def _ctx():
+        if (not enabled) or (print_lines is None):
+            yield
+            return
+
+        n = int(print_lines)
+        if n <= 0:
+            yield
+            return
+
+        # Only do this in IPython environments; scripts should print normally.
+        if not _in_ipython():
+            yield
+            return
+
+        import sys
+        import time
+
+        buf = _LineBuffer(head=n, tail=n)
+
+        stdout_orig = sys.stdout
+        stderr_orig = sys.stderr
+
+        class _TeeStream:
+            def __init__(self, real_stream, buffer):
+                self._real = real_stream
+                self._buf = buffer
+
+            def write(self, text):
+                # Live output
+                try:
+                    self._real.write(text)
+                    self._real.flush()
+                except Exception:
+                    pass
+                # Capture
+                self._buf.feed(text)
+
+            def flush(self):
+                try:
+                    self._real.flush()
+                except Exception:
+                    pass
+
+            # Some libraries ask for these:
+            def isatty(self):
+                return False
+
+            @property
+            def encoding(self):
+                return getattr(self._real, "encoding", "utf-8")
+
+        sys.stdout = _TeeStream(stdout_orig, buf)
+        if capture_stderr:
+            sys.stderr = _TeeStream(stderr_orig, buf)
+
+        try:
+            yield
+        finally:
+            # Restore streams first.
+            sys.stdout = stdout_orig
+            sys.stderr = stderr_orig
+
+            # Let Jupyter finish rendering any queued output.
+            if sleep_s:
+                time.sleep(float(sleep_s))
+
+            # Clear cell output and print summary.
+            summary = buf.summary()
+            if clear:
+                try:
+                    from IPython.display import clear_output
+                    clear_output(wait=True)
+                except Exception:
+                    pass
+
+            if summary:
+                print(summary)
+
+    return _ctx()

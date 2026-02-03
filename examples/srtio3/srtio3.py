@@ -240,15 +240,16 @@ ax[0].set_title('$\chi^2$-kink')
 fig.subplots_adjust(top=0.92, hspace=0.1)
 plt.show()
 
-spectrum, model, omega_range, alpha_select, cost, params = self_energy.bayesian_loop(omega_min=0.5,
-            omega_max=120, omega_num=250, omega_I=20, omega_M=100, omega_S=1.0,
-            alpha_min=0.0, alpha_max=8.0, alpha_num=10, method='chi2kink',
-            parts='both', ecut_left=3, iter_max=1e4, t_criterion=1e-8,
-            power=4, bare_mass=0.6094394681, fermi_wavevector=0.1420916364, h_n=0.07582382627, 
-            impurity_magnitude=14.64962434, lambda_el=2.064840668e-07,
-            vary=("impurity_magnitude", "lambda_el", "fermi_wavevector", "bare_mass", 
-                "h_n"), scale_imp=1.0, scale_lambda_el=1.0, scale_kF=0.1, scale_mb=1.0, scale_hn=1.0,
-                print_lines=10)
+with xarpes.trim_notebook_output(print_lines=10):
+    spectrum, model, omega_range, alpha_select, cost, params = self_energy.bayesian_loop(omega_min=0.5,
+                omega_max=120, omega_num=250, omega_I=20, omega_M=100, omega_S=1.0,
+                alpha_min=0.0, alpha_max=8.0, alpha_num=10, method='chi2kink',
+                parts='both', ecut_left=3, iter_max=1e4, t_criterion=1e-8,
+                power=4, bare_mass=0.6094394681, fermi_wavevector=0.1420916364, h_n=0.07582382627, 
+                impurity_magnitude=14.64962434, lambda_el=2.064840668e-07,
+                vary=("impurity_magnitude", "lambda_el", "fermi_wavevector", "bare_mass", 
+                    "h_n"), scale_imp=1.0, scale_lambda_el=1.0, scale_kF=0.1, scale_mb=1.0, scale_hn=1.0,
+                    print_lines=10)
 
 
 fig = plt.figure(figsize=(6, 5)); ax = fig.gca()
