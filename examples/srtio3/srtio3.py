@@ -100,7 +100,7 @@ fig = plt.figure(figsize=(8, 6)); ax = fig.gca()
 fig = mdcs.fit_selection(distributions=guess_dists, matrix_element=mat_el, 
                          matrix_args=mat_args, ax=ax)
 
-# **Note on interactive figures**
+# **Note on the self-energy assignment**
 # - The user has to explicitly assign the peaks as left-hand or right-hand side.  
 # - In theory, one could incorporate such information in a minus sign of the peak position.  
 # - However, this would also require setting boundaries for the fitting range.  
