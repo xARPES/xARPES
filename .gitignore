@@ -82,6 +82,7 @@ target/
 *.ipynb
 
 # --- allow tracked notebooks in documentation ---
+# Currently the example notebooks are not tracked inside the documentation folder.
 !doc/notebooks/
 !doc/notebooks/*.ipynb
 
