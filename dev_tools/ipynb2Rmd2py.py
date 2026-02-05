@@ -19,7 +19,8 @@ import re
 import shutil
 import subprocess
 import sys
-
+import json
+from typing import Any, Dict, List
 
 def find_base_dir() -> str:
     # Safe base directory (works both when run as script or in REPL)
@@ -260,41 +261,137 @@ def main() -> None:
             convert_rmd_to_py(rmd)
 
 
+def write_stripped_ipynb(src: str, dst: str) -> None:
+    """
+    Write a stripped copy of a notebook while *retaining figures*.
+
+    Keeps:
+    - cell source
+    - cell metadata.tags (if present)
+    - display outputs containing images (png/svg/pdf/jpeg)
+
+    Strips:
+    - stream outputs (stdout/stderr)
+    - errors (by default)
+    - execution counts
+    - most metadata (kernelspec/language_info/widgets/etc.)
+    """
+    with open(src, "r", encoding="utf-8") as f:
+        nb = json.load(f)
+
+    meta = nb.get("metadata") or {}
+    kernelspec = meta.get("kernelspec") if isinstance(meta, dict) else None
+    language_info = meta.get("language_info") if isinstance(meta, dict) else None
+
+    new_meta: Dict[str, Any] = {}
+
+    if isinstance(kernelspec, dict):
+        new_meta["kernelspec"] = {
+            k: kernelspec.get(k)
+            for k in ("name", "display_name", "language")
+            if kernelspec.get(k) is not None
+        }
+
+    if isinstance(language_info, dict):
+        new_meta["language_info"] = {
+            k: language_info.get(k)
+            for k in (
+                "name",
+                "pygments_lexer",
+                "codemirror_mode",
+                "mimetype",
+                "file_extension",
+            )
+            if language_info.get(k) is not None
+        }
+
+    nb["metadata"] = new_meta
+
+    allowed_mime = {
+        "image/png",
+        "image/svg+xml",
+        "image/jpeg",
+        "application/pdf",
+    }
+
+    for cell in nb.get("cells", []):
+        md = cell.get("metadata") or {}
+        tags = md.get("tags") if isinstance(md, dict) else None
+        cell["metadata"] = {}
+        if tags:
+            cell["metadata"]["tags"] = tags
+
+        if "execution_count" in cell:
+            cell["execution_count"] = None
+
+        outputs = cell.get("outputs", [])
+        if not isinstance(outputs, list):
+            outputs = []
+
+        kept: List[Dict[str, Any]] = []
+        for out in outputs:
+            if not isinstance(out, dict):
+                continue
+
+            otype = out.get("output_type")
+
+            # Drop stdout/stderr noise.
+            if otype == "stream":
+                continue
+
+            # Drop error tracebacks (toggle if you want to keep them).
+            if otype == "error":
+                continue
+
+            # Keep only rich-display outputs that contain images.
+            if otype in ("display_data", "execute_result"):
+                data = out.get("data") or {}
+                if not isinstance(data, dict):
+                    continue
+
+                kept_data = {
+                    k: v for k, v in data.items() if k in allowed_mime
+                }
+                if not kept_data:
+                    # No figure-like payload; skip (drops text/plain spam).
+                    continue
+
+                new_out: Dict[str, Any] = {
+                    "output_type": otype,
+                    "data": kept_data,
+                    "metadata": {},
+                }
+
+                if otype == "execute_result":
+                    new_out["execution_count"] = None
+
+                kept.append(new_out)
+
+        if "outputs" in cell:
+            cell["outputs"] = kept
+
+        # Attachments can also embed images; keep if you rely on them.
+        # If not needed, stripping reduces bloat:
+        if "attachments" in cell:
+            cell.pop("attachments", None)
+
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    with open(dst, "w", encoding="utf-8") as f:
+        json.dump(nb, f, ensure_ascii=False, indent=1)
+        f.write("\n")
+
+
 def copy_ipynb_to_docs(ipynb_path: str, base_dir: str) -> None:
     """
-    Copy ipynb into <repo>/doc/notebooks, flattening any subfolders.
-
-    If two notebooks share the same filename, disambiguate by appending a
-    suffix derived from their relative directory.
+    Copy ipynb into <repo>/doc/notebooks, stripping metadata but retaining
+    figure outputs.
     """
     repo_root = os.path.dirname(base_dir)
     dst_dir = os.path.join(repo_root, "doc", "notebooks")
     os.makedirs(dst_dir, exist_ok=True)
 
-    name = os.path.basename(ipynb_path)
-    dst = os.path.join(dst_dir, name)
-
-    if os.path.exists(dst):
-        # Disambiguate collisions by using the relative folder path.
-        rel_dir = os.path.relpath(os.path.dirname(ipynb_path), base_dir)
-        rel_dir = "" if rel_dir == "." else rel_dir
-        suffix = re.sub(r"[^A-Za-z0-9]+", "_", rel_dir).strip("_")
-        root, ext = os.path.splitext(name)
-        new_name = f"{root}__{suffix}{ext}" if suffix else name
-        dst = os.path.join(dst_dir, new_name)
-
-        # If *still* colliding, add a numeric suffix.
-        if os.path.exists(dst):
-            i = 2
-            while True:
-                new_name = f"{root}__{suffix}__{i}{ext}" if suffix else \
-                           f"{root}__{i}{ext}"
-                dst = os.path.join(dst_dir, new_name)
-                if not os.path.exists(dst):
-                    break
-                i += 1
-
-    shutil.copy2(ipynb_path, dst)
+    dst = os.path.join(dst_dir, os.path.basename(ipynb_path))
+    write_stripped_ipynb(ipynb_path, dst)
 
 
 if __name__ == "__main__":
