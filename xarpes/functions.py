@@ -255,6 +255,12 @@ def download_examples():
     import tempfile
     import re
 
+    # importlib.metadata is stdlib from 3.8; use backport if on 3.7
+    try:
+        from importlib.metadata import version, PackageNotFoundError
+    except ImportError:  # Python 3.7 + backport
+        from importlib_metadata import version, PackageNotFoundError
+
     # Main xARPES repo (examples live under /examples there)
     repo_url = "https://github.com/xARPES/xARPES"
     output_dir = "."  # Directory from which the function is called
@@ -266,20 +272,15 @@ def download_examples():
               "No download will be performed.")
         return 1  # Exit the function if 'examples' directory exists
 
-    # --- Determine version from xarpes.__init__.__version__ -----------------
-    try:
-        # Import inside the function, avoiding circular imports at import time
-        import xarpes as _xarpes
-        raw_version = getattr(_xarpes, "__version__", None)
-    except Exception as exc:
-        print(f"Warning: could not import xarpes to determine version: {exc}")
-        raw_version = None
-
+    # --- Determine version from installed package metadata -------------------
     tag_version = None
-    if raw_version is not None:
+    raw_version = None
+
+    try:
+        raw_version = version("xarpes")
         raw_version = str(raw_version)
         # Strip dev/local suffixes so that '0.3.3.dev1' or '0.3.3+0.gHASH'
-        # maps to the tag 'v0.3.3'. If you use plain '0.3.3' already, this is 
+        # maps to the tag 'v0.3.3'. If you use plain '0.3.3' already, this is
         # a no-op.
         m = re.match(r"(\d+\.\d+\.\d+)", raw_version)
         if m:
@@ -287,11 +288,11 @@ def download_examples():
         else:
             tag_version = raw_version
 
-        print(f"Determined xARPES version from __init__: {raw_version} "
-              f"(using tag version '{tag_version}').")
-    else:
-        print("Warning: xarpes.__version__ is not defined; will skip "
-        "tag-based download and try the main branch only.")
+        print("Determined installed xARPES version from package metadata: "
+              f"{raw_version} (using tag version '{tag_version}').")
+    except PackageNotFoundError:
+        print("Warning: could not determine installed 'xarpes' package version; "
+              "will skip tag-based download and try the main branch only.")
 
     # --- Build refs and use for–else to try them in order -------------------
     repo_parts = repo_url.replace("https://github.com/", "").rstrip("/")
@@ -302,18 +303,20 @@ def download_examples():
     refs_to_try.append("heads/main")                # fallback: latest examples
 
     response = None
+    selected_ref = None
     for ref in refs_to_try:
         zip_url = f"https://github.com/{repo_parts}/archive/refs/{ref}.zip"
         print(f"Attempting to download examples from '{ref}':\n  {zip_url}")
         response = requests.get(zip_url)
 
         if response.status_code == 200:
+            selected_ref = ref
             if ref.startswith("tags/"):
                 print(f"Successfully downloaded examples from tagged release "
                       f"'v{tag_version}'.")
             else:
                 print("Tagged release not available; using latest examples "
-                "from the 'main' branch instead.")
+                      "from the 'main' branch instead.")
             break
         else:
             print("Failed to download from this ref. HTTP status code: "
@@ -341,8 +344,10 @@ def download_examples():
 
         if not os.path.exists(examples_path):
             print("Error: downloaded archive does not contain an 'examples' "
-            "directory.")
+                  "directory.")
             return 1
+
+        print(f"Using examples from ref: {selected_ref}")
 
         # Move the 'examples' directory to the target location in the CWD
         shutil.move(examples_path, final_examples_path)
