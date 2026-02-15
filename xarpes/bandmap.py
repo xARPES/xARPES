@@ -107,6 +107,7 @@ class BandMap:
 
         return cls(intensities=intensities, angles=angles, ekin=ekin, 
                    **kwargs)
+        
 
     @classmethod
     def from_np_arrays(cls, intensities=None, angles=None, ekin=None, 
@@ -147,8 +148,13 @@ class BandMap:
             raise ValueError('Please provide intensities and angles.')
         if (ekin is None) == (enel is None):
             raise ValueError('Provide exactly one of ekin or enel.')
+        kwargs = dict(kwargs)
+        if enel is not None and kwargs.get('hnuminPhi', None) is None:
+            kwargs['hnuminPhi'] = 0.0
+
         return cls(intensities=intensities, angles=angles, ekin=ekin, enel=enel,
                    **kwargs)
+    
 
     def __init__(self, intensities=None, angles=None, ekin=None, enel=None,
                  energy_resolution=None, angle_resolution=None,
@@ -241,15 +247,18 @@ class BandMap:
         self.angle_resolution = angle_resolution
         self.temperature = temperature
 
+        # --- 1) Track which axis is authoritative --------------------------
+        self._ekin_explicit = ekin is not None
+        self._enel_explicit = enel is not None
+
+        if self._enel_explicit and hnuminPhi is None:
+            hnuminPhi = 0.0
+
         # Work-function combo and its std
         self._hnuminPhi = None
         self._hnuminPhi_std = None
         self.hnuminPhi = hnuminPhi
         self.hnuminPhi_std = hnuminPhi_std
-
-        # --- 1) Track which axis is authoritative --------------------------
-        self._ekin_explicit = ekin is not None
-        self._enel_explicit = enel is not None
 
         # --- 2) Derive missing axis if possible ----------------------------
         if self._ekin is None and self._enel is not None \
@@ -809,6 +818,12 @@ class BandMap:
             Figure containing the Fermi edge fit
 
         """
+        if getattr(self, "_enel_explicit", False):
+            raise RuntimeError(
+                "BandMap was initialized with binding energy (enel). "
+                "Fermi-edge fitting is not required."
+            )
+        
         from scipy.ndimage import gaussian_filter
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
@@ -821,7 +836,7 @@ class BandMap:
 
         energy_range = self.ekin[min_ekin_index:max_ekin_index]
 
-        integrated_intensity = np.trapz(
+        integrated_intensity = np.trapezoid(
             self.intensities[min_ekin_index:max_ekin_index,
                 min_angle_index:max_angle_index], axis=1)
 
@@ -898,6 +913,12 @@ class BandMap:
             Figure containing the Fermi edge fit
 
         """
+        if getattr(self, "_enel_explicit", False):
+            raise RuntimeError(
+                "BandMap was initialized with binding energy (enel). "
+                "Fermi-edge correction is not required."
+            )
+        
         from scipy.ndimage import map_coordinates
         from . import settings_parameters as xprs
         
