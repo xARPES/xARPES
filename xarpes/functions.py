@@ -3,8 +3,6 @@
 
 """Separate functions mostly used in conjunction with various classes."""
 
-import numpy as np
-
 def resolve_param_name(params, label, pname):
     """
     Try to find the lmfit param key corresponding to this component `label`

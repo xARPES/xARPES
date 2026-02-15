@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+
+import matplotlib as mpl
+mpl.use('Qt5Agg')
+
+# Necessary packages
+import xarpes
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+
+# Default plot configuration from xarpes.plotting.py
+xarpes.plot_settings('default')
+
+
+#startx = 0.136561 (1/Ang),	deltax = 0.000513 (1/Ang)
+#starty = -0.274858 (eV),	deltay = 0.000633  (eV)
+
+kmin = 0.136561
+kstp = 0.000513
+knum = 273
+
+emin  = -0.274858
+estp = 0.000633
+enum = 696
+
+hnu_minPhi = 1.6297
+
+kran = kmin + np.arange(knum) * kstp
+eran = emin + np.arange(enum) * estp
+
+eran += hnu_minPhi
+
+intensities = np.loadtxt(os.path.join('data_sets', 'fig1a_laser.txt')).T
+# print(intensities.shape)
+
+# data are in energy relative to the EF and inverse Angstrom (calculated with EF = 1.6297eV, hv = 6.05 eV, work_function 4.5 eV). 
+
+
+# Need to patch the following: angle_resolution must be replaced by momentum_resolution
+
+bmap = xarpes.BandMap.from_np_arrays(intensities=intensities, angles=kran, ekin=eran, 
+        energy_resolution=0.0025, angle_resolution=0.003, temperature=6)
+
+fig = bmap.plot(abscissa='angle', ordinate='kinetic_energy', size_kwargs=dict(w=6, h=5))
+
+
