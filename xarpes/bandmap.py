@@ -23,9 +23,10 @@ class BandMap:
     Band map container for ARPES intensity data.
 
     A `BandMap` stores a two-dimensional ARPES intensity map together with
-    its angular axis and a single energy axis (either kinetic or binding
-    energy). Conversion between kinetic and binding energy is handled
-    internally via the work-function offset ``hnuminPhi`` when available.
+    one abscissa axis (angles or momenta) and a single energy axis (either
+    kinetic or binding energy). Conversion between kinetic and binding energy
+    is handled internally via the work-function offset ``hnuminPhi`` when
+    available.
 
     Notes
     -----
@@ -110,8 +111,8 @@ class BandMap:
         
 
     @classmethod
-    def from_np_arrays(cls, intensities=None, angles=None, ekin=None, 
-                       enel=None, **kwargs):
+    def from_np_arrays(cls, intensities=None, angles=None, momenta=None,
+                       ekin=None, enel=None, **kwargs):
         """
         Construct a `BandMap` directly from NumPy arrays.
 
@@ -123,8 +124,10 @@ class BandMap:
         ----------
         intensities : array-like
             ARPES intensity map with shape ``(n_energy, n_angle)`` [counts].
-        angles : array-like
+        angles : array-like, optional
             Angular axis values with shape ``(n_angle,)`` [degree].
+        momenta : array-like, optional
+            Momentum axis values with shape ``(n_angle,)`` [Å⁻¹].
         ekin : array-like, optional
             Kinetic-energy axis values with shape ``(n_energy,)`` [eV].
         enel : array-like, optional
@@ -141,30 +144,35 @@ class BandMap:
         Raises
         ------
         ValueError
-            If `intensities` or `angles` is missing, or if both (or neither)
-            of `ekin` and `enel` are provided.
+            If `intensities` is missing, if both (or neither) of `angles`
+            and `momenta` are provided, or if both (or neither) of `ekin`
+            and `enel` are provided.
         """
-        if intensities is None or angles is None:
-            raise ValueError('Please provide intensities and angles.')
+        if intensities is None:
+            raise ValueError('Please provide intensities.')
+        if (angles is None) == (momenta is None):
+            raise ValueError('Provide exactly one of angles or momenta.')
         if (ekin is None) == (enel is None):
             raise ValueError('Provide exactly one of ekin or enel.')
         kwargs = dict(kwargs)
         if enel is not None and kwargs.get('hnuminPhi', None) is None:
             kwargs['hnuminPhi'] = 0.0
 
-        return cls(intensities=intensities, angles=angles, ekin=ekin, enel=enel,
-                   **kwargs)
+        return cls(intensities=intensities, angles=angles, momenta=momenta,
+                   ekin=ekin, enel=enel, **kwargs)
     
 
-    def __init__(self, intensities=None, angles=None, ekin=None, enel=None,
-                 energy_resolution=None, angle_resolution=None,
+    def __init__(self, intensities=None, angles=None, momenta=None,
+                 ekin=None, enel=None, energy_resolution=None,
+                 angle_resolution=None, momentum_resolution=None,
                  temperature=None, hnuminPhi=None, hnuminPhi_std=None):
         """
         Initialize a `BandMap` from canonical arrays and metadata.
 
         A `BandMap` represents a two-dimensional ARPES intensity map defined on
-        an angular axis and a single authoritative energy axis. Exactly one of
-        `ekin` (kinetic energy) or `enel` (binding energy) must be provided.
+        one abscissa axis (`angles` or `momenta`) and a single authoritative
+        energy axis. Exactly one of `ekin` (kinetic energy) or `enel` (binding
+        energy) must be provided.
         The non-authoritative energy axis may be derived automatically when the
         work-function offset ``hnuminPhi = h\\nu - \\Phi`` has been set with
         the Fermi-edge fitting.
@@ -173,8 +181,10 @@ class BandMap:
         ----------
         intensities : array-like
             ARPES intensity map with shape ``(n_energy, n_angle)`` [counts].
-        angles : array-like
+        angles : array-like, optional
             Angular axis values with shape ``(n_angle,)`` [degree].
+        momenta : array-like, optional
+            Momentum axis values with shape ``(n_angle,)`` [Å⁻¹].
         ekin : array-like, optional
             Kinetic-energy axis values with shape ``(n_energy,)`` [eV]. If 
             provided, `ekin` becomes the authoritative energy axis.
@@ -185,6 +195,8 @@ class BandMap:
             Energy resolution of the measurement, [eV].
         angle_resolution : float, optional
             Angular resolution of the measurement [degree].
+        momentum_resolution : float, optional
+            Momentum resolution of the measurement [Å⁻¹].
         temperature : float, optional
             Sample temperature [K].
         hnuminPhi : float, optional
@@ -214,18 +226,20 @@ class BandMap:
         Raises
         ------
         ValueError
-            If required arrays are missing, or if both (or neither) of `ekin`
+            If required arrays are missing, if both (or neither) of `angles`
+            and `momenta` are provided, or if both (or neither) of `ekin`
             and `enel` are provided.
         """
 
         # --- Required arrays ------------------------------------------------
         if intensities is None:
             raise ValueError('Please provide intensities.')
-        if angles is None:
-            raise ValueError('Please provide angles.')
+        if (angles is None) == (momenta is None):
+            raise ValueError('Provide exactly one of angles or momenta.')
 
         self.intensities = intensities
         self.angles = angles
+        self.momenta = momenta
 
         # --- Initialize energy axes (raw slots) ----------------------------
         self._ekin = None
@@ -245,6 +259,7 @@ class BandMap:
         # Scalars / metadata
         self.energy_resolution = energy_resolution
         self.angle_resolution = angle_resolution
+        self.momentum_resolution = momentum_resolution
         self.temperature = temperature
 
         # --- 1) Track which axis is authoritative --------------------------
@@ -285,6 +300,14 @@ class BandMap:
     def angles(self, x):
         self._angles = x
 
+    @property
+    def momenta(self):
+        return self._momenta
+
+    @momenta.setter
+    def momenta(self, x):
+        self._momenta = x
+
     # -------------------- 3) Resolution / temperature ----------------------
     @property
     def angle_resolution(self):
@@ -301,6 +324,14 @@ class BandMap:
     @energy_resolution.setter
     def energy_resolution(self, x):
         self._energy_resolution = x
+
+    @property
+    def momentum_resolution(self):
+        return self._momentum_resolution
+
+    @momentum_resolution.setter
+    def momentum_resolution(self, x):
+        self._momentum_resolution = x
 
     @property
     def temperature(self):
@@ -409,6 +440,11 @@ class BandMap:
             Angular shift [degrees]
 
         """
+        if self.angles is None:
+            raise RuntimeError(
+                'Angles are not available for this BandMap. '
+                'Use a BandMap initialized with angles.'
+            )
         self.angles = self.angles + shift
         
     def mdc_set(self, angle_min, angle_max, energy_value=None,
@@ -506,7 +542,7 @@ class BandMap:
         - "none"   : do not plot bare dispersions
         - "kink"   : for each self-energy, use the min/max of its own
           momentum range (typically its MDC maxima), with
-          `len(self.angles)` points.
+          `len(abscissa axis)` points.
         - "domain" : for SpectralQuadratic, use only the left or right
           domain relative to `center_wavevector`, based on the self-energy
           attribute `side` ("left" / "right"); for other cases this behaves
@@ -549,9 +585,15 @@ class BandMap:
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
-        Angl, Ekin = np.meshgrid(self.angles, self.ekin)
+        n_abscissa = self.intensities.shape[1]
 
         if abscissa == 'angle':
+            if self.angles is None:
+                raise RuntimeError(
+                    "BandMap has no angular axis. Use abscissa='momentum'."
+                )
+
+            Angl, Ekin = np.meshgrid(self.angles, self.ekin)
             ax.set_xlabel('Angle ($\\degree$)')
             if ordinate == 'kinetic_energy':
                 mesh = ax.pcolormesh(
@@ -570,39 +612,70 @@ class BandMap:
         elif abscissa == 'momentum':
             ax.set_xlabel(r'$k_{//}$ ($\mathrm{\AA}^{-1}$)')
 
-            with warnings.catch_warnings(record=True) as wlist:
-                warnings.filterwarnings(
-                    "always",
-                    message=(
-                        "The input coordinates to pcolormesh are "
-                        "interpreted as cell centers, but are not "
-                        "monotonically increasing or decreasing."
-                    ),
-                    category=UserWarning,
-                )
+            momenta = self.momenta
+            if momenta is not None:
+                momenta = np.asarray(momenta, dtype=float)
+                if momenta.ndim != 1:
+                    raise ValueError('momenta must be one-dimensional.')
+                if len(momenta) != n_abscissa:
+                    raise ValueError(
+                        'Length of momenta axis must match the second '
+                        'dimension of intensities.'
+                    )
 
-                Mome = np.sqrt(Ekin / PREF) * np.sin(np.deg2rad(Angl))
+                Mome, Ekin = np.meshgrid(momenta, self.ekin)
+                mome_min = np.min(momenta)
+                mome_max = np.max(momenta)
+                full_disp_momenta = momenta
+                wlist = []
+            else:
+                if self.angles is None:
+                    raise RuntimeError(
+                        'BandMap has neither momenta nor angles to build '
+                        'momentum coordinates.'
+                    )
+                angles = np.asarray(self.angles, dtype=float)
+                if angles.ndim != 1:
+                    raise ValueError('angles must be one-dimensional.')
+                if len(angles) != n_abscissa:
+                    raise ValueError(
+                        'Length of angles axis must match the second '
+                        'dimension of intensities.'
+                    )
+
+                Angl, Ekin = np.meshgrid(angles, self.ekin)
+                with warnings.catch_warnings(record=True) as wlist:
+                    warnings.filterwarnings(
+                        "always",
+                        message=(
+                            "The input coordinates to pcolormesh are "
+                            "interpreted as cell centers, but are not "
+                            "monotonically increasing or decreasing."
+                        ),
+                        category=UserWarning,
+                    )
+                    Mome = np.sqrt(Ekin / PREF) * np.sin(np.deg2rad(Angl))
                 mome_min = np.min(Mome)
                 mome_max = np.max(Mome)
                 full_disp_momenta = np.linspace(
-                    mome_min, mome_max, len(self.angles)
+                    mome_min, mome_max, n_abscissa
                 )
 
-                if ordinate == 'kinetic_energy':
-                    mesh = ax.pcolormesh(
-                        Mome, Ekin, self.intensities,
-                        shading='auto',
-                        cmap=plt.get_cmap('bone').reversed())
-                    ax.set_ylabel('$E_{\\mathrm{kin}}$ (eV)')
-                elif ordinate == 'electron_energy':
-                    Enel = Ekin - self.hnuminPhi
-                    mesh = ax.pcolormesh(
-                        Mome, Enel, self.intensities,
-                        shading='auto',
-                        cmap=plt.get_cmap('bone').reversed())
-                    ax.set_ylabel('$E-\\mu$ (eV)')
+            if ordinate == 'kinetic_energy':
+                mesh = ax.pcolormesh(
+                    Mome, Ekin, self.intensities,
+                    shading='auto',
+                    cmap=plt.get_cmap('bone').reversed())
+                ax.set_ylabel('$E_{\\mathrm{kin}}$ (eV)')
+            elif ordinate == 'electron_energy':
+                Enel = Ekin - self.hnuminPhi
+                mesh = ax.pcolormesh(
+                    Mome, Enel, self.intensities,
+                    shading='auto',
+                    cmap=plt.get_cmap('bone').reversed())
+                ax.set_ylabel('$E-\\mu$ (eV)')
 
-                y_lims = ax.get_ylim()
+            y_lims = ax.get_ylim()
 
             if any("cell centers" in str(w.message) for w in wlist):
                 warnings.warn(
@@ -676,7 +749,7 @@ class BandMap:
                         k_min = np.min(x_arr[mask])
                         k_max = np.max(x_arr[mask])
                         disp_momenta = np.linspace(
-                            k_min, k_max, len(self.angles)
+                            k_min, k_max, n_abscissa
                         )
                     elif (plot_disp_mode == 'domain'
                           and spec_class == "SpectralQuadratic"):
@@ -684,12 +757,12 @@ class BandMap:
                         if side == 'left':
                             disp_momenta = np.linspace(
                                 mome_min, self_energy.center_wavevector,
-                                len(self.angles)
+                                n_abscissa
                             )
                         elif side == 'right':
                             disp_momenta = np.linspace(
                                 self_energy.center_wavevector, mome_max,
-                                len(self.angles)
+                                n_abscissa
                             )
                         else:
                             # Fallback: no valid side, use full range
