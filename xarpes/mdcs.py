@@ -20,7 +20,7 @@ class MDCs:
     r"""
     Container for momentum distribution curves (MDCs) and their fits.
 
-    This class stores the MDC intensity maps, angular and energy grids, and
+    This class stores MDC intensity maps, one abscissa grid (angle or momentum), and
     the aggregated fit results produced by :meth:`fit_selection`.
 
     Parameters
@@ -84,18 +84,57 @@ class MDCs:
     where ``param`` is typically one of ``'offset'``, ``'slope'``,
     ``'amplitude'``, ``'peak'``, ``'broadening'``, and ``param_sigma`` stores
     the corresponding uncertainty for each slice.
-    
+
     """
 
-    def __init__(self, intensities, angles, angle_resolution,
-                energy_resolution, temperature, enel, hnuminPhi):
-        self._intensities = intensities
-        self._angles = angles
-        self._angle_resolution = angle_resolution
-        self._energy_resolution = energy_resolution
-        self._temperature = temperature
-        self._enel = enel
-        self._hnuminPhi = hnuminPhi
+    def __init__(self, intensities, angles=None, angle_resolution=None,
+                energy_resolution=None, temperature=None, enel=None,
+                hnuminPhi=None, momenta=None, momentum_resolution=None,
+                abscissa_type=None):
+        if isinstance(intensities, dict):
+            payload = intensities
+            self._intensities = payload['mdcs']
+            self._energy_resolution = payload.get('energy_resolution', None)
+            self._temperature = payload.get('temperature', None)
+            self._enel = payload.get('enel_range', None)
+            self._hnuminPhi = payload.get('hnuminPhi', None)
+
+            abscissa_type = payload.get('abscissa_type', None)
+            if abscissa_type == 'momenta':
+                self._momenta = payload.get('abscissa_range', None)
+                self._momentum_resolution = payload.get('abscissa_resolution', None)
+                self._angles = None
+                self._angle_resolution = None
+                self._abscissa_type = 'momenta'
+            elif abscissa_type == 'angle':
+                self._angles = payload.get('abscissa_range', None)
+                self._angle_resolution = payload.get('abscissa_resolution', None)
+                self._momenta = None
+                self._momentum_resolution = None
+                self._abscissa_type = 'angle'
+            else:
+                raise ValueError(
+                    "Dictionary input must include abscissa_type as 'angle' or 'momenta'."
+                )
+        else:
+            self._intensities = intensities
+            self._angles = angles
+            self._angle_resolution = angle_resolution
+            self._momenta = momenta
+            self._momentum_resolution = momentum_resolution
+            self._energy_resolution = energy_resolution
+            self._temperature = temperature
+            self._enel = enel
+            self._hnuminPhi = hnuminPhi
+
+            if abscissa_type is None:
+                if momenta is not None:
+                    abscissa_type = 'momenta'
+                elif angles is not None:
+                    abscissa_type = 'angle'
+            if abscissa_type not in ('angle', 'momenta'):
+                raise ValueError("abscissa_type must be 'angle' or 'momenta'.")
+            self._abscissa_type = abscissa_type
 
         # Derived attributes (populated by fit_selection)
         self._ekin_range = None
@@ -112,26 +151,58 @@ class MDCs:
     def angle_resolution(self):
         """Angular resolution (float)."""
         return self._angle_resolution
-    
+
     @angle_resolution.setter
     def angle_resolution(self, _):
         """Setter for the angle resolution. This raises an attribute error
         as the angle resolution needs to be derived from the band map."""
         raise AttributeError("`angle_resolution` is read-only; set it via the "
         "constructor.")
-    
+
+    @property
+    def momenta(self):
+        """Momentum axis for the MDCs [Å⁻¹], if available."""
+        return self._momenta
+
+    @property
+    def momentum_resolution(self):
+        """Momentum resolution (float), if available."""
+        return self._momentum_resolution
+
+    @momentum_resolution.setter
+    def momentum_resolution(self, _):
+        raise AttributeError("`momentum_resolution` is read-only; set it via the "
+        "constructor.")
+
+    @property
+    def abscissa(self):
+        """Active abscissa axis (angles or momenta)."""
+        return self._angles if self._abscissa_type == 'angle' else self._momenta
+
+    @property
+    def abscissa_resolution(self):
+        """Resolution corresponding to :attr:`abscissa`."""
+        if self._abscissa_type == 'angle':
+            return self._angle_resolution
+        return self._momentum_resolution
+
+    @property
+    def abscissa_type(self):
+        """Type of active abscissa axis: 'angle' or 'momenta'."""
+        return self._abscissa_type
+
     @property
     def energy_resolution(self):
         """Energy resolution (float)."""
         return self._energy_resolution
-    
+
     @energy_resolution.setter
     def energy_resolution(self, _):
         """Setter for the energy resolution. This raises an attribute error
         as the energy resolution needs to be derived from the band map."""
         raise AttributeError("`energy_resolution` is read-only; set it via the "
         "constructor.")
-    
+
     @property
     def temperature(self):
         """Temperature (float)."""
@@ -171,6 +242,11 @@ class MDCs:
     @ekin.setter
     def ekin(self, _):
         raise AttributeError("`ekin` is derived and read-only.")
+
+    def _abscissa_label(self):
+        if self._abscissa_type == 'momenta':
+            return r'$k_{//}$ ($\mathrm{\AA}^{-1}$)'
+        return 'Angle ($\degree$)'
 
     # -------------------- Data arrays --------------------
 
@@ -227,7 +303,7 @@ class MDCs:
             if  energy_value is not None:
                 raise ValueError("This dataset contains only one " \
                 "momentum-distribution curve; do not provide energy_value.")
-            else: 
+            else:
                 kinergy = self.ekin
                 counts = self.intensities
         else:
@@ -253,8 +329,8 @@ class MDCs:
 
     def plot(self, energy_value=None, energy_range=None, ax=None, **kwargs):
         """
-        Interactive or static plot with optional slider and full wrapper 
-        support. Behavior consistent with Jupyter and CLI based on show / 
+        Interactive or static plot with optional slider and full wrapper
+        support. Behavior consistent with Jupyter and CLI based on show /
         fig_close.
         """
         import matplotlib.pyplot as plt
@@ -279,7 +355,7 @@ class MDCs:
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
-        angles = self.angles
+        angles = self.abscissa
         energies = self.enel
 
         if np.isscalar(energies):
@@ -393,7 +469,7 @@ class MDCs:
                 self._slider = slider
                 self._line = scatter
 
-        ax.set_xlabel("Angle (°)")
+        ax.set_xlabel(self._abscissa_label())
         ax.set_ylabel("Counts (-)")
         ax.legend()
         self._fig = fig
@@ -436,18 +512,18 @@ class MDCs:
                         ax=None, **kwargs):
         r"""
         """
-        
+
         counts, kinergy = self.energy_check(energy_value)
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
-        ax.set_xlabel('Angle ($\\degree$)')
+        ax.set_xlabel(self._abscissa_label())
         ax.set_ylabel('Counts (-)')
         ax.set_title(f"Energy slice: "
                      f"{(kinergy - self.hnuminPhi) * KILO:.3f} meV")
-        ax.scatter(self.angles, counts, label='Data')
+        ax.scatter(self.abscissa, counts, label='Data')
 
-        final_result = self._merge_and_plot(ax=ax, 
+        final_result = self._merge_and_plot(ax=ax,
             distributions=distributions, kinetic_energy=kinergy,
             matrix_element=matrix_element,
             matrix_args=dict(matrix_args) if matrix_args else None,
@@ -455,11 +531,11 @@ class MDCs:
         )
 
         residual = counts - final_result
-        ax.scatter(self.angles, residual, label='Residual')
+        ax.scatter(self.abscissa, residual, label='Residual')
         ax.legend()
 
         return fig
-    
+
 
     def fit_selection(self, distributions, energy_value=None, energy_range=None,
             matrix_element=None, matrix_args=None, ax=None, **kwargs):
@@ -475,7 +551,7 @@ class MDCs:
         from scipy.ndimage import gaussian_filter
         from .functions import construct_parameters, build_distributions, \
             residual, resolve_param_name
-        
+
         # Wrapper kwargs
         title = kwargs.pop("title", None)
         savefig = kwargs.pop("savefig", None)
@@ -507,8 +583,8 @@ class MDCs:
         else:
             if energy_value is not None:
                 if (energy_value < energies.min() or energy_value > energies.max()):
-                    raise ValueError( f"Requested energy_value {energy_value:.3f} eV is " 
-                                     f"outside the available energy range " 
+                    raise ValueError( f"Requested energy_value {energy_value:.3f} eV is "
+                                     f"outside the available energy range "
                                      f"[{energies.min():.3f}, {energies.max():.3f}] eV." )
                 idx = np.abs(energies - energy_value).argmin()
                 indices = np.atleast_1d(idx)
@@ -543,6 +619,7 @@ class MDCs:
             'Linear': ('offset', 'slope'),
             'SpectralLinear': ('amplitude', 'peak', 'broadening'),
             'SpectralQuadratic': ('amplitude', 'peak', 'broadening'),
+            'MomentumQuadratic': ('amplitude', 'peak', 'broadening'),
         }
 
         order = np.argsort(kinergies)[::-1]
@@ -555,7 +632,7 @@ class MDCs:
                 new_distributions = build_distributions(new_distributions, parameters)
                 mini = Minimizer(
                     residual, parameters,
-                    fcn_args=(self.angles, intensity, self.angle_resolution,
+                    fcn_args=(self.abscissa, intensity, self.abscissa_resolution,
                               new_distributions, kinergy, self.hnuminPhi,
                               matrix_element, element_names)
                 )
@@ -564,7 +641,7 @@ class MDCs:
                 new_distributions = build_distributions(new_distributions, parameters)
                 mini = Minimizer(
                     residual, parameters,
-                    fcn_args=(self.angles, intensity, self.angle_resolution,
+                    fcn_args=(self.abscissa, intensity, self.abscissa_resolution,
                               new_distributions, kinergy, self.hnuminPhi)
                 )
 
@@ -599,7 +676,7 @@ class MDCs:
                 new_matrix_args = None
 
             # individual curves (smoothed, cropped) and final sum (no plotting here)
-            extend, step, numb = extend_function(self.angles, self.angle_resolution)
+            extend, step, numb = extend_function(self.abscissa, self.abscissa_resolution)
 
             total_result_ext = np.zeros_like(extend)
             indiv_rows = [] # (n_individuals, n_angles)
@@ -711,12 +788,12 @@ class MDCs:
             yres  = np.asarray(all_residuals[0]).squeeze()
             yind  = np.asarray(all_individual_results[0])
 
-            ax.scatter(self.angles, ydata, label="Data")
+            ax.scatter(self.abscissa, ydata, label="Data")
             # plot individuals with their labels
             for j, lab in enumerate(individual_labels or []):
-                ax.plot(self.angles, yind[j], label=str(lab))
-            ax.plot(self.angles, yfit, label="Fit")
-            ax.scatter(self.angles, yres, label="Residual")
+                ax.plot(self.abscissa, yind[j], label=str(lab))
+            ax.plot(self.abscissa, yfit, label="Fit")
+            ax.scatter(self.abscissa, yres, label="Residual")
 
             ax.set_title(f"Energy slice: {energies * KILO:.3f} meV")
             ax.relim()          # recompute data limits from all artists
@@ -728,7 +805,7 @@ class MDCs:
                 energies_sel = np.atleast_1d(energies[_idx])
             elif energy_range is not None:
                 e_min, e_max = energy_range
-                energies_sel = energies[(energies >= e_min) 
+                energies_sel = energies[(energies >= e_min)
                                         & (energies <= e_max)]
             else:
                 energies_sel = energies
@@ -748,7 +825,7 @@ class MDCs:
             idx = 0
 
             # Initial draw (MDC + Individuals + Fit + Residual) at slice 0
-            scatter = ax.scatter(self.angles, intensities[idx], label="Data")
+            scatter = ax.scatter(self.abscissa, intensities[idx], label="Data")
 
             individual_lines = []
             if n_individuals:
@@ -759,12 +836,12 @@ class MDCs:
                         label = f"Comp {j}"
 
                     yvals = all_individual_results[idx][j]
-                    line, = ax.plot(self.angles, yvals, label=label)
+                    line, = ax.plot(self.abscissa, yvals, label=label)
                     individual_lines.append(line)
 
-            result_line, = ax.plot(self.angles, all_final_results[idx], 
+            result_line, = ax.plot(self.abscissa, all_final_results[idx],
                                    label="Fit")
-            resid_scatter = ax.scatter(self.angles, all_residuals[idx], 
+            resid_scatter = ax.scatter(self.abscissa, all_residuals[idx],
                                        label="Residual")
 
             # Title + limits (use only the currently shown slice)
@@ -789,7 +866,7 @@ class MDCs:
             def update(val):
                 i = int(slider.val)
                 # Update MDC points
-                scatter.set_offsets(np.c_[self.angles, intensities[i]])
+                scatter.set_offsets(np.c_[self.abscissa, intensities[i]])
 
                 # Update individuals
                 if n_individuals:
@@ -799,7 +876,7 @@ class MDCs:
 
                 # Update fit and residual
                 result_line.set_ydata(all_final_results[i])
-                resid_scatter.set_offsets(np.c_[self.angles, all_residuals[i]])
+                resid_scatter.set_offsets(np.c_[self.abscissa, all_residuals[i]])
 
                 ax.relim()
                 ax.autoscale_view()
@@ -816,7 +893,7 @@ class MDCs:
             self._result_line = result_line
             self._resid_scatter = resid_scatter
 
-        ax.set_xlabel("Angle (°)")
+        ax.set_xlabel(self._abscissa_label())
         ax.set_ylabel("Counts (-)")
         ax.legend()
         self._fig = fig
@@ -851,28 +928,28 @@ class MDCs:
         if not show and (fig_close or is_cli):
             return None
         return fig
-    
+
 
     @add_fig_kwargs
-    def fit(self, distributions, energy_value=None, matrix_element=None, 
+    def fit(self, distributions, energy_value=None, matrix_element=None,
             matrix_args=None, ax=None, **kwargs):
         r"""
-        """      
+        """
         from copy import deepcopy
         from lmfit import Minimizer
         from .functions import construct_parameters, build_distributions, \
             residual
-        
+
         counts, kinergy = self.energy_check(energy_value)
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
-        ax.set_xlabel('Angle ($\\degree$)')
+        ax.set_xlabel(self._abscissa_label())
         ax.set_ylabel('Counts (-)')
         ax.set_title(f"Energy slice: "
                      f"{(kinergy - self.hnuminPhi) * KILO:.3f} meV")
-        
-        ax.scatter(self.angles, counts, label='Data')
+
+        ax.scatter(self.abscissa, counts, label='Data')
 
         new_distributions = deepcopy(distributions)
 
@@ -883,7 +960,7 @@ class MDCs:
                                                     parameters)
             mini = Minimizer(
                 residual, parameters,
-                fcn_args=(self.angles, counts, self.angle_resolution,
+                fcn_args=(self.abscissa, counts, self.abscissa_resolution,
                           new_distributions, kinergy, self.hnuminPhi,
                           matrix_element, element_names))
         else:
@@ -891,12 +968,12 @@ class MDCs:
             new_distributions = build_distributions(new_distributions,
                                                     parameters)
             mini = Minimizer(residual, parameters,
-                fcn_args=(self.angles, counts, self.angle_resolution,
+                fcn_args=(self.abscissa, counts, self.abscissa_resolution,
                           new_distributions, kinergy, self.hnuminPhi))
 
         outcome = mini.minimize('least_squares')
         pcov = outcome.covar
-        
+
         # If matrix params were fitted, pass the fitted values to plotting
         if matrix_element is not None:
             new_matrix_args = {key: outcome.params[key].value for key in
@@ -904,19 +981,19 @@ class MDCs:
         else:
             new_matrix_args = None
 
-        final_result = self._merge_and_plot(ax=ax, 
+        final_result = self._merge_and_plot(ax=ax,
             distributions=new_distributions, kinetic_energy=kinergy,
             matrix_element=matrix_element, matrix_args=new_matrix_args,
             plot_individual=True)
-        
+
         residual_vals = counts - final_result
-        ax.scatter(self.angles, residual_vals, label='Residual')
+        ax.scatter(self.abscissa, residual_vals, label='Residual')
         ax.legend()
         if matrix_element is not None:
             return fig, new_distributions, pcov, new_matrix_args
         else:
             return fig, new_distributions, pcov
-        
+
 
     def _merge_and_plot(self, ax, distributions, kinetic_energy,
                         matrix_element=None, matrix_args=None,
@@ -928,12 +1005,12 @@ class MDCs:
         Returns
         -------
         final_result : np.ndarray
-            Smoothed, cropped total distribution aligned with self.angles.
+            Smoothed, cropped total distribution aligned with self.abscissa.
         """
         from scipy.ndimage import gaussian_filter
 
         # Build extended grid
-        extend, step, numb = extend_function(self.angles, self.angle_resolution)
+        extend, step, numb = extend_function(self.abscissa, self.abscissa_resolution)
         total_result = np.zeros_like(extend)
 
         for dist in distributions:
@@ -962,17 +1039,17 @@ class MDCs:
             if plot_individual and ax:
                 individual = gaussian_filter(extended_result, sigma=step)\
                     [numb:-numb if numb else None]
-                ax.plot(self.angles, individual, label=getattr(dist, \
+                ax.plot(self.abscissa, individual, label=getattr(dist, \
                                                         'label', str(dist)))
 
-        # Smoothed, cropped total curve aligned to self.angles
+        # Smoothed, cropped total curve aligned to self.abscissa
         final_result = gaussian_filter(total_result, sigma=step)[numb:-numb \
                                                             if numb else None]
         if ax:
-            ax.plot(self.angles, final_result, label='Distribution sum')
+            ax.plot(self.abscissa, final_result, label='Distribution sum')
 
         return final_result
-    
+
 
     def expose_parameters(self, select_label, fermi_wavevector=None,
                           fermi_velocity=None, bare_mass=None, side=None):
@@ -1074,5 +1151,5 @@ class MDCs:
                         exported_parameters[key] = val
 
         return (self._ekin_range, self.hnuminPhi, self.energy_resolution,
-                self.temperature, select_label, selected_properties, 
+                self.temperature, select_label, selected_properties,
                 exported_parameters)

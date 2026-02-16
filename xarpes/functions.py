@@ -55,7 +55,7 @@ def build_distributions(distributions, parameters):
             dist.amplitude = parameters['amplitude_' + dist.label].value
             dist.peak = parameters['peak_' + dist.label].value
             dist.broadening = parameters['broadening_' + dist.label].value
-        elif dist.class_name == 'SpectralQuadratic':
+        elif dist.class_name in ('SpectralQuadratic', 'MomentumQuadratic'):
             dist.amplitude = parameters['amplitude_' + dist.label].value
             dist.peak = parameters['peak_' + dist.label].value
             dist.broadening = parameters['broadening_' + dist.label].value
@@ -81,7 +81,7 @@ def construct_parameters(distribution_list, matrix_args=None):
             parameters.add(name='peak_' + dist.label, value=dist.peak)
             parameters.add(name='broadening_' + dist.label,
                            value=dist.broadening, min=0)
-        elif dist.class_name == 'SpectralQuadratic':
+        elif dist.class_name in ('SpectralQuadratic', 'MomentumQuadratic'):
             parameters.add(name='amplitude_' + dist.label,
                            value=dist.amplitude, min=0)
             parameters.add(name='peak_' + dist.label, value=dist.peak)

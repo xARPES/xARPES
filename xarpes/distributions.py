@@ -654,6 +654,67 @@ class SpectralLinear(Dispersion):
         self.broadening** 2)
 
     
+
+
+class MomentumQuadratic(Dispersion):
+    r"""Class for the quadratic dispersion spectral function in momentum space."""
+    def __init__(self, amplitude, peak, broadening, name, index,
+                 center_wavevector=0.0):
+        super().__init__(amplitude=amplitude, peak=peak,
+                         broadening=broadening, name=name, index=index)
+        self.center_wavevector = center_wavevector
+
+    @property
+    def center_wavevector(self):
+        r"""Center wavevector of the quadratic dispersion [Å⁻¹]."""
+        return self._center_wavevector
+
+    @center_wavevector.setter
+    def center_wavevector(self, x):
+        self._center_wavevector = x
+
+    def __call__(self, momentum_range, amplitude, broadening,
+                 peak, center_wavevector=None):
+        r"""Evaluate the distribution with explicit fit parameters."""
+        if center_wavevector is None:
+            center_wavevector = self.center_wavevector
+
+        return amplitude / np.pi * broadening /             ((((momentum_range - center_wavevector) ** 2 - peak ** 2) ** 2)
+             + broadening ** 2)
+
+    def evaluate(self, momentum_range):
+        r"""Evaluate the distribution using stored instance parameters."""
+        return self.amplitude / np.pi * self.broadening /             ((((momentum_range - self.center_wavevector) ** 2
+               - self.peak ** 2) ** 2) + self.broadening ** 2)
+
+    @add_fig_kwargs
+    def plot(self, momentum_range, momentum_resolution,
+             matrix_element=None, matrix_args=None, ax=None, **kwargs):
+        r"""Plot the momentum-quadratic spectral distribution."""
+        from scipy.ndimage import gaussian_filter
+
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        ax.set_xlabel(r'$k_{//}$ ($\mathrm{\AA}^{-1}$)')
+        ax.set_ylabel('Counts (-)')
+
+        extend, step, numb = extend_function(momentum_range,
+                                             momentum_resolution)
+
+        extended_result = self.evaluate(extend)
+
+        if matrix_element is not None:
+            extended_result *= matrix_element(extend, **matrix_args)
+
+        final_result = gaussian_filter(extended_result, sigma=step)[
+            numb:-numb if numb else None]
+
+        ax.plot(momentum_range, final_result, label=self.label)
+
+        ax.legend()
+
+        return fig
+
 class SpectralQuadratic(Dispersion):
     r"""Class for the quadratic dispersion spectral function"""
     def __init__(self, amplitude, peak, broadening, name, index,

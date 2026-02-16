@@ -18,6 +18,44 @@ from .functions import fit_least_squares, extend_function
 from .distributions import FermiDirac, Linear
 from .constants import PREF
 
+class MdcSetResult(dict):
+    """Dictionary-like MDC payload with backward-compatible unpacking.
+
+    Iteration yields values in a positional order compatible with
+    ``xarpes.MDCs(*bmap.mdc_set(...))``.
+    """
+
+    def __iter__(self):
+        abscissa_type = self.get('abscissa_type')
+        if abscissa_type == 'momenta':
+            values = (
+                self['mdcs'],
+                None,
+                None,
+                self['energy_resolution'],
+                self['temperature'],
+                self['enel_range'],
+                self['hnuminPhi'],
+                self['abscissa_range'],
+                self['abscissa_resolution'],
+                'momenta',
+            )
+        else:
+            values = (
+                self['mdcs'],
+                self['abscissa_range'],
+                self['abscissa_resolution'],
+                self['energy_resolution'],
+                self['temperature'],
+                self['enel_range'],
+                self['hnuminPhi'],
+                None,
+                None,
+                'angle',
+            )
+        return iter(values)
+
+
 class BandMap:
     """
     Band map container for ARPES intensity data.
@@ -106,9 +144,9 @@ class BandMap:
         angles = np.linspace(amin, amin + (anum - 1) * astp, anum)
         ekin = np.linspace(fmin, fmin + (fnum - 1) * fstp, fnum)
 
-        return cls(intensities=intensities, angles=angles, ekin=ekin, 
+        return cls(intensities=intensities, angles=angles, ekin=ekin,
                    **kwargs)
-        
+
 
     @classmethod
     def from_np_arrays(cls, intensities=None, angles=None, momenta=None,
@@ -160,7 +198,7 @@ class BandMap:
 
         return cls(intensities=intensities, angles=angles, momenta=momenta,
                    ekin=ekin, enel=enel, **kwargs)
-    
+
 
     def __init__(self, intensities=None, angles=None, momenta=None,
                  ekin=None, enel=None, energy_resolution=None,
@@ -186,10 +224,10 @@ class BandMap:
         momenta : array-like, optional
             Momentum axis values with shape ``(n_angle,)`` [Å⁻¹].
         ekin : array-like, optional
-            Kinetic-energy axis values with shape ``(n_energy,)`` [eV]. If 
+            Kinetic-energy axis values with shape ``(n_energy,)`` [eV]. If
             provided, `ekin` becomes the authoritative energy axis.
         enel : array-like, optional
-            Binding-energy axis values with shape ``(n_energy,)`` [eV]. If 
+            Binding-energy axis values with shape ``(n_energy,)`` [eV]. If
             provided, `enel` becomes the authoritative energy axis.
         energy_resolution : float, optional
             Energy resolution of the measurement, [eV].
@@ -375,7 +413,7 @@ class BandMap:
         if not getattr(self, "_ekin_explicit", False) \
                 and self._hnuminPhi is not None and x is not None:
             self._ekin = x + self._hnuminPhi
-            
+
     @property
     def hnuminPhi(self):
         r"""Returns the photon energy minus the work function in eV if it has
@@ -412,7 +450,7 @@ class BandMap:
         -------
         hnuminPhi_std : float
             Standard deviation of energy minus the work function [eV]
-            
+
         """
         return self._hnuminPhi_std
 
@@ -446,21 +484,29 @@ class BandMap:
                 'Use a BandMap initialized with angles.'
             )
         self.angles = self.angles + shift
-        
-    def mdc_set(self, angle_min, angle_max, energy_value=None,
-                energy_range=None):
-        r"""Return a set of momentum distribution curves (MDCs).
+
+    def mdc_set(self, abscissa_min=None, abscissa_max=None, energy_value=None,
+                energy_range=None, angle_min=None, angle_max=None):
+        r"""Return a dictionary containing a set of MDC data.
 
         This method extracts MDCs from the stored ARPES intensity map from a
-        specified angular interval and either selecting a single energy slice
+        specified abscissa interval and either selecting a single energy slice
         or an energy window.
 
         Parameters
         ----------
-        angle_min : float
-            Minimum angle of the integration interval [degrees].
-        angle_max : float
-            Maximum angle of the integration interval [degrees].
+        abscissa_min : float, optional
+            Minimum value of the selected abscissa interval.
+            For angle-initialized maps this is interpreted in [degrees];
+            for momentum-initialized maps in [Å⁻¹].
+        abscissa_max : float, optional
+            Maximum value of the selected abscissa interval.
+            For angle-initialized maps this is interpreted in [degrees];
+            for momentum-initialized maps in [Å⁻¹].
+        angle_min : float, optional
+            Deprecated alias for ``abscissa_min``.
+        angle_max : float, optional
+            Deprecated alias for ``abscissa_max``.
         energy_value : float, optional
             Energy value [same units as ``self.enel``] at which a single MDC
             is extracted. Exactly one of ``energy_value`` or ``energy_range``
@@ -472,29 +518,28 @@ class BandMap:
 
         Returns
         -------
-        mdcs : ndarray
-            Extracted MDC intensities. Shape is ``(n_angles,)`` when a single
-            ``energy_value`` is provided, or ``(n_energies, n_angles)`` when
-            an ``energy_range`` is provided.
-        angle_range : ndarray
-            Angular values corresponding to the MDCs [degrees].
-        angle_resolution : float
-            Angular resolution associated with the MDCs.
-        energy_resolution : float
-            Energy resolution associated with the MDCs.
-        temperature: float
-            Temperature associated with the band map [K].
-        energy_range : ndarray or float
-            Energy value (scalar) or energy array corresponding to the MDCs.
-        hnuminPhi : float
-            Photon-energy-related offset propagated from the BandMap.
+        dict
+            Dictionary with keys:
+
+            - ``mdcs``: extracted MDC intensities.
+            - ``abscissa_range``: selected angle or momentum values.
+            - ``abscissa_resolution``: matching scalar resolution.
+            - ``abscissa_type``: ``"angle"`` or ``"momenta"``.
+            - ``energy_resolution``: energy resolution [eV].
+            - ``temperature``: sample temperature [K].
+            - ``enel_range``: selected energy value(s).
+            - ``hnuminPhi``: photon-energy-related offset.
+
+            The returned object is dict-like and supports backward-compatible
+            positional unpacking into ``MDCs(*result)``.
 
         Raises
         ------
         ValueError
             If neither or both of ``energy_value`` and ``energy_range`` are
             provided.
-
+        RuntimeError
+            If no abscissa axis is available.
         """
 
         if (energy_value is None and energy_range is None) or \
@@ -502,15 +547,36 @@ class BandMap:
             raise ValueError('Please provide either energy_value or ' +
             'energy_range.')
 
-        angle_min_index = np.abs(self.angles - angle_min).argmin()
-        angle_max_index = np.abs(self.angles - angle_max).argmin()
-        angle_range_out = self.angles[angle_min_index:angle_max_index + 1]
+        if abscissa_min is None and angle_min is not None:
+            abscissa_min = angle_min
+        if abscissa_max is None and angle_max is not None:
+            abscissa_max = angle_max
+
+        if abscissa_min is None or abscissa_max is None:
+            raise ValueError(
+                'Please provide abscissa_min and abscissa_max.'
+            )
+
+        if self.momenta is not None:
+            abscissa = self.momenta
+            abscissa_type = 'momenta'
+            abscissa_resolution = self.momentum_resolution
+        elif self.angles is not None:
+            abscissa = self.angles
+            abscissa_type = 'angle'
+            abscissa_resolution = self.angle_resolution
+        else:
+            raise RuntimeError('BandMap has no abscissa axis for MDC extraction.')
+
+        abscissa_min_index = np.abs(abscissa - abscissa_min).argmin()
+        abscissa_max_index = np.abs(abscissa - abscissa_max).argmin()
+        abscissa_range_out = abscissa[abscissa_min_index:abscissa_max_index + 1]
 
         if energy_value is not None:
             energy_index = np.abs(self.enel - energy_value).argmin()
             enel_range_out = self.enel[energy_index]
             mdcs = self.intensities[energy_index,
-                   angle_min_index:angle_max_index + 1]
+                   abscissa_min_index:abscissa_max_index + 1]
 
         if energy_range is not None:
             energy_indices = np.where((self.enel >= np.min(energy_range))
@@ -518,10 +584,18 @@ class BandMap:
                                         [0]
             enel_range_out = self.enel[energy_indices]
             mdcs = self.intensities[energy_indices,
-                                    angle_min_index:angle_max_index + 1]
+                                    abscissa_min_index:abscissa_max_index + 1]
 
-        return (mdcs, angle_range_out, self.angle_resolution, 
-                self.energy_resolution, self.temperature, enel_range_out, self.hnuminPhi)
+        return MdcSetResult({
+            'mdcs': mdcs,
+            'abscissa_range': abscissa_range_out,
+            'abscissa_resolution': abscissa_resolution,
+            'abscissa_type': abscissa_type,
+            'energy_resolution': self.energy_resolution,
+            'temperature': self.temperature,
+            'enel_range': enel_range_out,
+            'hnuminPhi': self.hnuminPhi,
+        })
 
     @add_fig_kwargs
     def plot(self, abscissa='momentum', ordinate='electron_energy',
@@ -849,11 +923,54 @@ class BandMap:
 
         plt.colorbar(mesh, ax=ax, label='counts (-)')
         return fig
-    
+
+    def _resolve_abscissa_interval(self, angle_min, angle_max,
+                                  momentum_min, momentum_max):
+        """Resolve which abscissa axis and interval bounds to use."""
+        using_momentum_bounds = (momentum_min is not None) \
+            or (momentum_max is not None)
+        using_angle_bounds = not (
+            np.isneginf(angle_min) and np.isposinf(angle_max)
+        )
+
+        if using_momentum_bounds and using_angle_bounds:
+            raise ValueError(
+                'Please provide either angle_min/angle_max or '
+                'momentum_min/momentum_max, not both.'
+            )
+
+        if using_momentum_bounds:
+            if momentum_min is None or momentum_max is None:
+                raise ValueError(
+                    'Provide both momentum_min and momentum_max.'
+                )
+            if self.momenta is None:
+                raise RuntimeError(
+                    'Momentum bounds were provided, but this BandMap has '
+                    'no momentum axis.'
+                )
+            return self.momenta, momentum_min, momentum_max, 'momentum'
+
+        if using_angle_bounds:
+            if self.angles is None:
+                raise RuntimeError(
+                    'Angle bounds were provided, but this BandMap has '
+                    'no angle axis.'
+                )
+            return self.angles, angle_min, angle_max, 'angle'
+
+        if self.momenta is not None:
+            return self.momenta, -np.inf, np.inf, 'momentum'
+        if self.angles is not None:
+            return self.angles, -np.inf, np.inf, 'angle'
+
+        raise RuntimeError('BandMap has no abscissa axis.')
+
     @add_fig_kwargs
     def fit_fermi_edge(self, hnuminPhi_guess, background_guess=0.0,
                        integrated_weight_guess=1.0, angle_min=-np.inf,
-                       angle_max=np.inf, ekin_min=-np.inf,
+                       angle_max=np.inf, momentum_min=None,
+                       momentum_max=None, ekin_min=-np.inf,
                        ekin_max=np.inf, ax=None, **kwargs):
         r"""Fits the Fermi edge of the band map and plots the result.
         Also sets hnuminPhi, the kinetic energy minus the work function in eV.
@@ -869,9 +986,17 @@ class BandMap:
         integrated_weight_guess : float
             Initial guess for integrated spectral intensity [counts]
         angle_min : float
-            Minimum angle of integration interval [degrees]
+            Minimum angle of integration interval [degrees].
+            Use together with ``angle_max``.
         angle_max : float
-            Maximum angle of integration interval [degrees]
+            Maximum angle of integration interval [degrees].
+            Use together with ``angle_min``.
+        momentum_min : float, optional
+            Minimum momentum of integration interval [Å⁻¹].
+            Use together with ``momentum_max``.
+        momentum_max : float, optional
+            Maximum momentum of integration interval [Å⁻¹].
+            Use together with ``momentum_min``.
         ekin_min : float
             Minimum kinetic energy of integration interval [eV]
         ekin_max : float
@@ -896,13 +1021,21 @@ class BandMap:
                 "BandMap was initialized with binding energy (enel). "
                 "Fermi-edge fitting is not required."
             )
-        
+
         from scipy.ndimage import gaussian_filter
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
-        min_angle_index = np.argmin(np.abs(self.angles - angle_min))
-        max_angle_index = np.argmin(np.abs(self.angles - angle_max))
+        abscissa, abscissa_min, abscissa_max, _ = \
+            self._resolve_abscissa_interval(
+                angle_min=angle_min,
+                angle_max=angle_max,
+                momentum_min=momentum_min,
+                momentum_max=momentum_max,
+            )
+
+        min_abscissa_index = np.argmin(np.abs(abscissa - abscissa_min))
+        max_abscissa_index = np.argmin(np.abs(abscissa - abscissa_max))
 
         min_ekin_index = np.argmin(np.abs(self.ekin - ekin_min))
         max_ekin_index = np.argmin(np.abs(self.ekin - ekin_max))
@@ -911,7 +1044,7 @@ class BandMap:
 
         integrated_intensity = np.trapezoid(
             self.intensities[min_ekin_index:max_ekin_index,
-                min_angle_index:max_angle_index], axis=1)
+                min_abscissa_index:max_abscissa_index], axis=1)
 
         fdir_initial = FermiDirac(temperature=self.temperature,
                                   hnuminPhi=hnuminPhi_guess,
@@ -964,7 +1097,8 @@ class BandMap:
     @add_fig_kwargs
     def correct_fermi_edge(self, hnuminPhi_guess=None, background_guess=0.0,
                        integrated_weight_guess=1.0, angle_min=-np.inf,
-                       angle_max=np.inf, ekin_min=-np.inf, ekin_max=np.inf,
+                       angle_max=np.inf, momentum_min=None,
+                       momentum_max=None, ekin_min=-np.inf, ekin_max=np.inf,
                        slope_guess=0, offset_guess=None,
                            true_angle=0, ax=None, **kwargs):
         r"""TBD
@@ -974,6 +1108,14 @@ class BandMap:
         ----------
         hnuminPhi_guess : float, optional
             Initial guess for kinetic energy minus the work function [eV].
+        angle_min : float
+            Minimum angle of integration interval [degrees].
+        angle_max : float
+            Maximum angle of integration interval [degrees].
+        momentum_min : float, optional
+            Minimum momentum of integration interval [Å⁻¹].
+        momentum_max : float, optional
+            Maximum momentum of integration interval [Å⁻¹].
 
         Other parameters
         ----------------
@@ -991,46 +1133,54 @@ class BandMap:
                 "BandMap was initialized with binding energy (enel). "
                 "Fermi-edge correction is not required."
             )
-        
+
         from scipy.ndimage import map_coordinates
         from . import settings_parameters as xprs
-        
+
         if hnuminPhi_guess is None:
             raise ValueError('Please provide an initial guess for ' +
                              'hnuminPhi.')
- 
+
         # Here some loop where it fits all the Fermi edges
-        angle_min_index = np.abs(self.angles - angle_min).argmin()
-        angle_max_index = np.abs(self.angles - angle_max).argmin()
-        
+        abscissa, abscissa_min, abscissa_max, abscissa_kind = \
+            self._resolve_abscissa_interval(
+                angle_min=angle_min,
+                angle_max=angle_max,
+                momentum_min=momentum_min,
+                momentum_max=momentum_max,
+            )
+
+        abscissa_min_index = np.abs(abscissa - abscissa_min).argmin()
+        abscissa_max_index = np.abs(abscissa - abscissa_max).argmin()
+
         ekin_min_index = np.abs(self.ekin - ekin_min).argmin()
         ekin_max_index = np.abs(self.ekin - ekin_max).argmin()
-  
+
         Intensities = self.intensities[ekin_min_index:ekin_max_index + 1,
-                                       angle_min_index:angle_max_index + 1]
-        angle_range = self.angles[angle_min_index:angle_max_index + 1]
+                                       abscissa_min_index:abscissa_max_index + 1]
+        abscissa_range = abscissa[abscissa_min_index:abscissa_max_index + 1]
         energy_range = self.ekin[ekin_min_index:ekin_max_index + 1]
-        
-        nmps = np.zeros_like(angle_range, dtype=float)
-        stds = np.zeros_like(angle_range, dtype=float)
-        
-        hnuminPhi_left = hnuminPhi_guess - (true_angle - angle_min) \
+
+        nmps = np.zeros_like(abscissa_range, dtype=float)
+        stds = np.zeros_like(abscissa_range, dtype=float)
+
+        hnuminPhi_left = hnuminPhi_guess - (true_angle - abscissa_min) \
         * slope_guess
-  
+
         fdir_initial = FermiDirac(temperature=self.temperature,
                       hnuminPhi=hnuminPhi_left,
                       background=background_guess,
                       integrated_weight=integrated_weight_guess,
                       name='Initial guess')
-        
+
         parameters = np.array(
                 [hnuminPhi_left, background_guess, integrated_weight_guess])
-        
+
         extra_args = (self.temperature,)
- 
-        for indx in range(angle_max_index - angle_min_index + 1):
+
+        for indx in range(abscissa_max_index - abscissa_min_index + 1):
             edge = Intensities[:, indx]
-            
+
             parameters, pcov, _ = fit_least_squares(
                 p0=parameters, xdata=energy_range, ydata=edge,
                 function=fdir_initial, resolution=self.energy_resolution,
@@ -1038,47 +1188,54 @@ class BandMap:
 
             nmps[indx] = parameters[0]
             stds[indx] = np.sqrt(np.diag(pcov)[0])
-        
+
         # Offset at true angle if not set before
-        if offset_guess is None:    
-            offset_guess = hnuminPhi_guess - slope_guess * true_angle 
-            
+        if offset_guess is None:
+            offset_guess = hnuminPhi_guess - slope_guess * true_angle
+
         parameters = np.array([offset_guess, slope_guess])
-        
+
         lin_fun = Linear(offset_guess, slope_guess, 'Linear')
-                    
-        popt, pcov, _ = fit_least_squares(p0=parameters, xdata=angle_range, 
+
+        popt, pcov, _ = fit_least_squares(p0=parameters, xdata=abscissa_range,
                         ydata=nmps, function=lin_fun, resolution=None,
                                  yerr=stds, bounds=None)
 
-        linsp = lin_fun(angle_range, popt[0], popt[1])
+        linsp = lin_fun(abscissa_range, popt[0], popt[1])
 
         # Update hnuminPhi; automatically sets self.enel
         self.hnuminPhi = lin_fun(true_angle, popt[0], popt[1])
-        self.hnuminPhi_std = np.sqrt(true_angle**2 * pcov[1, 1] + pcov[0, 0] 
+        self.hnuminPhi_std = np.sqrt(true_angle**2 * pcov[1, 1] + pcov[0, 0]
                                      + 2 * true_angle * pcov[0, 1])
-                    
-        Angl, Ekin = np.meshgrid(self.angles, self.ekin)
+
+        if abscissa_kind == 'momentum':
+            Absc, Ekin = np.meshgrid(self.momenta, self.ekin)
+            x_label = r'$k_{//}$ ($\mathrm{\AA}^{-1}$)'
+            abscissa_axis = self.momenta
+        else:
+            Absc, Ekin = np.meshgrid(self.angles, self.ekin)
+            x_label = 'Angle ($\degree$)'
+            abscissa_axis = self.angles
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
-        
-        ax.set_xlabel('Angle ($\degree$)')
+
+        ax.set_xlabel(x_label)
         ax.set_ylabel('$E_{\mathrm{kin}}$ (eV)')
-        mesh = ax.pcolormesh(Angl, Ekin, self.intensities,
+        mesh = ax.pcolormesh(Absc, Ekin, self.intensities,
                        shading='auto', cmap=plt.get_cmap('bone').reversed(),
                              zorder=1)
 
-        ax.errorbar(angle_range, nmps, yerr=xprs.sigma_confidence * stds, zorder=1)
-        ax.plot(angle_range, linsp, zorder=2)
-        
+        ax.errorbar(abscissa_range, nmps, yerr=xprs.sigma_confidence * stds, zorder=1)
+        ax.plot(abscissa_range, linsp, zorder=2)
+
         cbar = plt.colorbar(mesh, ax=ax, label='counts (-)')
-        
+
         # Fermi-edge correction
         rows, cols = self.intensities.shape
-        shift_values = popt[1] * self.angles / (self.ekin[0] - self.ekin[1])
+        shift_values = popt[1] * abscissa_axis / (self.ekin[0] - self.ekin[1])
         row_coords = np.arange(rows).reshape(-1, 1) - shift_values
         col_coords = np.arange(cols).reshape(1, -1).repeat(rows, axis=0)
-        self.intensities = map_coordinates(self.intensities, 
+        self.intensities = map_coordinates(self.intensities,
                 [row_coords, col_coords], order=1)
-                                  
+
         return fig
