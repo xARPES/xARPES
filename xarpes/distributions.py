@@ -654,8 +654,6 @@ class SpectralLinear(Dispersion):
         self.broadening** 2)
 
     
-
-
 class MomentumQuadratic(Dispersion):
     r"""Class for the quadratic dispersion spectral function in momentum space."""
     def __init__(self, amplitude, peak, broadening, name, index,
@@ -679,12 +677,13 @@ class MomentumQuadratic(Dispersion):
         if center_wavevector is None:
             center_wavevector = self.center_wavevector
 
-        return amplitude / np.pi * broadening /             ((((momentum_range - center_wavevector) ** 2 - peak ** 2) ** 2)
+        return amplitude / np.pi * broadening / ((((momentum_range - center_wavevector) ** 2 - peak ** 2) 
+        ** 2)
              + broadening ** 2)
 
     def evaluate(self, momentum_range):
         r"""Evaluate the distribution using stored instance parameters."""
-        return self.amplitude / np.pi * self.broadening /             ((((momentum_range - self.center_wavevector) ** 2
+        return self.amplitude / np.pi * self.broadening / ((((momentum_range - self.center_wavevector) ** 2
                - self.peak ** 2) ** 2) + self.broadening ** 2)
 
     @add_fig_kwargs

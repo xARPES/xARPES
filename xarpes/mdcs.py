@@ -724,9 +724,9 @@ class MDCs:
                     cls, {'label': label, '_class': cls}
                 )
 
-                # store center_wavevector (scalar) for SpectralQuadratic
+                # store center_wavevector (scalar) for quadratic classes
                 if (
-                    cls == 'SpectralQuadratic'
+                    cls in ('SpectralQuadratic', 'MomentumQuadratic')
                     and hasattr(dist, 'center_wavevector')
                 ):
                     class_bucket.setdefault(
@@ -1052,7 +1052,8 @@ class MDCs:
 
 
     def expose_parameters(self, select_label, fermi_wavevector=None,
-                          fermi_velocity=None, bare_mass=None, side=None):
+                          fermi_velocity=None, bare_mass=None, side=None,
+                          abscissa_type=None):
         r"""
         Select and return fitted parameters for a given component label, plus a
         flat export dictionary containing values **and** 1σ uncertainties.
@@ -1073,8 +1074,10 @@ class MDCs:
 
         Returns
         -------
-        ekin_range : np.ndarray
-            Kinetic-energy grid corresponding to the selected label.
+        energy_range : np.ndarray
+            Energy grid corresponding to the selected label. This is the
+            kinetic-energy range when ``hnuminPhi`` is available, and the
+            electron-energy range otherwise.
         hnuminPhi : float
             Photoelectron work-function offset.
         energy_resolution : float
@@ -1091,7 +1094,8 @@ class MDCs:
             Flat dictionary of parameters and their uncertainties, plus
             optional Fermi quantities and `side`. For SpectralQuadratic
             components, `center_wavevector` is included and taken directly
-            from the fitted distribution.
+            from the fitted distribution. The active ``abscissa_type`` is
+            exported as ``'angle'`` or ``'momenta'``.
         """
 
         if self._ekin_range is None:
@@ -1127,12 +1131,25 @@ class MDCs:
             per_class_dicts[0] if len(per_class_dicts) == 1 else per_class_dicts
         )
 
+        # Use kinetic-energy range when hnuminPhi is known; otherwise export
+        # electron-energy range directly when available.
+        if self.hnuminPhi is None and self.enel is not None:
+            exported_energy_range = np.asarray(self.enel)
+        else:
+            exported_energy_range = np.asarray(self._ekin_range)
+
+        if abscissa_type is None:
+            abscissa_type = self.abscissa_type
+        if abscissa_type not in ('angle', 'momenta'):
+            raise ValueError("abscissa_type must be 'angle' or 'momenta'.")
+
         # Flat export dict: simple keys, includes optional extras
         exported_parameters = {
             "fermi_wavevector": fermi_wavevector,
             "fermi_velocity": fermi_velocity,
             "bare_mass": bare_mass,
             "side": side,
+            "abscissa_type": abscissa_type,
         }
 
         # Collect parameters without prefixing by class. This will also include
@@ -1150,6 +1167,6 @@ class MDCs:
                     if key not in ("label", "_class"):
                         exported_parameters[key] = val
 
-        return (self._ekin_range, self.hnuminPhi, self.energy_resolution,
+        return (exported_energy_range, self.hnuminPhi, self.energy_resolution,
                 self.temperature, select_label, selected_properties,
                 exported_parameters)

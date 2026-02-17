@@ -18,11 +18,21 @@ from .constants import PREF, KILO, K_B
 class SelfEnergy:
     r"""Self-energy"""
 
-    def __init__(self, ekin_range, hnuminPhi, energy_resolution,
+    def __init__(self, energy_range, hnuminPhi, energy_resolution,
                  temperature, label, properties, parameters):
         # core read-only state
-        self._ekin_range = ekin_range
+        self._energy_range = (None if energy_range is None
+                              else np.asarray(energy_range))
         self._hnuminPhi = hnuminPhi
+
+        if self._hnuminPhi is None:
+            # MDC export may be electron-energy-leading when hnuminPhi is unknown.
+            self._enel_range = self._energy_range
+            self._ekin_range = None
+        else:
+            self._ekin_range = self._energy_range
+            self._enel_range = (None if self._ekin_range is None
+                                else np.asarray(self._ekin_range) - self._hnuminPhi)
         self._energy_resolution = energy_resolution
         self._temperature = temperature
         self._label = label
@@ -41,10 +51,12 @@ class SelfEnergy:
         self._class = self._properties.get("_class", None)
 
         # ---- enforce supported classes at construction
-        if self._class not in ("SpectralLinear", "SpectralQuadratic"):
+        if self._class not in ("SpectralLinear", "SpectralQuadratic",
+                               "MomentumQuadratic"):
             raise ValueError(
                 f"Unsupported spectral class '{self._class}'. "
-                "Only 'SpectralLinear' or 'SpectralQuadratic' are allowed."
+                "Only 'SpectralLinear', 'SpectralQuadratic', or "
+                "'MomentumQuadratic' are allowed."
             )
 
         # grab user parameters
@@ -53,6 +65,7 @@ class SelfEnergy:
         self._fermi_velocity   = self._parameters.get("fermi_velocity")
         self._bare_mass        = self._parameters.get("bare_mass")
         self._side             = self._parameters.get("side", None)
+        self._abscissa_type    = self._parameters.get("abscissa_type", None)
 
         # ---- class-specific parameter constraints
         if self._class == "SpectralLinear" and (self._bare_mass is not None):
@@ -66,6 +79,11 @@ class SelfEnergy:
             raise ValueError("`side` must be 'left' or 'right' if provided.")
         if self._side is not None:
             self._parameters["side"] = self._side
+
+        if self._abscissa_type is not None and self._abscissa_type not in ("angle", "momenta"):
+            raise ValueError("`abscissa_type` must be 'angle' or 'momenta' if provided.")
+        if self._abscissa_type is not None:
+            self._parameters["abscissa_type"] = self._abscissa_type
 
         # convenience attributes (read from properties)
         self._amplitude        = self._properties.get("amplitude")
@@ -106,10 +124,7 @@ class SelfEnergy:
 
     @property
     def enel_range(self):
-        if self._ekin_range is None:
-            return None
-        hnp = 0.0 if self._hnuminPhi is None else self._hnuminPhi
-        return np.asarray(self._ekin_range) - hnp
+        return self._enel_range
 
     @property
     def hnuminPhi(self):
@@ -139,6 +154,11 @@ class SelfEnergy:
     def parameters(self):
         """Dictionary with user-supplied parameters (read-only view)."""
         return self._parameters
+
+    @property
+    def abscissa_type(self):
+        """Abscissa type used during MDC fitting/export: 'angle' or 'momenta'."""
+        return self._abscissa_type
 
     @property
     def side(self):
@@ -280,7 +300,9 @@ class SelfEnergy:
     def peak_positions(self):
         r"""k_parallel = peak * dtor * sqrt(ekin_range / PREF) (lazy)."""
         if self._peak_positions is None:
-            if self._peak is None or self._ekin_range is None:
+            if self._peak is None:
+                return None
+            if self._class != "MomentumQuadratic" and self._ekin_range is None:
                 return None
             if self._class == "SpectralQuadratic":
                 if self._side is None:
@@ -295,6 +317,8 @@ class SelfEnergy:
                 )
                 self._peak_positions = ((-1.0 if self._side == "left"
                                         else 1.0) * kpar_mag)
+            elif self._class == "MomentumQuadratic":
+                self._peak_positions = np.asarray(self._peak)
             else:
                 self._peak_positions = (
                     np.sqrt(self._ekin_range / PREF)
@@ -307,13 +331,18 @@ class SelfEnergy:
     def peak_positions_sigma(self):
         r"""Std. dev. of k_parallel (lazy)."""
         if self._peak_positions_sigma is None:
-            if self._peak_sigma is None or self._ekin_range is None:
+            if self._peak_sigma is None:
                 return None
-            self._peak_positions_sigma = (
-                np.sqrt(self._ekin_range / PREF)
-                * np.abs(np.cos(np.deg2rad(self._peak)))
-                * np.deg2rad(self._peak_sigma)
-            )
+            if self._class == "MomentumQuadratic":
+                self._peak_positions_sigma = np.asarray(self._peak_sigma)
+            else:
+                if self._ekin_range is None:
+                    return None
+                self._peak_positions_sigma = (
+                    np.sqrt(self._ekin_range / PREF)
+                    * np.abs(np.cos(np.deg2rad(self._peak)))
+                    * np.deg2rad(self._peak_sigma)
+                )
         return self._peak_positions_sigma
     
 
@@ -408,6 +437,15 @@ class SelfEnergy:
                 )
             return (ekin * broad) / np.abs(mb)
 
+        if self._class == "MomentumQuadratic":
+            mb = self._bare_mass if bare_mass is None else bare_mass
+            if mb is None:
+                raise AttributeError(
+                    "Cannot compute `imag` (MomentumQuadratic): set `bare_mass` "
+                    "first."
+                )
+            return (PREF * broad) / np.abs(mb)
+
         raise NotImplementedError(
             f"_compute_imag is not implemented for spectral class '{self._class}'."
         )
@@ -439,6 +477,15 @@ class SelfEnergy:
                 )
             return (ekin * broad_sigma) / np.abs(mb)
 
+        if self._class == "MomentumQuadratic":
+            mb = self._bare_mass if bare_mass is None else bare_mass
+            if mb is None:
+                raise AttributeError(
+                    "Cannot compute `imag_sigma` (MomentumQuadratic): set "
+                    "`bare_mass` first."
+                )
+            return (PREF * broad_sigma) / np.abs(mb)
+
         raise NotImplementedError(
             f"_compute_imag_sigma is not implemented for spectral class "
             f"'{self._class}'."
@@ -448,12 +495,15 @@ class SelfEnergy:
     def _compute_real(self, fermi_velocity=None, fermi_wavevector=None,
                     bare_mass=None):
         r"""Compute Σ' without touching caches."""
-        if self._peak is None or self._ekin_range is None:
+        if self._peak is None:
             return None
 
         enel = self.enel_range
+        if enel is None:
+            return None
+
         kpar = self.peak_positions
-        if kpar is None:
+        if self._class != "MomentumQuadratic" and kpar is None:
             return None
 
         if self._class == "SpectralLinear":
@@ -467,13 +517,13 @@ class SelfEnergy:
                 )
             return enel - vF * (kpar - kF)
 
-        if self._class == "SpectralQuadratic":
+        if self._class in ("SpectralQuadratic", "MomentumQuadratic"):
             mb = self._bare_mass if bare_mass is None else bare_mass
             kF = (self._fermi_wavevector if fermi_wavevector is None
                 else fermi_wavevector)
             if mb is None or kF is None:
                 raise AttributeError(
-                    "Cannot compute `real` (SpectralQuadratic): set `bare_mass` "
+                    f"Cannot compute `real` ({self._class}): set `bare_mass` "
                     "and `fermi_wavevector` first."
                 )
             return enel - (PREF / mb) * (kpar**2 - kF**2)
@@ -485,11 +535,11 @@ class SelfEnergy:
     def _compute_real_sigma(self, fermi_velocity=None, fermi_wavevector=None,
                             bare_mass=None):
         r"""Compute std. dev. of Σ' without touching caches."""
-        if self._peak_sigma is None or self._ekin_range is None:
+        if self._peak_sigma is None:
             return None
 
         kpar_sigma = self.peak_positions_sigma
-        if kpar_sigma is None:
+        if self._class != "MomentumQuadratic" and kpar_sigma is None:
             return None
 
         if self._class == "SpectralLinear":
@@ -501,20 +551,20 @@ class SelfEnergy:
                 )
             return np.abs(vF) * kpar_sigma
 
-        if self._class == "SpectralQuadratic":
+        if self._class in ("SpectralQuadratic", "MomentumQuadratic"):
             mb = self._bare_mass if bare_mass is None else bare_mass
             kF = (self._fermi_wavevector if fermi_wavevector is None
                 else fermi_wavevector)
             if mb is None or kF is None:
                 raise AttributeError(
-                    "Cannot compute `real_sigma` (SpectralQuadratic): set "
+                    f"Cannot compute `real_sigma` ({self._class}): set "
                     "`bare_mass` and `fermi_wavevector` first."
                 )
 
             kpar = self.peak_positions
             if kpar is None:
                 return None
-            return 2.0 * PREF * kpar_sigma * np.abs(kpar / mb)
+            return 2.0 * PREF * np.abs(kpar_sigma) * np.abs(kpar / mb)
 
         raise ValueError(
             f"Unsupported spectral class '{self._class}' in "
@@ -552,6 +602,9 @@ class SelfEnergy:
 
         SpectralQuadratic:
             peak_positions + center_wavevector
+
+        MomentumQuadratic:
+            peak_positions + center_wavevector
         """
         if getattr(self, "_mdc_maxima", None) is None:
             if self.peak_positions is None:
@@ -559,7 +612,7 @@ class SelfEnergy:
 
             if self._class == "SpectralLinear":
                 self._mdc_maxima = self.peak_positions
-            elif self._class == "SpectralQuadratic":
+            elif self._class in ("SpectralQuadratic", "MomentumQuadratic"):
                 self._mdc_maxima = (
                     self.peak_positions + self._center_wavevector
                 )
