@@ -1275,7 +1275,7 @@ class SelfEnergy:
 
         if self._class == "SpectralLinear":
             allowed.add("fermi_velocity")
-        elif self._class == "SpectralQuadratic":
+        elif self._class == "SpectralQuadratic" or self._class == "MomentumQuadratic":
             allowed.add("bare_mass")
         else:
             raise NotImplementedError(
@@ -1479,7 +1479,7 @@ class SelfEnergy:
 
             if self._class == "SpectralLinear":
                 optimisation_parameters["fermi_velocity"] = params["fermi_velocity"]
-            elif self._class == "SpectralQuadratic":
+            elif self._class == "SpectralQuadratic" or self._class == "MomentumQuadratic":
                 optimisation_parameters["bare_mass"] = params["bare_mass"]
             else:
                 raise NotImplementedError(
@@ -1820,7 +1820,7 @@ class SelfEnergy:
 
             return float(fermi_velocity), float(fermi_wavevector), None
 
-        elif self._class == "SpectralQuadratic":
+        elif self._class == "SpectralQuadratic" or self._class == "MomentumQuadratic":
             if fermi_velocity is not None:
                 raise ValueError(
                     "SpectralQuadratic bayesian_loop does not accept "
@@ -1943,7 +1943,7 @@ class SelfEnergy:
             fermi_velocity = optimisation_parameters["fermi_velocity"]
             fermi_wavevector = optimisation_parameters["fermi_wavevector"]
 
-        elif self._class == "SpectralQuadratic":
+        elif self._class == "SpectralQuadratic" or self._class == "MomentumQuadratic":
             if "fermi_wavevector" not in optimisation_parameters:
                 raise ValueError(
                     "SpectralQuadratic requires optimisation_parameters to include "
@@ -1991,7 +1991,7 @@ class SelfEnergy:
 
         if lambda_el:
             if W is None:
-                if self._class == "SpectralQuadratic":
+                if self._class == "SpectralQuadratic" or self._class == "MomentumQuadratic":
                     if fermi_wavevector is None or bare_mass is None:
                         raise ValueError(
                             "lambda_el is nonzero, but W is None and cannot be "
