@@ -75,9 +75,11 @@ fig = plt.figure(figsize=(8, 6)); ax = fig.gca()
 fig = mdcs.fit_selection(distributions=guess_dists, ax=ax)
 
 
+
+
 fig = plt.figure(figsize=(6, 5)); ax = fig.gca()
 
-self_energy = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Right_branch_1', 
+self_energy = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Right_branch_1',
                                 bare_mass=1.59675179, fermi_wavevector=0.2499758715, side='right'))
 
 fig = self_energy.plot_both(ax=ax, scale='meV')
@@ -118,7 +120,7 @@ fig = bmap.plot(abscissa='momentum', ordinate='kinetic_energy',
 
 
 fig, spectrum, model, omega_range, aval_select = self_energy.extract_a2f(
-    omega_min=1.0, omega_max=80, omega_num=250, omega_I=20, omega_M=60, 
+    omega_min=1.0, omega_max=80, omega_num=250, omega_I=20, omega_M=60,
     aval_min=1.5, aval_num=10, aval_max=9.5, lambda_el=0.1132858,
     impurity_magnitude=10.041243, h_n=0.0803366,
     g_guess=1.0, b_guess=3.0, c_guess=3.0, d_guess=1.5,

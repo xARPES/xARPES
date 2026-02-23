@@ -46,8 +46,6 @@ fig = bmap.plot(abscissa='momentum', ordinate='kinetic_energy', size_kwargs=dict
 # bmap = xarpes.BandMap.from_np_arrays(intensities, angles, ekin, 
 #         energy_resolution=0.01, angle_resolution=0.1, temperature=50)
 
-# bmap.shift_angles(shift=-2.28)
-
 # fig = bmap.plot(abscissa='momentum', ordinate='kinetic_energy', size_kwargs=dict(w=6, h=5))
 
 
