@@ -36,15 +36,13 @@ bmap.shift_angles(shift=-2.28)
 
 fig = bmap.plot(abscissa='momentum', ordinate='kinetic_energy', size_kwargs=dict(w=6, h=5))
 
-
 # import numpy as np
-
 # intensities= np.load(os.path.join(script_dir, dfld, "graphene_152_intensities.npy"))
 # angles = np.load(os.path.join(script_dir, dfld, "graphene_152_angles.npy"))
 # ekin = np.load(os.path.join(script_dir, dfld, "graphene_152_ekin.npy"))
 
-# bmap = xarpes.BandMap.from_np_arrays(intensities, angles, ekin, 
-#         energy_resolution=0.01, angle_resolution=0.1, temperature=50)
+# bmap = xarpes.BandMap.from_np_arrays(intensities=intensities, angles=angles, 
+#         ekin=ekin, energy_resolution=0.01, angle_resolution=0.1,temperature=50)
 
 # fig = bmap.plot(abscissa='momentum', ordinate='kinetic_energy', size_kwargs=dict(w=6, h=5))
 
@@ -72,9 +70,9 @@ print('The optimised hnu - Phi=' + f'{bmap.hnuminPhi:.4f}' + ' +/- '
 # fig = bmap.plot(ordinate='kinetic_energy', abscissa='angle')
 
 
-fig = bmap.fit_fermi_edge(hnuminPhi_guess=32, background_guess=1e5,
+fig = bmap.fit_fermi_edge(hnuminPhi_guess=37, background_guess=1e5,
                           integrated_weight_guess=1.5e6, angle_min=-10,
-                          angle_max=10, ekin_min=31.96, ekin_max=32.08,
+                          angle_max=10,
                           show=True, title='Fermi edge fit')
 
 print('The optimised hnu - Phi=' + f'{bmap.hnuminPhi:.4f}' + ' +/- '
