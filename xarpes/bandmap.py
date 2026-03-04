@@ -821,7 +821,7 @@ class BandMap:
 
         energy_range = self.ekin[min_ekin_index:max_ekin_index]
 
-        trapz = np.trapz if hasattr(np, 'trapz') else np.trapezoid
+        trapz = np.trapezoid if hasattr(np, 'trapezoid') else np.trapz
 
         integrated_intensity = trapz(
             self.intensities[min_ekin_index:max_ekin_index,
