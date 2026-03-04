@@ -810,14 +810,36 @@ class BandMap:
 
         """
         from scipy.ndimage import gaussian_filter
+        import warnings
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
-        min_angle_index = np.argmin(np.abs(self.angles - angle_min))
-        max_angle_index = np.argmin(np.abs(self.angles - angle_max))
+        if self.energy_resolution is None or self.energy_resolution < 0:
+            raise ValueError(
+                'energy_resolution must be provided and >= 0 for '
+                'fit_fermi_edge.'
+            )
+        if self.temperature is None or self.temperature < 0:
+            raise ValueError(
+                'temperature must be provided and >= 0 for fit_fermi_edge.'
+            )
 
-        min_ekin_index = np.argmin(np.abs(self.ekin - ekin_min))
-        max_ekin_index = np.argmin(np.abs(self.ekin - ekin_max))
+        angle_min_plot = np.min(self.angles) if not np.isfinite(angle_min) else angle_min
+        angle_max_plot = np.max(self.angles) if not np.isfinite(angle_max) else angle_max
+        ekin_min_plot = np.min(self.ekin) if not np.isfinite(ekin_min) else ekin_min
+        ekin_max_plot = np.max(self.ekin) if not np.isfinite(ekin_max) else ekin_max
+
+        min_angle_index = np.argmin(np.abs(self.angles - angle_min_plot))
+        max_angle_index = np.argmin(np.abs(self.angles - angle_max_plot))
+        min_angle_index, max_angle_index = sorted((min_angle_index, max_angle_index))
+
+        min_ekin_index = np.argmin(np.abs(self.ekin - ekin_min_plot))
+        max_ekin_index = np.argmin(np.abs(self.ekin - ekin_max_plot))
+        min_ekin_index, max_ekin_index = sorted((min_ekin_index, max_ekin_index))
+
+        # Include both end points to avoid accidental empty slices.
+        max_angle_index += 1
+        max_ekin_index += 1
 
         energy_range = self.ekin[min_ekin_index:max_ekin_index]
 
@@ -838,23 +860,9 @@ class BandMap:
 
         extra_args = (self.temperature,)
 
-        popt, pcov, _ = fit_least_squares(
-            p0=parameters, xdata=energy_range, ydata=integrated_intensity,
-            function=fdir_initial, resolution=self.energy_resolution,
-            yerr=None, bounds=None, extra_args=extra_args)
-
-        # Update hnuminPhi; automatically sets self.enel
-        self.hnuminPhi = popt[0]
-        self.hnuminPhi_std = np.sqrt(np.diag(pcov)[0])
-
-        fdir_final = FermiDirac(temperature=self.temperature,
-                                hnuminPhi=self.hnuminPhi, background=popt[1],
-                                integrated_weight=popt[2],
-                                name='Fitted result')
-
         ax.set_xlabel(r'$E_{\mathrm{kin}}$ (-)')
         ax.set_ylabel('Counts (-)')
-        ax.set_xlim([ekin_min, ekin_max])
+        ax.set_xlim([ekin_min_plot, ekin_max_plot])
 
         ax.plot(energy_range, integrated_intensity, label='Data')
 
@@ -864,11 +872,39 @@ class BandMap:
         initial_result = gaussian_filter(fdir_initial.evaluate(extend),
                          sigma=step)[numb:-numb if numb else None]
 
-        final_result = gaussian_filter(fdir_final.evaluate(extend),
-                       sigma=step)[numb:-numb if numb else None]
-
         ax.plot(energy_range, initial_result, label=fdir_initial.name)
-        ax.plot(energy_range, final_result, label=fdir_final.name)
+
+        try:
+            popt, pcov, _ = fit_least_squares(
+                p0=parameters, xdata=energy_range, ydata=integrated_intensity,
+                function=fdir_initial, resolution=self.energy_resolution,
+                yerr=None, bounds=None, extra_args=extra_args)
+
+            # Update hnuminPhi; automatically sets self.enel
+            self.hnuminPhi = popt[0]
+            self.hnuminPhi_std = np.sqrt(np.diag(pcov)[0])
+
+            fdir_final = FermiDirac(temperature=self.temperature,
+                                    hnuminPhi=self.hnuminPhi,
+                                    background=popt[1],
+                                    integrated_weight=popt[2],
+                                    name='Fitted result')
+
+            final_result = gaussian_filter(
+                fdir_final.evaluate(extend), sigma=step
+            )[numb:-numb if numb else None]
+
+            ax.plot(energy_range, final_result, label=fdir_final.name)
+
+        except Exception as err:
+            warnings.warn(
+                'Fermi-edge fit failed; returning plot with data and initial '
+                f'guess only. Original error: {err}', RuntimeWarning
+            )
+            print(
+                'Fermi-edge fit failed; returning plot with data and initial '
+                f'guess only. Original error: {err}'
+            )
 
         ax.legend()
 
@@ -906,6 +942,17 @@ class BandMap:
         if hnuminPhi_guess is None:
             raise ValueError('Please provide an initial guess for ' +
                              'hnuminPhi.')
+
+        if self.energy_resolution is None or self.energy_resolution < 0:
+            raise ValueError(
+                'energy_resolution must be provided and >= 0 for '
+                'correct_fermi_edge.'
+            )
+        if self.temperature is None or self.temperature < 0:
+            raise ValueError(
+                'temperature must be provided and >= 0 for '
+                'correct_fermi_edge.'
+            )
  
         # Here some loop where it fits all the Fermi edges
         angle_min_index = np.abs(self.angles - angle_min).argmin()

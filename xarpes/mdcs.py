@@ -179,6 +179,15 @@ class MDCs:
         """2D or 3D intensity map (energy × angle)."""
         return self._intensities
 
+
+    def _validate_angle_resolution(self, caller_name):
+        """Require a provided, non-negative angular resolution."""
+        if self.angle_resolution is None or self.angle_resolution < 0:
+            raise ValueError(
+                'angle_resolution must be provided and >= 0 for '
+                f'{caller_name}.'
+            )
+
     @intensities.setter
     def intensities(self, x):
         self._intensities = x
@@ -437,6 +446,8 @@ class MDCs:
         r"""
         """
         
+        self._validate_angle_resolution('visualize_guess')
+
         counts, kinergy = self.energy_check(energy_value)
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
@@ -485,6 +496,8 @@ class MDCs:
         ax_grid = kwargs.pop("ax_grid", None)
         ax_annotate = kwargs.pop("ax_annotate", False)
         size_kwargs = kwargs.pop("size_kwargs", None)
+
+        self._validate_angle_resolution('fit_selection')
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 

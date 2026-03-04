@@ -23,11 +23,28 @@ def parameter_settings(new_sigma_extend=None, new_sigma=None):
     """
     global sigma_extend, sigma_confidence
 
+    updates = []
+
     if new_sigma_extend is not None:
+        old = sigma_extend
         sigma_extend = float(new_sigma_extend)
+        updates.append(
+            f"sigma_extend: {old} → {sigma_extend}"
+        )
 
     if new_sigma is not None:
+        old = sigma_confidence
         sigma_confidence = float(new_sigma)
+        updates.append(
+            f"sigma_confidence: {old} → {sigma_confidence}"
+        )
+
+    if updates:
+        print("xARPES parameter settings updated:")
+        for msg in updates:
+            print(f"  {msg}")
+    else:
+        print("xARPES parameter settings unchanged.")
 
 # ---------------- Defaults for MEM / chi2kink a-value-selection ----------------
 
