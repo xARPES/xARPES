@@ -15,7 +15,7 @@ import numpy as np
 from igor2 import binarywave
 from .plotting import get_ax_fig_plt, add_fig_kwargs
 from .functions import fit_least_squares, extend_function
-from .distributions import FermiDirac, Linear
+from .distributions import FermiDirac, Linear, Quadratic
 from .constants import PREF
 
 class BandMap:
@@ -916,7 +916,9 @@ class BandMap:
                        integrated_weight_guess=1.0, angle_min=-np.inf,
                        angle_max=np.inf, ekin_min=-np.inf, ekin_max=np.inf,
                        slope_guess=0, offset_guess=None,
-                           true_angle=0, ax=None, **kwargs):
+                       linear_guess=0.0, quadratic_guess=0.0,
+                       edge_function='linear', true_angle=0, ax=None,
+                       **kwargs):
         r"""TBD
         hnuminPhi_guess should be estimated at true angle
 
@@ -924,6 +926,15 @@ class BandMap:
         ----------
         hnuminPhi_guess : float, optional
             Initial guess for kinetic energy minus the work function [eV].
+        linear_guess : float, optional
+            Initial guess for the first-order coefficient when
+            ``edge_function='quadratic'``.
+        quadratic_guess : float, optional
+            Initial guess for the second-order coefficient when
+            ``edge_function='quadratic'``.
+        edge_function : str, optional
+            Edge model fitted to the angle-dependent Fermi-edge positions.
+            Supported values are ``'linear'`` and ``'quadratic'``.
 
         Other parameters
         ----------------
@@ -937,8 +948,11 @@ class BandMap:
 
         """
         from scipy.ndimage import map_coordinates
+        import warnings
         from . import settings_parameters as xprs
-        
+
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
         if hnuminPhi_guess is None:
             raise ValueError('Please provide an initial guess for ' +
                              'hnuminPhi.')
@@ -953,87 +967,150 @@ class BandMap:
                 'temperature must be provided and >= 0 for '
                 'correct_fermi_edge.'
             )
- 
+
+        edge_function = edge_function.lower()
+        if edge_function not in ('linear', 'quadratic'):
+            raise ValueError(
+                "edge_function must be one of ('linear', 'quadratic')."
+            )
+
         # Here some loop where it fits all the Fermi edges
         angle_min_index = np.abs(self.angles - angle_min).argmin()
         angle_max_index = np.abs(self.angles - angle_max).argmin()
-        
+
         ekin_min_index = np.abs(self.ekin - ekin_min).argmin()
         ekin_max_index = np.abs(self.ekin - ekin_max).argmin()
-  
+
         Intensities = self.intensities[ekin_min_index:ekin_max_index + 1,
                                        angle_min_index:angle_max_index + 1]
         angle_range = self.angles[angle_min_index:angle_max_index + 1]
         energy_range = self.ekin[ekin_min_index:ekin_max_index + 1]
-        
-        nmps = np.zeros_like(angle_range, dtype=float)
-        stds = np.zeros_like(angle_range, dtype=float)
-        
+
+        nmps = np.full_like(angle_range, np.nan, dtype=float)
+        stds = np.full_like(angle_range, np.nan, dtype=float)
+
         hnuminPhi_left = hnuminPhi_guess - (true_angle - angle_min) \
-        * slope_guess
-  
+            * slope_guess
+
+        parameters = np.array(
+                [hnuminPhi_left, background_guess, integrated_weight_guess])
         fdir_initial = FermiDirac(temperature=self.temperature,
                       hnuminPhi=hnuminPhi_left,
                       background=background_guess,
                       integrated_weight=integrated_weight_guess,
                       name='Initial guess')
-        
-        parameters = np.array(
-                [hnuminPhi_left, background_guess, integrated_weight_guess])
-        
+
         extra_args = (self.temperature,)
- 
+
         for indx in range(angle_max_index - angle_min_index + 1):
             edge = Intensities[:, indx]
-            
-            parameters, pcov, _ = fit_least_squares(
-                p0=parameters, xdata=energy_range, ydata=edge,
-                function=fdir_initial, resolution=self.energy_resolution,
-                yerr=None, bounds=None, extra_args=extra_args)
+            try:
+                parameters, pcov, _ = fit_least_squares(
+                    p0=parameters, xdata=energy_range, ydata=edge,
+                    function=fdir_initial, resolution=self.energy_resolution,
+                    yerr=None, bounds=None, extra_args=extra_args)
+                nmps[indx] = parameters[0]
+                stds[indx] = np.sqrt(np.diag(pcov)[0])
+            except Exception as err:
+                warnings.warn(
+                    'A Fermi-edge fit failed during correction; skipping that '
+                    f'slice. Error: {err}', RuntimeWarning
+                )
+                print(
+                    'A Fermi-edge fit failed during correction; skipping that '
+                    f'slice. Error: {err}'
+                )
 
-            nmps[indx] = parameters[0]
-            stds[indx] = np.sqrt(np.diag(pcov)[0])
-        
-        # Offset at true angle if not set before
-        if offset_guess is None:    
-            offset_guess = hnuminPhi_guess - slope_guess * true_angle 
-            
-        parameters = np.array([offset_guess, slope_guess])
-        
-        lin_fun = Linear(offset_guess, slope_guess, 'Linear')
-                    
-        popt, pcov, _ = fit_least_squares(p0=parameters, xdata=angle_range, 
-                        ydata=nmps, function=lin_fun, resolution=None,
-                                 yerr=stds, bounds=None)
+        valid = np.isfinite(nmps) & np.isfinite(stds)
 
-        linsp = lin_fun(angle_range, popt[0], popt[1])
+        # Fit the Fermi-edge-vs-angle relation
+        if edge_function == 'linear':
+            if offset_guess is None:
+                offset_guess = hnuminPhi_guess - slope_guess * true_angle
 
-        # Update hnuminPhi; automatically sets self.enel
-        self.hnuminPhi = lin_fun(true_angle, popt[0], popt[1])
-        self.hnuminPhi_std = np.sqrt(true_angle**2 * pcov[1, 1] + pcov[0, 0] 
-                                     + 2 * true_angle * pcov[0, 1])
-                    
+            parameters = np.array([offset_guess, slope_guess])
+            edge_fun = Linear(offset_guess, slope_guess, 'Linear')
+
+        else:
+            if slope_guess != 0:
+                raise ValueError(
+                    'slope_guess is only used for edge_function="linear".'
+                )
+            if offset_guess is None:
+                offset_guess = hnuminPhi_guess
+
+            parameters = np.array([offset_guess, linear_guess,
+                                   quadratic_guess])
+            edge_fun = Quadratic(offset_guess, linear_guess,
+                                 quadratic_guess, 'Quadratic')
+
+        initial_edge_vals = edge_fun(angle_range, *parameters)
+        fit_succeeded = False
+        if np.count_nonzero(valid) >= 2:
+            try:
+                popt, pcov, _ = fit_least_squares(
+                    p0=parameters, xdata=angle_range[valid], ydata=nmps[valid],
+                    function=edge_fun, resolution=None, yerr=stds[valid],
+                    bounds=None)
+                fit_vals = edge_fun(angle_range, *popt)
+
+                # Update hnuminPhi; automatically sets self.enel
+                true_terms = np.array([true_angle**power
+                                       for power in range(len(popt))], dtype=float)
+                self.hnuminPhi = edge_fun(true_angle, *popt)
+                self.hnuminPhi_std = np.sqrt(true_terms @ pcov @ true_terms)
+                fit_succeeded = True
+
+            except Exception as err:
+                warnings.warn(
+                    'Fermi-edge angle-dependence fit failed; showing initial '
+                    f'guess and individual fits only. Original error: {err}',
+                    RuntimeWarning
+                )
+                print(
+                    'Fermi-edge angle-dependence fit failed; showing initial '
+                    f'guess and individual fits only. Original error: {err}'
+                )
+        else:
+            warnings.warn(
+                'Insufficient successful individual Fermi-edge fits to model '
+                'angle dependence; showing initial guess only.',
+                RuntimeWarning
+            )
+            print(
+                'Insufficient successful individual Fermi-edge fits to model '
+                'angle dependence; showing initial guess only.'
+            )
+
         Angl, Ekin = np.meshgrid(self.angles, self.ekin)
 
-        ax, fig, plt = get_ax_fig_plt(ax=ax)
-        
         ax.set_xlabel('Angle ($\degree$)')
         ax.set_ylabel('$E_{\mathrm{kin}}$ (eV)')
         mesh = ax.pcolormesh(Angl, Ekin, self.intensities,
                        shading='auto', cmap=plt.get_cmap('bone').reversed(),
                              zorder=1)
 
-        ax.errorbar(angle_range, nmps, yerr=xprs.sigma_confidence * stds, zorder=1)
-        ax.plot(angle_range, linsp, zorder=2)
-        
-        cbar = plt.colorbar(mesh, ax=ax, label='counts (-)')
-        
+        ax.errorbar(angle_range[valid], nmps[valid],
+                    yerr=xprs.sigma_confidence * stds[valid], zorder=2,
+                    label='Individual edge fits')
+        ax.plot(angle_range, initial_edge_vals, linestyle='--', zorder=2,
+                label='Initial edge guess')
+        if fit_succeeded:
+            ax.plot(angle_range, fit_vals, zorder=3, label='Fitted edge model')
+
+        plt.colorbar(mesh, ax=ax, label='counts (-)')
+        ax.legend(loc='best')
+
         # Fermi-edge correction
-        rows, cols = self.intensities.shape
-        shift_values = popt[1] * self.angles / (self.ekin[0] - self.ekin[1])
-        row_coords = np.arange(rows).reshape(-1, 1) - shift_values
-        col_coords = np.arange(cols).reshape(1, -1).repeat(rows, axis=0)
-        self.intensities = map_coordinates(self.intensities, 
-                [row_coords, col_coords], order=1)
-                                  
+        if fit_succeeded:
+            rows, cols = self.intensities.shape
+            energy_step = self.ekin[0] - self.ekin[1]
+            edge_shift = edge_fun(self.angles, *popt) - edge_fun(true_angle, *popt)
+            shift_values = edge_shift / energy_step
+            row_coords = np.arange(rows).reshape(-1, 1) - shift_values
+            col_coords = np.arange(cols).reshape(1, -1).repeat(rows, axis=0)
+            self.intensities = map_coordinates(self.intensities,
+                    [row_coords, col_coords], order=1)
+
         return fig
+    

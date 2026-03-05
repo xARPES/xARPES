@@ -546,6 +546,65 @@ class Linear(UniqueDistribution):
         """
         return self.offset + self.slope * angle_range
 
+
+class Quadratic(UniqueDistribution):
+    r"""Child class for quadratic distributions.
+
+    Parameters
+    ----------
+    offset : float
+        Constant term of the polynomial.
+    linear : float
+        Linear term of the polynomial w.r.t. the abscissa.
+    quadratic : float
+        Quadratic term of the polynomial w.r.t. the abscissa.
+    """
+    def __init__(self, offset, linear, quadratic, name='Quadratic'):
+        super().__init__(name)
+        self.offset = offset
+        self.linear = linear
+        self.quadratic = quadratic
+
+    @property
+    def offset(self):
+        r"""Returns the constant term of the polynomial."""
+        return self._offset
+
+    @offset.setter
+    def offset(self, x):
+        r"""Sets the constant term of the polynomial."""
+        self._offset = x
+
+    @property
+    def linear(self):
+        r"""Returns the linear term of the polynomial."""
+        return self._linear
+
+    @linear.setter
+    def linear(self, x):
+        r"""Sets the linear term of the polynomial."""
+        self._linear = x
+
+    @property
+    def quadratic(self):
+        r"""Returns the quadratic term of the polynomial."""
+        return self._quadratic
+
+    @quadratic.setter
+    def quadratic(self, x):
+        r"""Sets the quadratic term of the polynomial."""
+        self._quadratic = x
+
+    def __call__(self, angle_range, offset, linear, quadratic):
+        r"""Evaluate a quadratic function.
+        """
+        return offset + linear * angle_range + quadratic * angle_range**2
+
+    def evaluate(self, angle_range):
+        r"""No energy convolution is performed with evaluate."""
+        return (self.offset + self.linear * angle_range
+                + self.quadratic * angle_range**2)
+
 class NonUniqueDistribution(Distribution):
     r"""Parent class for unique distributions, to be used one at a time, e.g.,
     during the background of an MDC fit or the Fermi-Dirac distribution.

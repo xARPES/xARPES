@@ -185,3 +185,7 @@ examples/Rmd2py.py
 
 # Ignore identifier files
 .Identifier
+
+# Ignore patches
+*.apply
+*.patch
