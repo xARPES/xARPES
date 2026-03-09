@@ -98,9 +98,9 @@ print('The optimised hnu - Phi=' + f'{bmap.hnuminPhi:.4f}' + ' +/- '
 ```{python}
 # %matplotlib inline
 
-fig = bmap.fit_fermi_edge(hnuminPhi_guess=37, background_guess=1e5,
+fig = bmap.fit_fermi_edge(hnuminPhi_guess=32, background_guess=1e5,
                           integrated_weight_guess=1.5e6, angle_min=-10,
-                          angle_max=10,
+                          angle_max=10, ekin_min=31.96, ekin_max=32.08,
                           show=True, title='Fermi edge fit')
 
 print('The optimised hnu - Phi=' + f'{bmap.hnuminPhi:.4f}' + ' +/- '
