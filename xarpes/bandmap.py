@@ -811,7 +811,8 @@ class BandMap:
 
                 if (plot_disp_mode != 'none'
                         and spec_class in ("SpectralLinear",
-                                           "SpectralQuadratic")):
+                                           "SpectralQuadratic",
+                                           "MomentumQuadratic")):
 
                     # Determine momentum grid for the dispersion
                     if plot_disp_mode == 'kink':

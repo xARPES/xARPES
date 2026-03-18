@@ -26,12 +26,14 @@ eran = emin + np.arange(enum) * estp
 ekin = eran + hnu_minPhi
 
 intensities = np.loadtxt(os.path.join('data_sets', 'fig1a_laser.txt')).T
-# print(intensities.shape)
 
 # data are in energy relative to the EF and inverse Angstrom (calculated with EF = 1.6297eV, hv = 6.05 eV, work_function 4.5 eV). 
 
 
-bmap = xarpes.BandMap.from_np_arrays(intensities=intensities, momenta=kran, ekin=ekin,
+# bmap = xarpes.BandMap.from_np_arrays(intensities=intensities, momenta=kran, ekin=ekin,
+#         energy_resolution=0.0025, momentum_resolution=0.003, temperature=6)
+
+bmap = xarpes.BandMap.from_np_arrays(intensities=intensities, momenta=kran, enel=eran,
         energy_resolution=0.0025, momentum_resolution=0.003, temperature=6)
 
 fig = bmap.plot(abscissa='momentum', ordinate='kinetic_energy', size_kwargs=dict(w=6, h=5))
@@ -61,14 +63,14 @@ fig = bmap.plot(abscissa='momentum', ordinate='kinetic_energy', size_kwargs=dict
 #       + f'{1.96 * bmap.hnuminPhi_std:.5f}' + ' eV.')
 
 
-fig = bmap.fit_fermi_edge(hnuminPhi_guess=1.62, background_guess=1e1,
-                          integrated_weight_guess=5e8,
-                          momentum_min=0.2, momentum_max=0.22,
-                          ekin_min=1.6, ekin_max=1.65,
-                          show=True, title='Fermi edge fit')
+# fig = bmap.fit_fermi_edge(hnuminPhi_guess=1.62, background_guess=1e1,
+#                           integrated_weight_guess=5e8,
+#                           momentum_min=0.2, momentum_max=0.22,
+#                           ekin_min=1.6, ekin_max=1.65,
+#                           show=True, title='Fermi edge fit')
 
-print('The optimised hnu - Phi=' + f'{bmap.hnuminPhi:.4f}' + ' +/- '
-      + f'{1.96 * bmap.hnuminPhi_std:.5f}' + ' eV.')
+# print('The optimised hnu - Phi=' + f'{bmap.hnuminPhi:.4f}' + ' +/- '
+#       + f'{1.96 * bmap.hnuminPhi_std:.5f}' + ' eV.')
 
 
 k_0 = 0.0028
@@ -79,7 +81,7 @@ broadening = 0.0008
 abscissa_min = 0.10
 abscissa_max = 0.25
 
-energy_range = [-0.06, 0.001]
+energy_range = [-0.045, 0.001]
 energy_value = 0.0
 
 guess_dists = xarpes.CreateDistributions([
@@ -105,11 +107,9 @@ fig = plt.figure(figsize=(8, 6)); ax = fig.gca()
 fig = mdcs.fit_selection(distributions=guess_dists, ax=ax)
 
 
-fig = plt.figure(figsize=(8, 6))
-ax = fig.gca()
+fig = plt.figure(figsize=(8, 6)); ax = fig.gca()
 
-mass = 0.48
-kfer = 0.215
+mass = 0.45; kfer = 0.215
 
 self_one = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='left_rashba_1',
                                 bare_mass=mass, fermi_wavevector=kfer))
@@ -128,9 +128,49 @@ ax = fig.gca()
 
 self_energies = xarpes.CreateSelfEnergies([self_one, self_two])
 
-# plot_dispersions is not yet available for MomentumQuadratic
+# plot_dispersions is now available for MomentumQuadratic
 
 fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax,
-                self_energies=self_energies) #, plot_dispersions='kink')
+                self_energies=self_energies, plot_dispersions='domain')
+
+
+fig = plt.figure(figsize=(8, 6))
+ax = fig.gca()
+
+mass = 0.48; kfer = 0.215
+
+self_one = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='left_rashba_1',
+                                bare_mass=mass, fermi_wavevector=kfer))
+
+self_one.plot_both(ax=ax, scale="meV", show=False, fig_close=False)
+
+plt.show()
+
+
+fig, spectrum, model, omega_range, aval_select = self_one.extract_a2f(
+    omega_min=1.0, omega_max=35, omega_num=100, omega_I=10, omega_M=25, 
+    aval_min=3.0, aval_num=8, aval_max=11.0, lambda_el=0.0,
+    impurity_magnitude=1.0, h_n=0.05,
+    g_guess=1.0, b_guess=3.0, c_guess=3.0, d_guess=1.5,
+    show=True, fig_close=False)
+
+plt.show()
+
+
+fig = plt.figure(figsize=(7, 5)); ax = fig.gca()
+
+fig = self_one.plot_spectra(ax=ax)
+
+plt.show()
+
+spectrum, model, omega_range, aval_select, cost, params = self_one.bayesian_loop(
+        omega_min=1.0, omega_max=35, omega_num=100, omega_I=10, omega_M=25,
+        aval_min=3.0, aval_max=11.0, sigma_svd=1e-3, power=2,
+        bare_mass=0.4294337858, fermi_wavevector=0.2148115543, h_n=0.05544241506, 
+        impurity_magnitude=1.313441843, lambda_el=0.1076733277,
+        vary=("impurity_magnitude", "lambda_el", "fermi_wavevector",
+                "bare_mass", "h_n"),
+        scale_mb=0.05, scale_imp=0.05, scale_kF=0.001,
+        scale_lambda_el=0.05, scale_hn=0.1)
 
 
