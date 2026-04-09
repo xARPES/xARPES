@@ -192,7 +192,6 @@ energy_range = [-0.1, 0.003]
 angle_min=-5.0
 angle_max=0.0
 
-
 mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range))
 
 fig = plt.figure(figsize=(7, 5)); ax = fig.gca()
@@ -205,6 +204,7 @@ fig = plt.figure(figsize=(8, 6)); ax = fig.gca()
 
 fig = mdcs.fit_selection(distributions=guess_dists, matrix_element=mat_el, 
                          matrix_args=mat_args, ax=ax)
+
 
 self_five = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Inner_left_5',
                                 bare_mass=0.59521794, fermi_wavevector=0.141069758, side='left'))
@@ -245,8 +245,8 @@ with xarpes.trim_notebook_output(print_lines=10):
                 power=4, bare_mass=0.6094394681, fermi_wavevector=0.1420916364, h_n=0.07582382627, 
                 impurity_magnitude=14.64962434, lambda_el=2.064840668e-07,
                 vary=("impurity_magnitude", "lambda_el", "fermi_wavevector", "bare_mass", 
-                    "h_n"), scale_imp=1.0, scale_lambda_el=1.0, scale_kF=0.1, scale_mb=1.0, scale_hn=1.0,
-                    print_lines=10)
+                    "h_n"), scale_imp=1.0, scale_lambda_el=1.0, scale_kF=0.1, scale_mb=1.0, scale_hn=1.0
+    )
 
 
 fig = plt.figure(figsize=(6, 5)); ax = fig.gca()

@@ -29,7 +29,7 @@ data_file_path = os.path.join(script_dir, dfld, flnm + extn)
 # The following cell instantiates band map class object based on the Igor Binary Wave (ibw) file. The subsequent cell illustrates how a band map object could be instantiated with NumPy arrays instead. Only one of the cells will have to be executed to populate the band map object.
 
 
-bmap = xarpes.BandMap.from_ibw_file(data_file_path, energy_resolution=0.01, 
+bmap = xarpes.BandMap.from_ibw_file(data_file_path, energy_resolution=0.01,
         angle_resolution=0.1, temperature=50)
 
 bmap.shift_angles(shift=-2.28)
@@ -72,7 +72,7 @@ print('The optimised hnu - Phi=' + f'{bmap.hnuminPhi:.4f}' + ' +/- '
 
 fig = bmap.fit_fermi_edge(hnuminPhi_guess=32, background_guess=1e5,
                           integrated_weight_guess=1.5e6, angle_min=-10,
-                          angle_max=10, ekin_min=31.96, ekin_max=32.08,
+                          angle_max=20, ekin_min=31.96, ekin_max=32.08,
                           show=True, title='Fermi edge fit')
 
 print('The optimised hnu - Phi=' + f'{bmap.hnuminPhi:.4f}' + ' +/- '
@@ -159,8 +159,7 @@ with xarpes.trim_notebook_output(print_lines=10):
                 h_n=0.0802309738, impurity_magnitude=120.902261, lambda_el=0,
                 vary=("impurity_magnitude", "lambda_el", "fermi_wavevector", "fermi_velocity", "h_n"), 
                 converge_iters=10, tole=1e-2, scale_vF=1.0, scale_imp=1.0, scale_kF=0.1, 
-                scale_lambda_el=1.0, scale_hn=10.0, 
-                print_lines=10)
+                scale_lambda_el=1.0, scale_hn=10.0)
 
 # The following cell performs some testing on the electron-electron self-energy expressions
 

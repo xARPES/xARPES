@@ -189,6 +189,8 @@ fig = plt.figure(figsize=(10, 8)); ax1 = fig.add_subplot(111); ax2 = ax1.twinx()
 self_energy.plot_spectra( ax=ax1, abscissa="reversed", show=False, fig_close=False)
 self_energy.plot_both(ax=ax2, scale="meV", resolution_range='applied', show=False, fig_close=False)
 
+self_energy.plot_both
+
 # --- Change colours for spectra
 a2f_line, model_line = ax1.get_lines()[-2:]
 a2f_line.set_color("mediumvioletred")
@@ -238,12 +240,12 @@ with xarpes.trim_notebook_output(print_lines=10):
                 h_n=0.09, impurity_magnitude=9.1, lambda_el=0.22, sigma_svd=0.1,
                 vary=("impurity_magnitude", "lambda_el", "fermi_wavevector", "bare_mass", "h_n"), 
                 converge_iters=100, tole=1e-8, scale_mb=0.1, scale_imp=1.0, scale_kF=0.001,
-                scale_lambda_el=0.1, scale_hn=0.01, print_lines=10)
+                scale_lambda_el=0.1, scale_hn=0.01)
 ```
 
 Following the recommended procedure, we perform a final optimisation with very tight criteria, for the purpose of further narrowing down the solution.
 
-With the tested combination of packages, the result is a tiny bit closer to the true solution for bare_mass, impurity_magnitude, and lambda_el.
+With tightened `aval_min`, `aval_max`, and `sigma_svd`, the result gets a tiny bit closer to the true solution for some of the parameters (for the tested combination of packages).
 
 ```{python}
 with xarpes.trim_notebook_output(print_lines=10):
@@ -254,5 +256,5 @@ with xarpes.trim_notebook_output(print_lines=10):
                 impurity_magnitude=10.03795642, lambda_el=0.1054945571,
                 vary=("impurity_magnitude", "lambda_el", "fermi_wavevector", "bare_mass", "h_n"), 
                 converge_iters=100, tole=1e-8, scale_mb=0.1, scale_imp=0.1, scale_kF=0.01,
-                scale_lambda_el=0.1, scale_hn=0.1, print_lines=10)
+                scale_lambda_el=0.1, scale_hn=0.1)
 ```
