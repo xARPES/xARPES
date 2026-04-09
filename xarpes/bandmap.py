@@ -481,7 +481,7 @@ class BandMap:
     @add_fig_kwargs
     def plot(self, abscissa='momentum', ordinate='electron_energy',
              self_energies=None, ax=None, markersize=None,
-             plot_dispersions='none', **kwargs):
+             plot_dispersions='none'):
         r"""
         Plot the band map. Optionally overlay a collection of self-energies,
         e.g. a CreateSelfEnergies instance or any iterable of self-energy
@@ -772,7 +772,7 @@ class BandMap:
     def fit_fermi_edge(self, hnuminPhi_guess, background_guess=0.0,
                        integrated_weight_guess=1.0, angle_min=-np.inf,
                        angle_max=np.inf, ekin_min=-np.inf,
-                       ekin_max=np.inf, ax=None, **kwargs):
+                       ekin_max=np.inf, ax=None):
         r"""Fits the Fermi edge of the band map and plots the result.
         Also sets hnuminPhi, the kinetic energy minus the work function in eV.
         The fitting includes an energy convolution with an abscissa range
@@ -797,11 +797,6 @@ class BandMap:
         ax : Matplotlib-Axes / NoneType
             Axis for plotting the Fermi edge on. Created if not provided by
             the user.
-
-        Other parameters
-        ----------------
-        **kwargs : dict, optional
-            Additional arguments passed on to add_fig_kwargs.
 
         Returns
         -------
@@ -917,8 +912,7 @@ class BandMap:
                        angle_max=np.inf, ekin_min=-np.inf, ekin_max=np.inf,
                        slope_guess=0, offset_guess=None,
                        linear_guess=0.0, quadratic_guess=0.0,
-                       edge_function='linear', true_angle=0, ax=None,
-                       **kwargs):
+                       edge_function='linear', true_angle=0, ax=None):
         r"""TBD
         hnuminPhi_guess should be estimated at true angle
 
@@ -935,11 +929,6 @@ class BandMap:
         edge_function : str, optional
             Edge model fitted to the angle-dependent Fermi-edge positions.
             Supported values are ``'linear'`` and ``'quadratic'``.
-
-        Other parameters
-        ----------------
-        **kwargs : dict, optional
-            Additional arguments passed on to add_fig_kwargs.
 
         Returns
         -------

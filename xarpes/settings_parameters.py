@@ -68,7 +68,8 @@ mem_defaults = {
     "b_guess": 2.5,
     "c_guess": 3.0,
     "d_guess": 1.5,
-    "h_n": None, 
+    "h_n": None,
+    "h_n_min": 1e-8,    
     "impurity_magnitude": 0.0,
     "lambda_el": 0.0,
 }

@@ -975,10 +975,16 @@ class SelfEnergy:
         if y_is_default:
             ax.set_ylim(bottom=0.0)
 
-
     @add_fig_kwargs
-    def extract_a2f(self, *, omega_min, omega_max, omega_num, omega_I, omega_M,
-                    mem=None, ax=None, **mem_kwargs):
+    def extract_a2f(
+        self, *, omega_min, omega_max, omega_num, omega_I, omega_M,
+        ax=None, method=None, parts=None, iter_max=None,
+        aval_min=None, aval_max=None, aval_num=None,
+        ecut_left=None, ecut_right=None, f_chi_squared=None,
+        W=None, power=None, mu=None, omega_S=None,
+        sigma_svd=None, t_criterion=None,
+        g_guess=None, b_guess=None, c_guess=None, d_guess=None,
+        h_n=None, h_n_min=None,impurity_magnitude=None, lambda_el=None):
         r"""
         Extract Eliashberg function α²F(ω) from the self-energy. While working
         with band maps and MDCs is more intuitive in eV, the self-energy
@@ -990,8 +996,50 @@ class SelfEnergy:
             Axis to plot on. Created if not provided by the user. (Not used yet;
             reserved for future plotting.)
 
+        method : {"chi2kink"}
+            MEM selection method.
+        parts : {"both", "real", "imag"}
+            Which part of the self-energy to fit.
+        iter_max : int
+            Maximum number of MEM iterations.
+        aval_min, aval_max : float
+            Minimum and maximum a values scanned in the chi2kink procedure.
+        aval_num : int
+            Number of a values scanned.
+        ecut_left : float
+            Left energy cutoff in meV, measured upward from the lowest energy.
+        ecut_right : float or None
+            Right energy cutoff in meV below the chemical potential. If None,
+            ``self.energy_resolution`` is used.
+        f_chi_squared : float or None
+            Target chi-squared threshold factor. If None, defaults to 2.5 for
+            ``parts='both'`` and 2.0 otherwise.
+        W : float or None
+            Electron-electron interaction scale in meV, required when
+            ``lambda_el`` is nonzero for linearised bands.
+        power : int
+            Power used in the electron-electron self-energy model.
+        mu : float
+            MEM regularisation parameter.
+        omega_S : float
+            Switch-on scale for the model function.
+        sigma_svd : float
+            Singular-value cutoff used in the SVD.
+        t_criterion : float
+            Convergence criterion for chi2kink.
+        g_guess, b_guess, c_guess, d_guess : float
+            Initial guesses for the chi2kink logistic fit.
+        h_n : float or None
+            Model normalisation parameter. Must be provided.
+        impurity_magnitude : float
+            Constant impurity contribution subtracted from -Σ''.
+        lambda_el : float
+            Strength of the electron-electron self-energy contribution.
+
         Returns
         -------
+        fig : Matplotlib-Figure
+            Figure showing the chi2kink selection curve.
         spectrum : ndarray
             Extracted α²F(ω).
         model : ndarray
@@ -1003,10 +1051,22 @@ class SelfEnergy:
         """
         from . import settings_parameters as xprs
 
-        # Reserve the plot API now; not used yet, but this matches xARPES style.
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
-        mem_cfg = self._merge_defaults(xprs.mem_defaults, mem, mem_kwargs)
+        overrides = dict(
+            method=method, parts=parts, iter_max=iter_max,
+            aval_min=aval_min, aval_max=aval_max, aval_num=aval_num,
+            ecut_left=ecut_left, ecut_right=ecut_right,
+            f_chi_squared=f_chi_squared, W=W, power=power, mu=mu,
+            omega_S=omega_S, sigma_svd=sigma_svd,
+            t_criterion=t_criterion,
+            g_guess=g_guess, b_guess=b_guess,
+            c_guess=c_guess, d_guess=d_guess,
+            h_n=h_n, impurity_magnitude=impurity_magnitude,
+            lambda_el=lambda_el,
+        )
+
+        mem_cfg = self._merge_defaults(xprs.mem_defaults, overrides)
 
         method = mem_cfg["method"]
         parts = mem_cfg["parts"]
@@ -1016,40 +1076,54 @@ class SelfEnergy:
         aval_num = int(mem_cfg["aval_num"])
         ecut_left = float(mem_cfg["ecut_left"])
         ecut_right = mem_cfg["ecut_right"]
-        omega_S = float(mem_cfg["omega_S"])
         f_chi_squared = mem_cfg["f_chi_squared"]
+        W = mem_cfg["W"]
+        power = int(mem_cfg["power"])
+        mu = float(mem_cfg["mu"])
+        omega_S = float(mem_cfg["omega_S"])
         sigma_svd = float(mem_cfg["sigma_svd"])
         t_criterion = float(mem_cfg["t_criterion"])
-        mu = float(mem_cfg["mu"])
         g_guess = float(mem_cfg["g_guess"])
         b_guess = float(mem_cfg["b_guess"])
         c_guess = float(mem_cfg["c_guess"])
         d_guess = float(mem_cfg["d_guess"])
-        power = int(mem_cfg["power"])
-        lambda_el = float(mem_cfg["lambda_el"])
+        h_n = mem_cfg["h_n"]
         impurity_magnitude = float(mem_cfg["impurity_magnitude"])
-        W = mem_cfg.get("W", None)
+        lambda_el = float(mem_cfg["lambda_el"])
+
+        if method != "chi2kink":
+            raise NotImplementedError(
+                f"extract_a2f does not support method='{method}'."
+            )
+
+        if parts not in ("both", "real", "imag"):
+            raise ValueError("parts must be one of 'both', 'real', or 'imag'.")
 
         if omega_S < 0.0:
             raise ValueError("omega_S must be >= 0.")
+
         if f_chi_squared is None:
             f_chi_squared = 2.5 if parts == "both" else 2.0
         else:
             f_chi_squared = float(f_chi_squared)
+
         if d_guess <= 0.0:
             raise ValueError(
-                "chi2kink requires d_guess > 0 to fix the logistic sign "
-                "ambiguity."
+                "chi2kink requires d_guess > 0 to fix the logistic sign ambiguity."
             )
 
-        h_n = mem_cfg.get("h_n", None)
         if h_n is None:
             raise ValueError(
-                "`optimisation_parameters` must include 'h_n' for cost evaluation."
+                "Please provide h_n for the MEM model and cost evaluation."
             )
+        h_n = float(h_n)
 
-        from . import (create_model_function, create_kernel_function,
-                       singular_value_decomposition, MEM_core)
+        from . import (
+            create_model_function,
+            create_kernel_function,
+            singular_value_decomposition,
+            MEM_core,
+        )
 
         omega_range = np.linspace(omega_min, omega_max, omega_num)
         model = create_model_function(omega_range, omega_I, omega_M, omega_S, h_n)
@@ -1084,12 +1158,14 @@ class SelfEnergy:
         if lambda_el:
             if W is None:
                 if self._class == "SpectralQuadratic":
-                    W = (PREF * self._fermi_wavevector**2 / self._bare_mass) * KILO
+                    W = (
+                        PREF * self._fermi_wavevector**2 / self._bare_mass
+                    ) * KILO
                 else:
                     raise ValueError(
                         "lambda_el was provided, but W is None. For a linearised "
                         "band (SpectralLinear), you must also provide W in meV: "
-                        "the electron–electron interaction  scale."
+                        "the electron-electron interaction scale."
                     )
 
             energies_el = energies_eV_masked * KILO
@@ -1123,19 +1199,14 @@ class SelfEnergy:
 
         V_Sigma, U, uvec = singular_value_decomposition(H, sigma_svd)
 
-        if method == "chi2kink":
-            (spectrum_in, aval_select, fit_curve, guess_curve,
-            chi2kink_result) = self._chi2kink_a2f(
+        spectrum_in, aval_select, fit_curve, guess_curve, chi2kink_result = (
+            self._chi2kink_a2f(
                 dvec, model_in, uvec, mu, wvec, V_Sigma, U, aval_min,
                 aval_max, aval_num, g_guess, b_guess, c_guess, d_guess,
                 f_chi_squared, t_criterion, iter_max, MEM_core
             )
-        else:
-            raise NotImplementedError(
-                f"extract_a2f does not support method='{method}'."
-            )
+        )
 
-        # --- Plot on ax: always raw chi2 + guess; add fit only if success ---
         aval_range = chi2kink_result["aval_range"]
         aval0 = float(aval_range[0])
         x_plot = np.log10(aval_range / aval0)
@@ -1156,14 +1227,12 @@ class SelfEnergy:
             )
         ax.legend()
 
-        # Abort extraction if fit failed (you asked to terminate in that case)
         if not chi2kink_result["success"]:
             raise RuntimeError(
                 "chi2kink logistic fit failed; aborting extract_a2f after "
                 "plotting chi2 and guess."
             )
 
-        # From here on, we know spectrum_in and aval_select exist
         spectrum = spectrum_in * omega_num / omega_max
 
         self._a2f_spectrum = spectrum
@@ -1173,13 +1242,25 @@ class SelfEnergy:
         self._a2f_cost = None
 
         return fig, spectrum, model, omega_range, aval_select
-    
 
-    def bayesian_loop(self, *, omega_min, omega_max, omega_num, omega_I, 
-                    omega_M, fermi_velocity=None, 
-                    fermi_wavevector=None, bare_mass=None, vary=(),
-                    opt_method="Nelder-Mead", opt_options=None,
-                    mem=None, loop=None, **mem_kwargs):
+
+    def bayesian_loop(
+        self, *, omega_min, omega_max, omega_num, omega_I, omega_M,
+        fermi_velocity=None, fermi_wavevector=None, bare_mass=None,
+        vary=(), opt_method="Nelder-Mead", opt_options=None,
+        method=None, parts=None, iter_max=None,
+        aval_min=None, aval_max=None, aval_num=None,
+        ecut_left=None, ecut_right=None, f_chi_squared=None,
+        W=None, power=None, mu=None, omega_S=None,
+        sigma_svd=None, t_criterion=None,
+        g_guess=None, b_guess=None, c_guess=None, d_guess=None,
+        h_n=None, h_n_min=None, impurity_magnitude=None, lambda_el=None,
+        converge_iters=None, tole=None,
+        scale_vF=None, scale_mb=None, scale_imp=None,
+        scale_kF=None, scale_lambda_el=None, scale_hn=None,
+        opt_iter_max=None, rollback_steps=None,
+        max_retries=None, relative_best=None,
+        min_steps_for_regression=None):
         r"""
         Bayesian outer loop calling `_cost_function()`.
 
@@ -1242,7 +1323,21 @@ class SelfEnergy:
 
         from . import settings_parameters as xprs
 
-        mem_cfg = self._merge_defaults(xprs.mem_defaults, mem, mem_kwargs)
+        mem_overrides = dict(
+            method=method, parts=parts, iter_max=iter_max,
+            aval_min=aval_min, aval_max=aval_max, aval_num=aval_num,
+            ecut_left=ecut_left, ecut_right=ecut_right,
+            f_chi_squared=f_chi_squared, W=W, power=power, mu=mu,
+            omega_S=omega_S, sigma_svd=sigma_svd,
+            t_criterion=t_criterion,
+            g_guess=g_guess, b_guess=b_guess,
+            c_guess=c_guess, d_guess=d_guess,
+            h_n=h_n, h_n_min=h_n_min,
+            impurity_magnitude=impurity_magnitude,
+            lambda_el=lambda_el,
+        )
+
+        mem_cfg = self._merge_defaults(xprs.mem_defaults, mem_overrides)
 
         parts = mem_cfg["parts"]
         sigma_svd = float(mem_cfg["sigma_svd"])
@@ -1252,13 +1347,19 @@ class SelfEnergy:
         imp0 = float(mem_cfg["impurity_magnitude"])
         lae0 = float(mem_cfg["lambda_el"])
         h_n0 = float(mem_cfg["h_n"])
-        h_n_min = float(mem_cfg.get("h_n_min", 1e-8))
+        h_n_min = float(mem_cfg.get("h_n_min"))
 
-        loop_overrides = {
-            key: val for key, val in mem_kwargs.items()
-            if (val is not None) and (key in xprs.loop_defaults)
-        }
-        loop_cfg = self._merge_defaults(xprs.loop_defaults, loop, loop_overrides)
+        loop_overrides = dict(
+            converge_iters=converge_iters, tole=tole,
+            scale_vF=scale_vF, scale_mb=scale_mb, scale_imp=scale_imp,
+            scale_kF=scale_kF, scale_lambda_el=scale_lambda_el,
+            scale_hn=scale_hn, opt_iter_max=opt_iter_max,
+            rollback_steps=rollback_steps, max_retries=max_retries,
+            relative_best=relative_best,
+            min_steps_for_regression=min_steps_for_regression,
+        )
+        loop_cfg = self._merge_defaults(xprs.loop_defaults, loop_overrides)
+
 
         tole = float(loop_cfg["tole"])
         converge_iters = int(loop_cfg["converge_iters"])
@@ -1711,17 +1812,18 @@ class SelfEnergy:
 
         return spectrum, model, omega_range, aval_select, cost, params
 
-
     @staticmethod
-    def _merge_defaults(defaults, override_dict=None, override_kwargs=None):
-        """Merge defaults with dict + kwargs overrides (kwargs win)."""
+    def _merge_defaults(defaults, overrides=None):
+        """Merge defaults with validated overrides."""
         cfg = dict(defaults)
 
-        if override_dict is not None:
-            cfg.update(dict(override_dict))
+        if overrides is not None:
+            unknown = set(overrides) - set(defaults)
+            if unknown:
+                unknown_str = ", ".join(sorted(repr(k) for k in unknown))
+                raise TypeError(f"Unexpected override key(s): {unknown_str}")
 
-        if override_kwargs is not None:
-            cfg.update({k: v for k, v in override_kwargs.items() if v is not None})
+            cfg.update({k: v for k, v in overrides.items() if v is not None})
 
         return cfg
 

@@ -95,8 +95,7 @@ class CreateDistributions:
 
     @add_fig_kwargs
     def plot(self, angle_range, angle_resolution, kinetic_energy=None,
-             hnuminPhi=None, matrix_element=None, matrix_args=None, ax=None,
-             **kwargs):
+             hnuminPhi=None, matrix_element=None, matrix_args=None, ax=None):
         r"""
         """
         if angle_resolution < 0:
@@ -171,8 +170,7 @@ class Distribution:
 
     @add_fig_kwargs
     def plot(self, angle_range, angle_resolution, kinetic_energy=None,
-             hnuminPhi=None, matrix_element=None, matrix_args=None,
-             ax=None, **kwargs):
+             hnuminPhi=None, matrix_element=None, matrix_args=None, ax=None):
         r"""Overwritten for FermiDirac distribution.
         """
         if angle_resolution < 0:
@@ -403,7 +401,7 @@ class FermiDirac(UniqueDistribution):
             + self.background)
 
     @add_fig_kwargs
-    def plot(self, energy_range, energy_resolution, ax=None, **kwargs):
+    def plot(self, energy_range, energy_resolution, ax=None):
         r"""TBD
         """
         if energy_resolution < 0:
@@ -800,7 +798,7 @@ class SpectralQuadratic(Dispersion):
 
     @add_fig_kwargs
     def plot(self, angle_range, angle_resolution, kinetic_energy, hnuminPhi,
-             matrix_element=None, matrix_args=None, ax=None, **kwargs):
+             matrix_element=None, matrix_args=None, ax=None):
         r"""Overwrites generic class plotting method.
         """
         from scipy.ndimage import gaussian_filter

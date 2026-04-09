@@ -441,8 +441,7 @@ class MDCs:
 
     @add_fig_kwargs
     def visualize_guess(self, distributions, energy_value=None,
-                        matrix_element=None, matrix_args=None,
-                        ax=None, **kwargs):
+                        matrix_element=None, matrix_args=None, ax=None):
         r"""
         """
         
@@ -867,8 +866,8 @@ class MDCs:
     
 
     @add_fig_kwargs
-    def fit(self, distributions, energy_value=None, matrix_element=None, 
-            matrix_args=None, ax=None, **kwargs):
+    def fit(self, distributions, energy_value=None, matrix_element=None,
+            matrix_args=None, ax=None):
         r"""
         """      
         from copy import deepcopy
