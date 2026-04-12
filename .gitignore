@@ -189,3 +189,4 @@ examples/Rmd2py.py
 # Ignore patches
 *.apply
 *.patch
+*.diff

@@ -165,8 +165,7 @@ fig = mdcs.fit_selection(distributions=guess_dists,
 
 plt.rcParams['lines.markersize'] = 0.8
 
-fig = plt.figure(figsize=(8, 6))
-ax = fig.gca()
+fig = plt.figure(figsize=(8, 6)); ax = fig.gca()
 
 self_energy = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Linear_right_2',
                                 fermi_velocity=2.851291959, fermi_wavevector=0.357807))
@@ -205,34 +204,6 @@ with xarpes.trim_notebook_output(print_lines=10):
                 vary=("impurity_magnitude", "lambda_el", "fermi_wavevector", "fermi_velocity", "h_n"), 
                 converge_iters=10, tole=1e-2, scale_vF=1.0, scale_imp=1.0, scale_kF=0.1, 
                 scale_lambda_el=1.0, scale_hn=10.0)
-```
-
-The following cell performs some testing on the electron-electron self-energy expressions
-
-```{python}
-# %matplotlib inline
-
-temperature = 10
-k_BT = xarpes.K_B * temperature * xarpes.KILO
-enel_range = np.linspace(-80, 0, 100)
-lambda_el = 0.1132858
-W = 150
-power = 4
-
-re, im = xarpes.SelfEnergy._el_el_self_energy(
-    enel_range=enel_range,
-    k_BT=k_BT,
-    lambda_el=lambda_el,
-    W=W,
-    power=power)
-
-plt.figure(figsize=(6, 5))
-plt.xlabel(r'$E-\mu$ meV')
-plt.ylabel(r"$\Sigma', -\Sigma''$ (meV)")
-plt.plot(enel_range, re, label='real pt')
-plt.plot(enel_range,im, label='-imag pt')
-plt.legend()
-plt.show()
 ```
 
 ```{python}

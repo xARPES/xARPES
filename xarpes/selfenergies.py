@@ -90,6 +90,18 @@ class SelfEnergy:
         self._a2f_omega_range = None
         self._a2f_aval_select = None
         self._a2f_cost = None
+        self._reconstructed_real_ph = None
+        self._reconstructed_imag_ph = None
+        self._reconstructed_real_el = None
+        self._reconstructed_imag_el = None
+        self._reconstructed_imag_imp = None
+        self._reconstructed_real = None
+        self._reconstructed_imag = None
+
+        # lazy caches for the most recent energy cutoffs used by
+        # `extract_a2f()` / `bayesian_loop()`.
+        self._ecut_left = None   # meV
+        self._ecut_right = None  # meV or None (=> use energy_resolution)
 
     def _check_mass_velocity_exclusivity(self):
         """Ensure that fermi_velocity and bare_mass are not both set."""
@@ -381,6 +393,135 @@ class SelfEnergy:
         """Cached cost from last bayesian_loop (or None)."""
         return self._a2f_cost
 
+    @property
+    def reconstructed_real_ph(self):
+        """Phonon-only reconstructed real part from latest MEM run (or None)."""
+        return self._reconstructed_real_ph
+
+    @property
+    def reconstructed_imag_ph(self):
+        """Phonon-only reconstructed imaginary part from latest MEM run (or None)."""
+        return self._reconstructed_imag_ph
+
+    @property
+    def reconstructed_real(self):
+        """Reconstructed real part with e-e contribution added back."""
+        return self._reconstructed_real
+
+    @property
+    def reconstructed_imag(self):
+        """Reconstructed imaginary part with e-e and impurity terms added back."""
+        return self._reconstructed_imag
+
+    @property
+    def reconstructed_real_el(self):
+        """Electron-electron contribution to reconstructed real part."""
+        return self._reconstructed_real_el
+
+    @property
+    def reconstructed_imag_el(self):
+        """Electron-electron contribution to reconstructed imaginary part."""
+        return self._reconstructed_imag_el
+
+    @property
+    def reconstructed_imag_imp(self):
+        """Impurity contribution vector for reconstructed imaginary part."""
+        return self._reconstructed_imag_imp
+
+    @property
+    def ecut_left(self):
+        """Cached left energy cutoff (meV) from the latest MEM run."""
+        return self._ecut_left
+
+    @property
+    def ecut_right(self):
+        """Cached right energy cutoff (meV) from the latest MEM run.
+
+        `None` means the algorithms used `self.energy_resolution` as right
+        cutoff.
+        """
+        return self._ecut_right
+
+    def _effective_ecut_right_eV(self):
+        """Right cutoff in eV, matching MEM masking semantics."""
+        if self._ecut_right is None:
+            return self.energy_resolution
+        return float(self._ecut_right) / KILO
+
+    def _energy_cutoff_mask(self):
+        """Boolean keep-mask in E-μ space using stored ecut_left/right.
+
+        Returns
+        -------
+        ndarray[bool] or None
+            Keep mask for `self.enel_range`, or `None` if cutoffs are not yet
+            available.
+        """
+        energies_eV = self.enel_range
+        if energies_eV is None:
+            return None
+        if self._ecut_left is None:
+            return None
+
+        ecut_left_eV = float(self._ecut_left) / KILO
+        ecut_right_eV = self._effective_ecut_right_eV()
+
+        Emin = np.min(energies_eV)
+        Elow = Emin + ecut_left_eV
+        Ehigh = -ecut_right_eV
+        return (energies_eV >= Elow) & (energies_eV <= Ehigh)
+
+    def _split_reconstructed_vector(self, T, parts):
+        """Split MEM reconstructed vector into real/imag segments."""
+        T = np.asarray(T, dtype=float)
+        if parts == "both":
+            n = T.size // 2
+            return T[:n], T[n:]
+        if parts == "real":
+            return T, None
+        if parts == "imag":
+            return None, T
+        raise ValueError("parts must be one of 'both', 'real', or 'imag'.")
+
+    @staticmethod
+    def _restore_background_to_reconstruction(
+        reconstructed_real_ph, reconstructed_imag_ph, *,
+        real_el, imag_el, impurity_magnitude
+    ):
+        """Add back e-e and impurity terms to phonon-only reconstruction."""
+        reconstructed_real = None
+        reconstructed_imag = None
+        reconstructed_real_el = None
+        reconstructed_imag_el = None
+        reconstructed_imag_imp = None
+
+        if reconstructed_real_ph is not None:
+            reconstructed_real_el = np.asarray(real_el, dtype=float)
+            reconstructed_real = (
+                np.asarray(reconstructed_real_ph, dtype=float) + reconstructed_real_el
+            )
+
+        if reconstructed_imag_ph is not None:
+            reconstructed_imag_el = np.asarray(imag_el, dtype=float)
+            reconstructed_imag_imp = np.full(
+                np.asarray(reconstructed_imag_ph, dtype=float).shape,
+                float(impurity_magnitude),
+                dtype=float,
+            )
+            reconstructed_imag = (
+                np.asarray(reconstructed_imag_ph, dtype=float)
+                + reconstructed_imag_imp
+                + reconstructed_imag_el
+            )
+
+        return (
+            reconstructed_real,
+            reconstructed_imag,
+            reconstructed_real_el,
+            reconstructed_imag_el,
+            reconstructed_imag_imp,
+        )
+
 
     def _compute_imag(self, fermi_velocity=None, bare_mass=None):
         r"""Compute -Σ'' without touching caches."""
@@ -615,9 +756,9 @@ class SelfEnergy:
             Units for both axes. If "meV", x and y (and yerr) are multiplied by
             `KILO`.
         resolution_range : {"absent", "applied"}
-            If "applied", removes points with E-μ <= energy_resolution (around
-            the chemical potential). The energy resolution is taken from
-            ``self.energy_resolution`` (in eV) and scaled consistently with `scale`.
+            If "applied", applies the same energy mask used by
+            ``extract_a2f``/``bayesian_loop`` based on cached
+            ``ecut_left``/``ecut_right`` values.
         **kwargs :
             Additional keyword arguments passed to ``ax.errorbar``.
 
@@ -647,9 +788,8 @@ class SelfEnergy:
             y = factor * np.asarray(y, dtype=float)
 
         if resolution_range == "applied" and x is not None and y is not None:
-            res = self.energy_resolution
-            if res is not None:
-                keep = np.abs(x) > (factor * float(res))
+            keep = self._energy_cutoff_mask()
+            if keep is not None:
                 x = x[keep]
                 y = y[keep]
                 if y_sigma is not None:
@@ -688,9 +828,9 @@ class SelfEnergy:
             Units for both axes. If "meV", x and y (and yerr) are multiplied by
             `KILO`.
         resolution_range : {"absent", "applied"}
-            If "applied", removes points with E-μ <= energy_resolution (around
-            the chemical potential). The energy resolution is taken from
-            ``self.energy_resolution`` (in eV) and scaled consistently with `scale`.
+            If "applied", applies the same energy mask used by
+            ``extract_a2f``/``bayesian_loop`` based on cached
+            ``ecut_left``/``ecut_right`` values.
         **kwargs :
             Additional keyword arguments passed to ``ax.errorbar``.
 
@@ -720,9 +860,8 @@ class SelfEnergy:
             y = factor * np.asarray(y, dtype=float)
 
         if resolution_range == "applied" and x is not None and y is not None:
-            res = self.energy_resolution
-            if res is not None:
-                keep = np.abs(x) > (factor * float(res))
+            keep = self._energy_cutoff_mask()
+            if keep is not None:
                 x = x[keep]
                 y = y[keep]
                 if y_sigma is not None:
@@ -761,9 +900,9 @@ class SelfEnergy:
             Units for both axes. If "meV", x, y, and yerr are multiplied by
             `KILO`.
         resolution_range : {"absent", "applied"}
-            If "applied", removes points with \-μ <= energy_resolution (around
-            the chemical potential). The energy resolution is taken from
-            ``self.energy_resolution`` (in eV) and scaled consistently with `scale`.
+            If "applied", applies the same energy mask used by
+            ``extract_a2f``/``bayesian_loop`` based on cached
+            ``ecut_left``/``ecut_right`` values.
         **kwargs :
             Additional keyword arguments passed to ``ax.errorbar``.
         """
@@ -792,9 +931,8 @@ class SelfEnergy:
             imag = factor * np.asarray(imag, dtype=float)
 
         if resolution_range == "applied" and x is not None:
-            res = self.energy_resolution
-            if res is not None:
-                keep = np.abs(x) > (factor * float(res))
+            keep = self._energy_cutoff_mask()
+            if keep is not None:
                 x = x[keep]
                 if real is not None:
                     real = real[keep]
@@ -1076,6 +1214,9 @@ class SelfEnergy:
         aval_num = int(mem_cfg["aval_num"])
         ecut_left = float(mem_cfg["ecut_left"])
         ecut_right = mem_cfg["ecut_right"]
+
+        self._ecut_left = ecut_left
+        self._ecut_right = ecut_right
         f_chi_squared = mem_cfg["f_chi_squared"]
         W = mem_cfg["W"]
         power = int(mem_cfg["power"])
@@ -1233,6 +1374,24 @@ class SelfEnergy:
                 "plotting chi2 and guess."
             )
 
+        T = V_Sigma @ (U.T @ spectrum_in)
+        reconstructed_real_ph, reconstructed_imag_ph = self._split_reconstructed_vector(
+            T, parts
+        )
+        (
+            reconstructed_real,
+            reconstructed_imag,
+            reconstructed_real_el,
+            reconstructed_imag_el,
+            reconstructed_imag_imp,
+        ) = self._restore_background_to_reconstruction(
+            reconstructed_real_ph,
+            reconstructed_imag_ph,
+            real_el=real_el,
+            imag_el=imag_el,
+            impurity_magnitude=impurity_magnitude,
+        )
+
         spectrum = spectrum_in * omega_num / omega_max
 
         self._a2f_spectrum = spectrum
@@ -1240,6 +1399,13 @@ class SelfEnergy:
         self._a2f_omega_range = omega_range
         self._a2f_aval_select = aval_select
         self._a2f_cost = None
+        self._reconstructed_real_ph = reconstructed_real_ph
+        self._reconstructed_imag_ph = reconstructed_imag_ph
+        self._reconstructed_real_el = reconstructed_real_el
+        self._reconstructed_imag_el = reconstructed_imag_el
+        self._reconstructed_imag_imp = reconstructed_imag_imp
+        self._reconstructed_real = reconstructed_real
+        self._reconstructed_imag = reconstructed_imag
 
         return fig, spectrum, model, omega_range, aval_select
 
@@ -1343,6 +1509,9 @@ class SelfEnergy:
         sigma_svd = float(mem_cfg["sigma_svd"])
         ecut_left = float(mem_cfg["ecut_left"])
         ecut_right = mem_cfg["ecut_right"]
+
+        self._ecut_left = ecut_left
+        self._ecut_right = ecut_right
         omega_S = float(mem_cfg["omega_S"])
         imp0 = float(mem_cfg["impurity_magnitude"])
         lae0 = float(mem_cfg["lambda_el"])
@@ -1570,6 +1739,13 @@ class SelfEnergy:
             "spectrum": None,
             "model": None,
             "aval": None,
+            "reconstructed_real_ph": None,
+            "reconstructed_imag_ph": None,
+            "reconstructed_real_el": None,
+            "reconstructed_imag_el": None,
+            "reconstructed_imag_imp": None,
+            "reconstructed_real": None,
+            "reconstructed_imag": None,
         }
 
         history = []
@@ -1602,7 +1778,19 @@ class SelfEnergy:
             with warnings.catch_warnings():
                 warnings.simplefilter("error", RuntimeWarning)
                 try:
-                    cost, spectrum, model, aval_select = _evaluate_cost(params)
+                    (
+                        cost,
+                        spectrum,
+                        model,
+                        aval_select,
+                        reconstructed_real_ph,
+                        reconstructed_imag_ph,
+                        reconstructed_real_el,
+                        reconstructed_imag_el,
+                        reconstructed_imag_imp,
+                        reconstructed_real,
+                        reconstructed_imag,
+                    ) = _evaluate_cost(params)
                 except RuntimeWarning as exc:
                     raise ValueError(f"RuntimeWarning during cost eval: {exc}") from exc
             cost_f = float(cost)
@@ -1615,6 +1803,13 @@ class SelfEnergy:
                     "spectrum": spectrum,
                     "model": model,
                     "aval": float(aval_select),
+                    "reconstructed_real_ph": reconstructed_real_ph,
+                    "reconstructed_imag_ph": reconstructed_imag_ph,
+                    "reconstructed_real_el": reconstructed_real_el,
+                    "reconstructed_imag_el": reconstructed_imag_el,
+                    "reconstructed_imag_imp": reconstructed_imag_imp,
+                    "reconstructed_real": reconstructed_real,
+                    "reconstructed_imag": reconstructed_imag,
                 }
             )
 
@@ -1636,6 +1831,13 @@ class SelfEnergy:
                 best_global["spectrum"] = spectrum
                 best_global["model"] = model
                 best_global["aval"] = float(aval_select)
+                best_global["reconstructed_real_ph"] = reconstructed_real_ph
+                best_global["reconstructed_imag_ph"] = reconstructed_imag_ph
+                best_global["reconstructed_real_el"] = reconstructed_real_el
+                best_global["reconstructed_imag_el"] = reconstructed_imag_el
+                best_global["reconstructed_imag_imp"] = reconstructed_imag_imp
+                best_global["reconstructed_real"] = reconstructed_real
+                best_global["reconstructed_imag"] = reconstructed_imag
 
             msg = [f"Iter {iter_counter['n']:4d} | cost = {cost: .4e}"]
             for key in sorted(params):
@@ -1708,7 +1910,31 @@ class SelfEnergy:
 
         if not vary:
             params = _unpack_params(np.zeros(0, dtype=float))
-            cost, spectrum, model, aval_select = _evaluate_cost(params)
+            (
+                cost,
+                spectrum,
+                model,
+                aval_select,
+                reconstructed_real_ph,
+                reconstructed_imag_ph,
+                reconstructed_real_el,
+                reconstructed_imag_el,
+                reconstructed_imag_imp,
+                reconstructed_real,
+                reconstructed_imag,
+            ) = _evaluate_cost(params)
+            self._a2f_spectrum = spectrum
+            self._a2f_model = model
+            self._a2f_omega_range = omega_range
+            self._a2f_aval_select = aval_select
+            self._a2f_cost = cost
+            self._reconstructed_real_ph = reconstructed_real_ph
+            self._reconstructed_imag_ph = reconstructed_imag_ph
+            self._reconstructed_real_el = reconstructed_real_el
+            self._reconstructed_imag_el = reconstructed_imag_el
+            self._reconstructed_imag_imp = reconstructed_imag_imp
+            self._reconstructed_real = reconstructed_real
+            self._reconstructed_imag = reconstructed_imag
             return cost, spectrum, model, aval_select
 
         x0 = np.zeros(len(vary), dtype=float)
@@ -1787,13 +2013,32 @@ class SelfEnergy:
 
         if best_global["params"] is None:
             params = _unpack_params(x0)
-            cost, spectrum, model, aval_select = _evaluate_cost(params)
+            (
+                cost,
+                spectrum,
+                model,
+                aval_select,
+                reconstructed_real_ph,
+                reconstructed_imag_ph,
+                reconstructed_real_el,
+                reconstructed_imag_el,
+                reconstructed_imag_imp,
+                reconstructed_real,
+                reconstructed_imag,
+            ) = _evaluate_cost(params)
         else:
             params = best_global["params"]
             cost = best_global["cost"]
             spectrum = best_global["spectrum"]
             model = best_global["model"]
             aval_select = best_global["aval"]
+            reconstructed_real_ph = best_global["reconstructed_real_ph"]
+            reconstructed_imag_ph = best_global["reconstructed_imag_ph"]
+            reconstructed_real_el = best_global["reconstructed_real_el"]
+            reconstructed_imag_el = best_global["reconstructed_imag_el"]
+            reconstructed_imag_imp = best_global["reconstructed_imag_imp"]
+            reconstructed_real = best_global["reconstructed_real"]
+            reconstructed_imag = best_global["reconstructed_imag"]
 
         args = ", ".join(
             f"{key}={params[key]:.10g}" if isinstance(params[key], float)
@@ -1809,6 +2054,13 @@ class SelfEnergy:
         self._a2f_omega_range = omega_range
         self._a2f_aval_select = aval_select
         self._a2f_cost = cost
+        self._reconstructed_real_ph = reconstructed_real_ph
+        self._reconstructed_imag_ph = reconstructed_imag_ph
+        self._reconstructed_real_el = reconstructed_real_el
+        self._reconstructed_imag_el = reconstructed_imag_el
+        self._reconstructed_imag_imp = reconstructed_imag_imp
+        self._reconstructed_real = reconstructed_real
+        self._reconstructed_imag = reconstructed_imag
 
         return spectrum, model, omega_range, aval_select, cost, params
 
@@ -2122,7 +2374,36 @@ class SelfEnergy:
 
         spectrum = spectrum_in * omega_num / omega_max
 
-        return (cost, spectrum, model, aval_select)
+        reconstructed_real_ph, reconstructed_imag_ph = self._split_reconstructed_vector(
+            T, parts
+        )
+        (
+            reconstructed_real,
+            reconstructed_imag,
+            reconstructed_real_el,
+            reconstructed_imag_el,
+            reconstructed_imag_imp,
+        ) = self._restore_background_to_reconstruction(
+            reconstructed_real_ph,
+            reconstructed_imag_ph,
+            real_el=real_el,
+            imag_el=imag_el,
+            impurity_magnitude=impurity_magnitude,
+        )
+
+        return (
+            cost,
+            spectrum,
+            model,
+            aval_select,
+            reconstructed_real_ph,
+            reconstructed_imag_ph,
+            reconstructed_real_el,
+            reconstructed_imag_el,
+            reconstructed_imag_imp,
+            reconstructed_real,
+            reconstructed_imag,
+        )
 
 
     @staticmethod

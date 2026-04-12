@@ -139,19 +139,36 @@ plt.show()
 # By default, The Eliashberg function is extracted while removing the self-energies for binding energies smaller than the energy resolution. In that case, it is transparent to also eliminate these self-energies from the displayed result.
 
 
-fig = plt.figure(figsize=(10, 8)); ax1 = fig.add_subplot(111); ax2 = ax1.twinx()
+fig = plt.figure(figsize=(12, 8)); ax1 = fig.add_subplot(111); ax2 = ax1.twinx()
 
-# ax1.set_ylim([0, 0.5]); ax2.set_ylim([0, 40])
+ax1.set_ylim([0, 0.5]); ax2.set_ylim([0, 40])
 
-self_energy.plot_spectra( ax=ax1, abscissa="reversed", show=False, fig_close=False)
-self_energy.plot_both(ax=ax2, scale="meV", resolution_range='applied', show=False, fig_close=False)
+self_energy.plot_spectra(ax=ax1, abscissa="reversed", show=False, fig_close=False)
+self_energy.plot_both(ax=ax2, scale="meV", resolution_range='applied', fmt='o',
+                      show=False, fig_close=False)
 
-self_energy.plot_both
+ax2.plot(self_energy.enel_range[:-3] * xarpes.KILO, self_energy.reconstructed_real, color='tab:blue')
+ax2.plot(self_energy.enel_range[:-3] * xarpes.KILO, self_energy.reconstructed_imag, color='tab:orange')
+ax2.plot(self_energy.enel_range[:-3] * xarpes.KILO, self_energy.reconstructed_real_ph, 
+         linestyle=':', color='tab:blue', 
+         label='$\Sigma_{\mathrm{right\_branch}}^{\mathrm{ph}\prime}(E)$')
+ax2.plot(self_energy.enel_range[:-3] * xarpes.KILO, self_energy.reconstructed_imag_ph, 
+         linestyle=':', color='tab:orange',
+         label='$-\Sigma_{\mathrm{right\_branch}}^{\mathrm{ph}\prime\prime}(E)$')
+ax2.plot(self_energy.enel_range[:-3] * xarpes.KILO, self_energy.reconstructed_real_el, 
+         linestyle='--', color='tab:orange',
+         label='$\Sigma_{\mathrm{right\_branch}}^{\mathrm{el}\prime}(E)$')
+ax2.plot(self_energy.enel_range[:-3] * xarpes.KILO, self_energy.reconstructed_imag_el, 
+         linestyle='--', color='tab:orange',
+         label='$-\Sigma_{\mathrm{right\_branch}}^{\mathrm{el}\prime\prime}(E)$')
+ax2.plot(self_energy.enel_range[:-3] * xarpes.KILO, self_energy.reconstructed_imag_imp, 
+         linestyle='-.', color='tab:orange',
+         label='$-\Sigma_{\mathrm{right\_branch}}^{\mathrm{imp}\prime\prime}(E)$')
 
 # --- Change colours for spectra
 a2f_line, model_line = ax1.get_lines()[-2:]
 a2f_line.set_color("mediumvioletred")
-model_line.set_color("darkgoldenrod"); model_line.set_linestyle("--")
+model_line.set_color("tab:green")
 
 # --- Change colours for self-energy lines
 real_line, imag_line = ax2.get_lines()[-2:]
@@ -164,7 +181,7 @@ real_err.set_color(real_line.get_color()); imag_err.set_color(imag_line.get_colo
 # --- Overwrite the legend with a custom legend
 for ax in (ax1, ax2): ax.get_legend() and ax.get_legend().remove()
 h1, l1 = ax1.get_legend_handles_labels(); h2, l2 = ax2.get_legend_handles_labels()
-ax1.legend(h1 + h2, l1 + l2, ncol=2)
+ax1.legend(h1 + h2, l1 + l2, ncol=3)
 
 plt.show()
 
@@ -179,8 +196,7 @@ with xarpes.trim_notebook_output(print_lines=10):
             vary=("impurity_magnitude", "lambda_el", "fermi_wavevector",
                   "bare_mass", "h_n"),
             scale_mb=0.01, scale_imp=0.1, scale_kF=0.001,
-            scale_lambda_el=0.1, scale_hn=0.1,
-        )
+            scale_lambda_el=0.1, scale_hn=0.1)
 
 # In the following cell, we start from a much less probable solution, showing that the code can occasionally heavily improve on the solution.
 
