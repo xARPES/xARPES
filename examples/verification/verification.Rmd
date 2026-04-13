@@ -174,6 +174,8 @@ fig = plt.figure(figsize=(7, 5)); ax = fig.gca()
 fig = self_energy.plot_spectra(ax=ax)
 
 plt.show()
+
+
 ```
 
 The following plots all of the extracted quantities in a single figure. The default plotting range is taken from the second plotting statement.
@@ -182,49 +184,41 @@ By default, The Eliashberg function is extracted while removing the self-energie
 ```{python}
 # %matplotlib inline
 
-fig = plt.figure(figsize=(12, 8)); ax1 = fig.add_subplot(111); ax2 = ax1.twinx()
+color_one = "tab:blue"; color_two = "tab:orange"
+color_three = "mediumvioletred"; color_four = "tab:green"
 
-ax1.set_ylim([0, 0.5]); ax2.set_ylim([0, 40])
+fig = plt.figure(figsize=(12, 9)); ax1 = fig.add_subplot(111); ax2 = ax1.twinx()
 
 self_energy.plot_spectra(ax=ax1, abscissa="reversed", show=False, fig_close=False)
-self_energy.plot_both(ax=ax2, scale="meV", resolution_range='applied', fmt='o',
-                      show=False, fig_close=False)
+self_energy.plot_both(ax=ax2, scale="meV", resolution_range="applied", fmt="o",
+    show=False, fig_close=False)
+self_energy.plot_reconstructed_both(ax=ax2, scale="meV", show=False, fig_close=False)
+self_energy.plot_reconstructed_both_ph(ax=ax2, scale="meV", linestyle=":",
+    show=False, fig_close=False)
+self_energy.plot_reconstructed_both_el(ax=ax2, scale="meV", linestyle="--",
+    show=False, fig_close=False)
+self_energy.plot_reconstructed_imag_imp(ax=ax2, scale="meV", linestyle="-.",
+    show=False, fig_close=False)
 
-ax2.plot(self_energy.enel_range[:-3] * xarpes.KILO, self_energy.reconstructed_real, color='tab:blue')
-ax2.plot(self_energy.enel_range[:-3] * xarpes.KILO, self_energy.reconstructed_imag, color='tab:orange')
-ax2.plot(self_energy.enel_range[:-3] * xarpes.KILO, self_energy.reconstructed_real_ph, 
-         linestyle=':', color='tab:blue', 
-         label='$\Sigma_{\mathrm{right\_branch}}^{\mathrm{ph}\prime}(E)$')
-ax2.plot(self_energy.enel_range[:-3] * xarpes.KILO, self_energy.reconstructed_imag_ph, 
-         linestyle=':', color='tab:orange',
-         label='$-\Sigma_{\mathrm{right\_branch}}^{\mathrm{ph}\prime\prime}(E)$')
-ax2.plot(self_energy.enel_range[:-3] * xarpes.KILO, self_energy.reconstructed_real_el, 
-         linestyle='--', color='tab:orange',
-         label='$\Sigma_{\mathrm{right\_branch}}^{\mathrm{el}\prime}(E)$')
-ax2.plot(self_energy.enel_range[:-3] * xarpes.KILO, self_energy.reconstructed_imag_el, 
-         linestyle='--', color='tab:orange',
-         label='$-\Sigma_{\mathrm{right\_branch}}^{\mathrm{el}\prime\prime}(E)$')
-ax2.plot(self_energy.enel_range[:-3] * xarpes.KILO, self_energy.reconstructed_imag_imp, 
-         linestyle='-.', color='tab:orange',
-         label='$-\Sigma_{\mathrm{right\_branch}}^{\mathrm{imp}\prime\prime}(E)$')
+# --- Change colours for self-energy lines on ax2
+lines = ax2.get_lines()
+[line.set_color(color_one) for line in lines[-9:-1:2]]
+[line.set_color(color_two) for line in lines[-8:-1:2]]
+lines[-1].set_color(color_two)
+
+# --- Change colours for error bars from plot_both
+real_err, imag_err = ax2.collections[-2:]
+real_err.set_color(color_one); imag_err.set_color(color_two)
 
 # --- Change colours for spectra
 a2f_line, model_line = ax1.get_lines()[-2:]
-a2f_line.set_color("mediumvioletred")
-model_line.set_color("tab:green")
-
-# --- Change colours for self-energy lines
-real_line, imag_line = ax2.get_lines()[-2:]
-real_line.set_color("tab:blue"); imag_line.set_color("tab:orange")
-
-# Change colours for error bars
-real_err, imag_err = ax2.collections[-2:]
-real_err.set_color(real_line.get_color()); imag_err.set_color(imag_line.get_color())
+a2f_line.set_color(color_three); model_line.set_color(color_four)
 
 # --- Overwrite the legend with a custom legend
-for ax in (ax1, ax2): ax.get_legend() and ax.get_legend().remove()
+[ax.get_legend() and ax.get_legend().remove() for ax in (ax1, ax2)]
 h1, l1 = ax1.get_legend_handles_labels(); h2, l2 = ax2.get_legend_handles_labels()
 ax1.legend(h1 + h2, l1 + l2, ncol=3)
+ax1.set_ylim([0, 0.5]); ax2.set_ylim([0, 45])
 
 plt.show()
 ```

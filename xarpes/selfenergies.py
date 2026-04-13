@@ -429,6 +429,20 @@ class SelfEnergy:
         return self._reconstructed_imag_imp
 
     @property
+    def reconstructed_real_imp(self):
+        raise AttributeError(
+            "xARPES currently only supports a model where the impurity "
+            "contribution to the electron self-energy is purely imaginary."
+        )
+
+    @property
+    def reconstructed_both_imp(self):
+        raise AttributeError(
+            "xARPES currently only supports a model where the impurity "
+            "contribution to the electron self-energy is purely imaginary."
+        )
+
+    @property
     def ecut_left(self):
         """Cached left energy cutoff (meV) from the latest MEM run."""
         return self._ecut_left
@@ -473,7 +487,8 @@ class SelfEnergy:
 
     def _split_reconstructed_vector(self, T, parts):
         """Split MEM reconstructed vector into real/imag segments."""
-        T = np.asarray(T, dtype=float)
+        # MEM returns reconstructed vectors in meV; store in eV internally.
+        T = np.asarray(T, dtype=float) / KILO
         if parts == "both":
             n = T.size // 2
             return T[:n], T[n:]
@@ -482,6 +497,35 @@ class SelfEnergy:
         if parts == "imag":
             return None, T
         raise ValueError("parts must be one of 'both', 'real', or 'imag'.")
+
+    def _reconstructed_energy_axis(self, values):
+        """Return E-μ axis aligned with a reconstructed vector length.
+
+        Reconstructed vectors are typically defined on the MEM-masked energy grid
+        set by ``ecut_left``/``ecut_right``. This helper maps them onto either the
+        full ``enel_range`` (if lengths already match) or the masked subset.
+        """
+        energies = self.enel_range
+        if energies is None:
+            return None
+
+        energies = np.asarray(energies, dtype=float)
+        n_values = np.asarray(values, dtype=float).size
+
+        if energies.size == n_values:
+            return energies
+
+        keep = self._energy_cutoff_mask()
+        if keep is not None:
+            masked = energies[keep]
+            if masked.size == n_values:
+                return masked
+
+        raise ValueError(
+            "Cannot align reconstructed data with energy axis: "
+            f"len(enel_range)={energies.size}, len(reconstructed)={n_values}. "
+            "Run `extract_a2f()`/`bayesian_loop()` again or check cutoff settings."
+        )
 
     @staticmethod
     def _restore_background_to_reconstruction(
@@ -496,16 +540,16 @@ class SelfEnergy:
         reconstructed_imag_imp = None
 
         if reconstructed_real_ph is not None:
-            reconstructed_real_el = np.asarray(real_el, dtype=float)
+            reconstructed_real_el = np.asarray(real_el, dtype=float) / KILO
             reconstructed_real = (
                 np.asarray(reconstructed_real_ph, dtype=float) + reconstructed_real_el
             )
 
         if reconstructed_imag_ph is not None:
-            reconstructed_imag_el = np.asarray(imag_el, dtype=float)
+            reconstructed_imag_el = np.asarray(imag_el, dtype=float) / KILO
             reconstructed_imag_imp = np.full(
                 np.asarray(reconstructed_imag_ph, dtype=float).shape,
-                float(impurity_magnitude),
+                float(impurity_magnitude) / KILO,
                 dtype=float,
             )
             reconstructed_imag = (
@@ -712,21 +756,67 @@ class SelfEnergy:
         se_label = getattr(self, "label", None)
 
         if se_label is None:
-            real_label = r"$\Sigma'(E)$"
-            imag_label = r"$-\Sigma''(E)$"
+            real_label = r"$\widetilde{\Sigma}'(E)$"
+            imag_label = r"$-\widetilde{\Sigma}''(E)$"
             return real_label, imag_label
 
         safe_label = str(se_label).replace("_", r"\_")
 
         # If the label is empty after conversion, fall back
         if safe_label == "":
-            real_label = r"$\Sigma'(E)$"
-            imag_label = r"$-\Sigma''(E)$"
+            real_label = r"$\widetilde{\Sigma}'(E)$"
+            imag_label = r"$-\widetilde{\Sigma}''(E)$"
             return real_label, imag_label
 
-        real_label = rf"$\Sigma_{{\mathrm{{{safe_label}}}}}'(E)$"
-        imag_label = rf"$-\Sigma_{{\mathrm{{{safe_label}}}}}''(E)$"
+        real_label = rf"$\widetilde{{\Sigma}}_{{\mathrm{{{safe_label}}}}}'(E)$"
+        imag_label = rf"$-\widetilde{{\Sigma}}_{{\mathrm{{{safe_label}}}}}''(E)$"
 
+        return real_label, imag_label
+
+    def _reconstructed_se_legend_labels(self):
+        """Return reconstructed legend labels with subscript + superscript."""
+        se_label = getattr(self, "label", None)
+
+        if se_label is None:
+            return r"$\Sigma'(E)$", r"$-\Sigma''(E)$"
+
+        safe_label = str(se_label).replace("_", r"\_")
+        if safe_label == "":
+            return r"$\Sigma'(E)$", r"$-\Sigma''(E)$"
+
+        real_label = (
+            rf"$\Sigma_{{\mathrm{{{safe_label}}}}}'(E)$"
+        )
+        imag_label = (
+            rf"$-\Sigma_{{\mathrm{{{safe_label}}}}}''(E)$"
+        )
+        return real_label, imag_label
+
+    def _reconstructed_component_legend_labels(self, component):
+        """Legend labels for reconstructed electron/phonon contributions."""
+        if component not in ("ph", "el", "imp"):
+            raise ValueError("component must be one of 'ph', 'el', or 'imp'.")
+
+        se_label = getattr(self, "label", None)
+        if se_label is None:
+            return (
+                rf"$\Sigma^{{\mathrm{{{component}}}\prime}}(E)$",
+                rf"$-\Sigma^{{\mathrm{{{component}}}\prime\prime}}(E)$",
+            )
+
+        safe_label = str(se_label).replace("_", r"\_")
+        if safe_label == "":
+            return (
+                rf"$\Sigma^{{\mathrm{{{component}}}\prime}}(E)$",
+                rf"$-\Sigma^{{\mathrm{{{component}}}\prime\prime}}(E)$",
+            )
+
+        real_label = (
+            rf"$\Sigma_{{\mathrm{{{safe_label}}}}}^{{\mathrm{{{component}}}\prime}}(E)$"
+        )
+        imag_label = (
+            rf"$-\Sigma_{{\mathrm{{{safe_label}}}}}^{{\mathrm{{{component}}}\prime\prime}}(E)$"
+        )
         return real_label, imag_label
     
     def _a2f_legend_labels(self):
@@ -972,6 +1062,525 @@ class SelfEnergy:
         ax.set_ylabel(rf"$\Sigma'(E),\ -\Sigma''(E)$ ({x_unit})")
         ax.legend()
 
+        return fig
+
+    @add_fig_kwargs
+    def plot_reconstructed_real(self, ax=None, scale="eV",
+                                resolution_range="absent", **kwargs):
+        """Plot reconstructed Σ'(E) vs. E-μ from the latest MEM workflow."""
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        if scale not in ("eV", "meV"):
+            raise ValueError("scale must be either 'eV' or 'meV'.")
+        if resolution_range not in ("absent", "applied"):
+            raise ValueError("resolution_range must be 'absent' or 'applied'.")
+
+        y = self.reconstructed_real
+
+        if y is None:
+            raise AttributeError(
+                "No cached reconstructed real self-energy found. "
+                "Run `extract_a2f()` or `bayesian_loop()` first."
+            )
+
+        x = self._reconstructed_energy_axis(y)
+
+        factor = KILO if scale == "meV" else 1.0
+        x = factor * np.asarray(x, dtype=float)
+        y = factor * np.asarray(y, dtype=float)
+
+        if resolution_range == "applied":
+            keep = self._energy_cutoff_mask()
+            if keep is not None and keep.size == x.size:
+                x = x[keep]
+                y = y[keep]
+
+        rec_real_label, _ = self._reconstructed_se_legend_labels()
+        kwargs.setdefault("label", rec_real_label)
+        ax.plot(x, y, **kwargs)
+
+        x_unit = "meV" if scale == "meV" else "eV"
+        ax.set_xlabel(rf"$E-\mu$ ({x_unit})")
+        ax.set_ylabel(rf"$\Sigma'(E)$ ({x_unit})")
+        ax.legend()
+
+        return fig
+
+    @add_fig_kwargs
+    def plot_reconstructed_imag(self, ax=None, scale="eV",
+                                resolution_range="absent", **kwargs):
+        """Plot reconstructed -Σ''(E) vs. E-μ from the latest MEM workflow."""
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        if scale not in ("eV", "meV"):
+            raise ValueError("scale must be either 'eV' or 'meV'.")
+        if resolution_range not in ("absent", "applied"):
+            raise ValueError("resolution_range must be 'absent' or 'applied'.")
+
+        y = self.reconstructed_imag
+
+        if y is None:
+            raise AttributeError(
+                "No cached reconstructed imaginary self-energy found. "
+                "Run `extract_a2f()` or `bayesian_loop()` first."
+            )
+
+        x = self._reconstructed_energy_axis(y)
+
+        factor = KILO if scale == "meV" else 1.0
+        x = factor * np.asarray(x, dtype=float)
+        y = factor * np.asarray(y, dtype=float)
+
+        if resolution_range == "applied":
+            keep = self._energy_cutoff_mask()
+            if keep is not None and keep.size == x.size:
+                x = x[keep]
+                y = y[keep]
+
+        _, rec_imag_label = self._reconstructed_se_legend_labels()
+        kwargs.setdefault("label", rec_imag_label)
+        ax.plot(x, y, **kwargs)
+
+        x_unit = "meV" if scale == "meV" else "eV"
+        ax.set_xlabel(rf"$E-\mu$ ({x_unit})")
+        ax.set_ylabel(rf"$-\Sigma''(E)$ ({x_unit})")
+        ax.legend()
+
+        return fig
+
+    @add_fig_kwargs
+    def plot_reconstructed_both(self, ax=None, scale="eV",
+                                resolution_range="absent", **kwargs):
+        """Plot reconstructed Σ'(E) and -Σ''(E) vs. E-μ on the same axis."""
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        if scale not in ("eV", "meV"):
+            raise ValueError("scale must be either 'eV' or 'meV'.")
+        if resolution_range not in ("absent", "applied"):
+            raise ValueError("resolution_range must be 'absent' or 'applied'.")
+
+        real = self.reconstructed_real
+        imag = self.reconstructed_imag
+
+        if real is None and imag is None:
+            raise AttributeError(
+                "No cached reconstructed self-energy found. "
+                "Run `extract_a2f()` or `bayesian_loop()` first."
+            )
+
+        factor = KILO if scale == "meV" else 1.0
+        rec_real_label, rec_imag_label = self._reconstructed_se_legend_labels()
+
+        if real is not None:
+            x_real = factor * np.asarray(self._reconstructed_energy_axis(real), dtype=float)
+            y_real = factor * np.asarray(real, dtype=float)
+            if resolution_range == "applied":
+                keep_real = self._energy_cutoff_mask()
+                if keep_real is not None and keep_real.size == x_real.size:
+                    x_real = x_real[keep_real]
+                    y_real = y_real[keep_real]
+            kw_real = dict(kwargs)
+            kw_real.setdefault("label", rec_real_label)
+            ax.plot(x_real, y_real, **kw_real)
+
+        if imag is not None:
+            x_imag = factor * np.asarray(self._reconstructed_energy_axis(imag), dtype=float)
+            y_imag = factor * np.asarray(imag, dtype=float)
+            if resolution_range == "applied":
+                keep_imag = self._energy_cutoff_mask()
+                if keep_imag is not None and keep_imag.size == x_imag.size:
+                    x_imag = x_imag[keep_imag]
+                    y_imag = y_imag[keep_imag]
+            kw_imag = dict(kwargs)
+            kw_imag.setdefault("label", rec_imag_label)
+            ax.plot(x_imag, y_imag, **kw_imag)
+
+        x_unit = "meV" if scale == "meV" else "eV"
+        ax.set_xlabel(rf"$E-\mu$ ({x_unit})")
+        ax.set_ylabel(rf"$\Sigma'(E),\ -\Sigma''(E)$ ({x_unit})")
+        ax.legend()
+
+        return fig
+
+    @add_fig_kwargs
+    def plot_reconstructed_real_ph(self, ax=None, scale="eV",
+                                   resolution_range="absent", **kwargs):
+        """Plot reconstructed phonon contribution Σ_ph(E) vs. E-μ."""
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        if scale not in ("eV", "meV"):
+            raise ValueError("scale must be either 'eV' or 'meV'.")
+        if resolution_range not in ("absent", "applied"):
+            raise ValueError("resolution_range must be 'absent' or 'applied'.")
+
+        y = self.reconstructed_real_ph
+        if y is None:
+            raise AttributeError(
+                "No cached reconstructed phonon real self-energy found. "
+                "Run `extract_a2f()` or `bayesian_loop()` first."
+            )
+
+        x = self._reconstructed_energy_axis(y)
+        factor = KILO if scale == "meV" else 1.0
+        x = factor * np.asarray(x, dtype=float)
+        y = factor * np.asarray(y, dtype=float)
+
+        if resolution_range == "applied":
+            keep = self._energy_cutoff_mask()
+            if keep is not None and keep.size == x.size:
+                x = x[keep]
+                y = y[keep]
+
+        rec_real_label, _ = self._reconstructed_component_legend_labels("ph")
+        kwargs.setdefault("label", rec_real_label)
+        ax.plot(x, y, **kwargs)
+
+        x_unit = "meV" if scale == "meV" else "eV"
+        ax.set_xlabel(rf"$E-\mu$ ({x_unit})")
+        ax.set_ylabel(rf"$\Sigma'(E)$ ({x_unit})")
+        ax.legend()
+        return fig
+
+    @add_fig_kwargs
+    def plot_reconstructed_imag_ph(self, ax=None, scale="eV",
+                                   resolution_range="absent", **kwargs):
+        """Plot reconstructed phonon contribution -Σ''_ph(E) vs. E-μ."""
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        if scale not in ("eV", "meV"):
+            raise ValueError("scale must be either 'eV' or 'meV'.")
+        if resolution_range not in ("absent", "applied"):
+            raise ValueError("resolution_range must be 'absent' or 'applied'.")
+
+        y = self.reconstructed_imag_ph
+        if y is None:
+            raise AttributeError(
+                "No cached reconstructed phonon imaginary self-energy found. "
+                "Run `extract_a2f()` or `bayesian_loop()` first."
+            )
+
+        x = self._reconstructed_energy_axis(y)
+        factor = KILO if scale == "meV" else 1.0
+        x = factor * np.asarray(x, dtype=float)
+        y = factor * np.asarray(y, dtype=float)
+
+        if resolution_range == "applied":
+            keep = self._energy_cutoff_mask()
+            if keep is not None and keep.size == x.size:
+                x = x[keep]
+                y = y[keep]
+
+        _, rec_imag_label = self._reconstructed_component_legend_labels("ph")
+        kwargs.setdefault("label", rec_imag_label)
+        ax.plot(x, y, **kwargs)
+
+        x_unit = "meV" if scale == "meV" else "eV"
+        ax.set_xlabel(rf"$E-\mu$ ({x_unit})")
+        ax.set_ylabel(rf"$-\Sigma''(E)$ ({x_unit})")
+        ax.legend()
+        return fig
+
+    @add_fig_kwargs
+    def plot_reconstructed_both_ph(self, ax=None, scale="eV",
+                                   resolution_range="absent", **kwargs):
+        """Plot reconstructed phonon Σ'(E) and -Σ''(E) vs. E-μ."""
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        if scale not in ("eV", "meV"):
+            raise ValueError("scale must be either 'eV' or 'meV'.")
+        if resolution_range not in ("absent", "applied"):
+            raise ValueError("resolution_range must be 'absent' or 'applied'.")
+
+        real = self.reconstructed_real_ph
+        imag = self.reconstructed_imag_ph
+        if real is None and imag is None:
+            raise AttributeError(
+                "No cached reconstructed phonon self-energy found. "
+                "Run `extract_a2f()` or `bayesian_loop()` first."
+            )
+
+        factor = KILO if scale == "meV" else 1.0
+        rec_real_label, rec_imag_label = self._reconstructed_component_legend_labels("ph")
+
+        if real is not None:
+            x_real = factor * np.asarray(self._reconstructed_energy_axis(real), dtype=float)
+            y_real = factor * np.asarray(real, dtype=float)
+            if resolution_range == "applied":
+                keep_real = self._energy_cutoff_mask()
+                if keep_real is not None and keep_real.size == x_real.size:
+                    x_real = x_real[keep_real]
+                    y_real = y_real[keep_real]
+            kw_real = dict(kwargs)
+            kw_real.setdefault("label", rec_real_label)
+            ax.plot(x_real, y_real, **kw_real)
+
+        if imag is not None:
+            x_imag = factor * np.asarray(self._reconstructed_energy_axis(imag), dtype=float)
+            y_imag = factor * np.asarray(imag, dtype=float)
+            if resolution_range == "applied":
+                keep_imag = self._energy_cutoff_mask()
+                if keep_imag is not None and keep_imag.size == x_imag.size:
+                    x_imag = x_imag[keep_imag]
+                    y_imag = y_imag[keep_imag]
+            kw_imag = dict(kwargs)
+            kw_imag.setdefault("label", rec_imag_label)
+            ax.plot(x_imag, y_imag, **kw_imag)
+
+        x_unit = "meV" if scale == "meV" else "eV"
+        ax.set_xlabel(rf"$E-\mu$ ({x_unit})")
+        ax.set_ylabel(rf"$\Sigma'(E),\ -\Sigma''(E)$ ({x_unit})")
+        ax.legend()
+        return fig
+
+    @add_fig_kwargs
+    def plot_reconstructed_real_el(self, ax=None, scale="eV",
+                                   resolution_range="absent", **kwargs):
+        """Plot reconstructed electron contribution Σ_el(E) vs. E-μ."""
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        if scale not in ("eV", "meV"):
+            raise ValueError("scale must be either 'eV' or 'meV'.")
+        if resolution_range not in ("absent", "applied"):
+            raise ValueError("resolution_range must be 'absent' or 'applied'.")
+
+        y = self.reconstructed_real_el
+        if y is None:
+            raise AttributeError(
+                "No cached reconstructed electron real self-energy found. "
+                "Run `extract_a2f()` or `bayesian_loop()` first."
+            )
+
+        x = self._reconstructed_energy_axis(y)
+        factor = KILO if scale == "meV" else 1.0
+        x = factor * np.asarray(x, dtype=float)
+        y = factor * np.asarray(y, dtype=float)
+
+        if resolution_range == "applied":
+            keep = self._energy_cutoff_mask()
+            if keep is not None and keep.size == x.size:
+                x = x[keep]
+                y = y[keep]
+
+        rec_real_label, _ = self._reconstructed_component_legend_labels("el")
+        kwargs.setdefault("label", rec_real_label)
+        ax.plot(x, y, **kwargs)
+
+        x_unit = "meV" if scale == "meV" else "eV"
+        ax.set_xlabel(rf"$E-\mu$ ({x_unit})")
+        ax.set_ylabel(rf"$\Sigma'(E)$ ({x_unit})")
+        ax.legend()
+        return fig
+
+    @add_fig_kwargs
+    def plot_reconstructed_imag_el(self, ax=None, scale="eV",
+                                   resolution_range="absent", **kwargs):
+        """Plot reconstructed electron contribution -Σ''_el(E) vs. E-μ."""
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        if scale not in ("eV", "meV"):
+            raise ValueError("scale must be either 'eV' or 'meV'.")
+        if resolution_range not in ("absent", "applied"):
+            raise ValueError("resolution_range must be 'absent' or 'applied'.")
+
+        y = self.reconstructed_imag_el
+        if y is None:
+            raise AttributeError(
+                "No cached reconstructed electron imaginary self-energy found. "
+                "Run `extract_a2f()` or `bayesian_loop()` first."
+            )
+
+        x = self._reconstructed_energy_axis(y)
+        factor = KILO if scale == "meV" else 1.0
+        x = factor * np.asarray(x, dtype=float)
+        y = factor * np.asarray(y, dtype=float)
+
+        if resolution_range == "applied":
+            keep = self._energy_cutoff_mask()
+            if keep is not None and keep.size == x.size:
+                x = x[keep]
+                y = y[keep]
+
+        _, rec_imag_label = self._reconstructed_component_legend_labels("el")
+        kwargs.setdefault("label", rec_imag_label)
+        ax.plot(x, y, **kwargs)
+
+        x_unit = "meV" if scale == "meV" else "eV"
+        ax.set_xlabel(rf"$E-\mu$ ({x_unit})")
+        ax.set_ylabel(rf"$-\Sigma''(E)$ ({x_unit})")
+        ax.legend()
+        return fig
+
+    @add_fig_kwargs
+    def plot_reconstructed_both_el(self, ax=None, scale="eV",
+                                   resolution_range="absent", **kwargs):
+        """Plot reconstructed electron Σ'(E) and -Σ''(E) vs. E-μ."""
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        if scale not in ("eV", "meV"):
+            raise ValueError("scale must be either 'eV' or 'meV'.")
+        if resolution_range not in ("absent", "applied"):
+            raise ValueError("resolution_range must be 'absent' or 'applied'.")
+
+        real = self.reconstructed_real_el
+        imag = self.reconstructed_imag_el
+        if real is None and imag is None:
+            raise AttributeError(
+                "No cached reconstructed electron self-energy found. "
+                "Run `extract_a2f()` or `bayesian_loop()` first."
+            )
+
+        factor = KILO if scale == "meV" else 1.0
+        rec_real_label, rec_imag_label = self._reconstructed_component_legend_labels("el")
+
+        if real is not None:
+            x_real = factor * np.asarray(self._reconstructed_energy_axis(real), dtype=float)
+            y_real = factor * np.asarray(real, dtype=float)
+            if resolution_range == "applied":
+                keep_real = self._energy_cutoff_mask()
+                if keep_real is not None and keep_real.size == x_real.size:
+                    x_real = x_real[keep_real]
+                    y_real = y_real[keep_real]
+            kw_real = dict(kwargs)
+            kw_real.setdefault("label", rec_real_label)
+            ax.plot(x_real, y_real, **kw_real)
+
+        if imag is not None:
+            x_imag = factor * np.asarray(self._reconstructed_energy_axis(imag), dtype=float)
+            y_imag = factor * np.asarray(imag, dtype=float)
+            if resolution_range == "applied":
+                keep_imag = self._energy_cutoff_mask()
+                if keep_imag is not None and keep_imag.size == x_imag.size:
+                    x_imag = x_imag[keep_imag]
+                    y_imag = y_imag[keep_imag]
+            kw_imag = dict(kwargs)
+            kw_imag.setdefault("label", rec_imag_label)
+            ax.plot(x_imag, y_imag, **kw_imag)
+
+        x_unit = "meV" if scale == "meV" else "eV"
+        ax.set_xlabel(rf"$E-\mu$ ({x_unit})")
+        ax.set_ylabel(rf"$\Sigma'(E),\ -\Sigma''(E)$ ({x_unit})")
+        ax.legend()
+        return fig
+
+    @add_fig_kwargs
+    def plot_reconstructed_real_imp(self, ax=None, scale="eV",
+                                    resolution_range="absent", **kwargs):
+        """Plot reconstructed impurity real contribution Σ_imp(E) vs. E-μ."""
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        if scale not in ("eV", "meV"):
+            raise ValueError("scale must be either 'eV' or 'meV'.")
+        if resolution_range not in ("absent", "applied"):
+            raise ValueError("resolution_range must be 'absent' or 'applied'.")
+
+        y = self.reconstructed_real_imp
+
+        x = self._reconstructed_energy_axis(y)
+        factor = KILO if scale == "meV" else 1.0
+        x = factor * np.asarray(x, dtype=float)
+        y = factor * np.asarray(y, dtype=float)
+
+        if resolution_range == "applied":
+            keep = self._energy_cutoff_mask()
+            if keep is not None and keep.size == x.size:
+                x = x[keep]
+                y = y[keep]
+
+        rec_real_label, _ = self._reconstructed_component_legend_labels("imp")
+        kwargs.setdefault("label", rec_real_label)
+        ax.plot(x, y, **kwargs)
+
+        x_unit = "meV" if scale == "meV" else "eV"
+        ax.set_xlabel(rf"$E-\mu$ ({x_unit})")
+        ax.set_ylabel(rf"$\Sigma'(E)$ ({x_unit})")
+        ax.legend()
+        return fig
+
+    @add_fig_kwargs
+    def plot_reconstructed_imag_imp(self, ax=None, scale="eV",
+                                    resolution_range="absent", **kwargs):
+        """Plot reconstructed impurity imaginary contribution -Σ''_imp(E)."""
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        if scale not in ("eV", "meV"):
+            raise ValueError("scale must be either 'eV' or 'meV'.")
+        if resolution_range not in ("absent", "applied"):
+            raise ValueError("resolution_range must be 'absent' or 'applied'.")
+
+        y = self.reconstructed_imag_imp
+        if y is None:
+            raise AttributeError(
+                "No cached reconstructed impurity imaginary self-energy found. "
+                "Run `extract_a2f()` or `bayesian_loop()` first."
+            )
+
+        x = self._reconstructed_energy_axis(y)
+        factor = KILO if scale == "meV" else 1.0
+        x = factor * np.asarray(x, dtype=float)
+        y = factor * np.asarray(y, dtype=float)
+
+        if resolution_range == "applied":
+            keep = self._energy_cutoff_mask()
+            if keep is not None and keep.size == x.size:
+                x = x[keep]
+                y = y[keep]
+
+        _, rec_imag_label = self._reconstructed_component_legend_labels("imp")
+        kwargs.setdefault("label", rec_imag_label)
+        ax.plot(x, y, **kwargs)
+
+        x_unit = "meV" if scale == "meV" else "eV"
+        ax.set_xlabel(rf"$E-\mu$ ({x_unit})")
+        ax.set_ylabel(rf"$-\Sigma''(E)$ ({x_unit})")
+        ax.legend()
+        return fig
+
+    @add_fig_kwargs
+    def plot_reconstructed_both_imp(self, ax=None, scale="eV",
+                                    resolution_range="absent", **kwargs):
+        """Plot reconstructed impurity Σ'(E) and -Σ''(E) vs. E-μ."""
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        if scale not in ("eV", "meV"):
+            raise ValueError("scale must be either 'eV' or 'meV'.")
+        if resolution_range not in ("absent", "applied"):
+            raise ValueError("resolution_range must be 'absent' or 'applied'.")
+
+        real = self.reconstructed_real_imp
+        imag = self.reconstructed_imag_imp
+
+        factor = KILO if scale == "meV" else 1.0
+
+        rec_real_label, rec_imag_label = self._reconstructed_component_legend_labels("imp")
+
+        if real is not None:
+            x_real = factor * np.asarray(self._reconstructed_energy_axis(real), dtype=float)
+            y_real = factor * np.asarray(real, dtype=float)
+            if resolution_range == "applied":
+                keep_real = self._energy_cutoff_mask()
+                if keep_real is not None and keep_real.size == x_real.size:
+                    x_real = x_real[keep_real]
+                    y_real = y_real[keep_real]
+            kw_real = dict(kwargs)
+            kw_real.setdefault("label", rec_real_label)
+            ax.plot(x_real, y_real, **kw_real)
+
+        if imag is not None:
+            x_imag = factor * np.asarray(self._reconstructed_energy_axis(imag), dtype=float)
+            y_imag = factor * np.asarray(imag, dtype=float)
+            if resolution_range == "applied":
+                keep_imag = self._energy_cutoff_mask()
+                if keep_imag is not None and keep_imag.size == x_imag.size:
+                    x_imag = x_imag[keep_imag]
+                    y_imag = y_imag[keep_imag]
+            kw_imag = dict(kwargs)
+            kw_imag.setdefault("label", rec_imag_label)
+            ax.plot(x_imag, y_imag, **kw_imag)
+
+        x_unit = "meV" if scale == "meV" else "eV"
+        ax.set_xlabel(rf"$E-\mu$ ({x_unit})")
+        ax.set_ylabel(rf"$\Sigma'(E),\ -\Sigma''(E)$ ({x_unit})")
+        ax.legend()
         return fig
 
     @add_fig_kwargs
