@@ -312,6 +312,9 @@ def write_stripped_ipynb(src: str, dst: str) -> None:
         "image/svg+xml",
         "image/jpeg",
         "application/pdf",
+        "text/plain",
+        "text/html",
+        "text/markdown",
     }
 
     for cell in nb.get("cells", []):
@@ -335,31 +338,40 @@ def write_stripped_ipynb(src: str, dst: str) -> None:
 
             otype = out.get("output_type")
 
-            # Drop stdout/stderr noise.
+            # Keep stdout/stderr textual output.
             if otype == "stream":
+                kept.append({
+                    "output_type": "stream",
+                    "name": out.get("name", "stdout"),
+                    "text": out.get("text", ""),
+                })
                 continue
 
             # Drop error tracebacks (toggle if you want to keep them).
             if otype == "error":
                 continue
 
-            # Keep only rich-display outputs that contain images.
+            # Keep rich-display outputs with images and/or textual content.
             if otype in ("display_data", "execute_result"):
                 data = out.get("data") or {}
                 if not isinstance(data, dict):
                     continue
 
                 kept_data = {
-                    k: v for k, v in data.items() if k in allowed_mime
+                    k: v for k, v in data.items()
+                    if k in allowed_mime or k in {
+                        "text/plain",
+                        "text/html",
+                        "text/markdown",
+                    }
                 }
                 if not kept_data:
-                    # No figure-like payload; skip (drops text/plain spam).
                     continue
 
                 new_out: Dict[str, Any] = {
                     "output_type": otype,
                     "data": kept_data,
-                    "metadata": {},
+                    "metadata": out.get("metadata", {}),
                 }
 
                 if otype == "execute_result":
