@@ -4,10 +4,6 @@
 
 Repository for the code xARPES &ndash; extraction of the self-energy and Eliashberg function from angle-resolved photoemission spectroscopy. The documentation can be found on [Read the Docs](https://xarpes.readthedocs.io), while the code is maintained on [GitHub](https://github.com/xARPES/xARPES). Instructions for installing the code and downloading the code are found below. An extensive description of the functionalities and examples is found at the [arXiv preprint](https://arxiv.org/abs/2508.13845).
 
-# Warning
-
-This project is currently undergoing **beta testing**. Some of the functionalities are in the process of being implemented. If you encounter any bugs, you can open an issue.
-
 # Contributing
 
 Contributions to the code are most welcome. xARPES is intended to co-develop alongside the increasing complexity of experimental ARPES data sets. Contributions can be made by forking the code and creating a pull request. Importing of file formats from different beamlines is particularly encouraged. For development of the examples, the following scripts in `/dev_tools` could be useful:

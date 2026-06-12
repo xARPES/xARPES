@@ -3,9 +3,12 @@
 # # Verification example
 # In this example, we investigate the verification example from the xARPES manuscript examples section.
 
-# The notebook also contains an execution of the Bayesian loop with a set of parameters that is "far from" the optimal solution, similar to the supplemental section on the example.
+# This example corresponds to the "Verification using model data" Section from the first xARPES publication: https://www.nature.com/articles/s41524-026-02026-9, going through all the steps discussed in the main text. The notebook also contains an execution of the Bayesian loop with a set of parameters that is "far from" the optimal solution, similar to the supplemental section on the example.
 
 # In the future, functionality will be added to xARPES for users to generate their own mock example, allowing for testing of desired hypotheses. 
+
+
+# First, we set the desired graphical environment, load xARPES and packages that we will use directly, and set the default xARPES plotting environment.
 
 import matplotlib as mpl
 mpl.use('Qt5Agg')
@@ -19,17 +22,36 @@ import os
 # Default plot configuration from xarpes.plotting.py
 xarpes.plot_settings('default')
 
+# We detect the folder in which this file is called, and we set its relevant subfolders.
+
 script_dir = xarpes.set_script_dir()
 
 dfld = 'data_sets'           # Folder containing the data
 flnm = 'artificial_einstein' # Name of the file
 
+# We load the simulated angles (angl), kinetic energies (ekns), and photoemission intensities (intn) to construct the band map for the artificial example.
+
 angl = np.load(os.path.join(script_dir, dfld, "verification_angles.npy"))
 ekns = np.load(os.path.join(script_dir, dfld, "verification_kinergies.npy"))
 intn = np.load(os.path.join(script_dir, dfld, "verification_intensities.npy"))
 
+# These data are combined with an energy resolution $\Delta E =2.5\,\mathrm{meV}$, an angular resolution of $\Delta \eta=0.1\degree$, for a band map at $T = 10\,\mathrm{meV}$.
+
+# For the plotting, `abscissa` can be changed from `angle` to `momentum` (representing the wavevector). After the Fermi-edge fit (see next step), `ordinate` can also be changed from `kinetic_energy` to `binding_energy`.
+
+# At any point, you can learn more about the functionality of the xARPES code with commands such as `help(bmap.plot)`.
+
+
+fig = plt.figure(figsize=(8, 5)); ax = fig.gca()
+
 bmap = xarpes.BandMap.from_np_arrays(intensities=intn, angles=angl, ekin=ekns,
         energy_resolution=0.0025, angle_resolution=0.1, temperature=10)
+
+fig = bmap.plot(abscissa='momentum', ordinate='kinetic_energy', ax=ax)
+
+# As the first step in the xARPES workflow (https://www.nature.com/articles/s41524-026-02026-9 Fig. 2), we fit the Fermi edge from the angle-integrated photointensity $\widetilde{P}(E^{\mathrm{kin}})$.
+
+# This results in the estimate of the photon energy $h\widehat{\nu}$ minus the work function $\widehat{\Phi}$. A full description of the procedure is provided in "Fermi-edge fit" in the Methods section of the publication.
 
 
 fig = plt.figure(figsize=(6, 5)); ax = fig.gca()
@@ -42,6 +64,12 @@ fig = bmap.fit_fermi_edge(hnuminPhi_guess=30, background_guess=1e4,
 
 print('The optimised hnu - Phi=' + f'{bmap.hnuminPhi:.4f}' + ' +/- '
       + f'{1.96 * bmap.hnuminPhi_std:.5f}' + ' eV.')
+
+# As the second step, the fitting of the MDC maxima is performed.
+
+# This step requires setting the minimum and maximum ($2\degree$ to $10\degree$) for the angle $\eta$, the range ($-80\,\mathrm{meV}$ to $0.0001\,\mathrm{meV}$) for the binding energy $E-\mu$, and the band extremum $k^{\mathrm{c}}=\,\mathrm{\AA}^{-1}$. Afterwards, the result at the slice closest to the selected binding energy $E-\mu\,=0$ is displayed.
+
+# Note that the peak is $5.1\degree$ away from the center, corresponding to about $2\degree$ at the selected binding energy. xARPES allows for specifying the extremum either as a wavevector or as an angle, whichever is found to be most convenient. This can be seen by uncommenting the SpectralQuadratic definition with the angle and commenting the definition with the wavevector.
 
 
 angle_min = 2
@@ -58,23 +86,28 @@ guess_dists = xarpes.CreateDistributions([
 xarpes.Constant(offset=40),
 xarpes.SpectralQuadratic(amplitude=0.25, peak=5.1, broadening=0.0005,
             center_wavevector=k_0, name='Right_branch', index='1')
+# xarpes.SpectralQuadratic(amplitude=0.25, peak=5.1, broadening=0.0005,
+#             center_angle=2.0, name='Right_branch', index='1')
 ])
 
 fig = plt.figure(figsize=(8, 6)); ax = fig.gca()
 
 fig = mdcs.visualize_guess(distributions=guess_dists, energy_value=energy_value, ax=ax)
 
+# In the following cell, the selected set of MDCs is fitted, after which an interactive figure with a slider is generated. by sliding through the MDCs, you should find that the asymmetry increases towards the bottom of the parabola.
+
 # **Note on interactive figures**
 # - The interactive figure might not work inside the Jupyter notebooks, despite our best efforts to ensure stability.
 # - As a fallback, the user may switch from "%matplotlib widget" to "%matplotlib qt", after which the figure should pop up in an external window.
-# - For some package versions, a static version of the interactive widget may spuriously show up inside other cells. In that case, uncomment the #get_ipython()... line in the first cell for your notebooks.
+# - For some package versions, a static version of the interactive widget may spuriously show up inside other cells. This undesired behaviour may be circumvented by (once again) executing `xarpes.plot_settings('default')`.
 
 
 fig = plt.figure(figsize=(8, 6)); ax = fig.gca()
 
 fig = mdcs.fit_selection(distributions=guess_dists, ax=ax)
+# First, we calculate the real $\widetilde{\Sigma}_{n0}^{\prime}(E_j)$ and minus imaginary parts $-\widetilde{\Sigma}_{n0}^{\prime\prime}(E_j)$ of the one-shot self-energy, using the right-hand branch as a first example. 
 
-
+# Following the section ''Extraction of the self-energy" of the publication, this calculation requires a one-shot initial guess for the bare mass $m_{n0}^{\mathrm{b}}$ and the Fermi wavevector $k_{n0}^{\mathrm{F}}$. We will use the Bayesian loop to optimise these parameters later on. However, the loop requires a sufficiently good initial guess of these parameters. Therefore, the following plot is useful for improving the initial guess.
 
 
 fig = plt.figure(figsize=(6, 5)); ax = fig.gca()
@@ -86,14 +119,25 @@ fig = self_energy.plot_both(ax=ax, scale='meV')
 
 plt.show()
 
+# Having completed the MDC fitting procedure, we can plot the MDC maxima $\widetilde{k}(E_j)$ on top of the band map.
+
+# Given the (initial guess) for the bare-band parameters, we can plot the bare band on top of the band map as well.
+
+# Given `abscissa='momentum'`, a warning is printed as a reminder there is warping associated with going from angular space to momentum space.
+
+# You can have a look at the different options for `plot_dispersions`: `full`, `none`, `kink`, and `domain`.
+
 
 self_energies = xarpes.CreateSelfEnergies([self_energy])
 
 fig = plt.figure(figsize=(8, 5)); ax = fig.gca()
 
+ax.set_ylim(29.8, 30.05)
+
 fig = bmap.plot(abscissa='momentum', ordinate='kinetic_energy', 
-                plot_dispersions='domain', 
-                self_energies=self_energies, ax=ax)
+                plot_dispersions='domain', self_energies=self_energies, ax=ax)
+
+# #### ''Chi2kink method'' 
 
 # In the following cell, we extract the Eliashberg function from the self-energy.
 # The result of the chi2kink fit is plotted during the extraction. Setting
@@ -113,10 +157,22 @@ fig = bmap.plot(abscissa='momentum', ordinate='kinetic_energy',
 
 # where $g$ denotes the asymptotic baseline value of the metric for small $x$,
 # $b$ sets the amplitude of the step, $c$ determines the position of the kink
-# along the $x$-axis, and $d$ controls the sharpness of the transition. In the
-# limit $d \to \infty$, the function approaches a piecewise-constant form with a
-# sharp crossover at $x = c$, whereas smaller values of $d$ correspond to a more
-# gradual evolution.
+# along the $x$-axis, and $d$ controls the sharpness of the transition. Once the fitting 
+# has been completed, the selected $a_{\mathrm{sel}}$ is obtained from 
+# $a=10^{c-f /d}$ with a tuning parameter $f \in [2, 2.5]$.
+
+# For a full description of the ''chi2kink'' method, please see https://doi.org/10.1016/j.cpc.2022.108519.
+
+# #### Extraction of the Eliashberg function
+
+# There are many parameters involved in the extraction of $\alpha^2F_n(\omega)$. The
+# energies encountered in supplemental section ''Details on the Eliashberg-function extraction''
+# are identified as `omega_min`, `omega_max`, `omega_I`, `omega_M`, and `omega_S`, discretising
+# $m_n(\omega)$ with `omega_num` points. `aval_min`, `aval_max`, and `aval_num` describe
+# the discretisation of the ''chi2kink'' interval, with initial guesses `g_guess`, `b_guess`,
+# `c_guess`, and `d_guess`. Finally, initial guesses for $\lambda_n^{\mathrm{el}}$,
+# $\Gamma_n^{\mathrm{imp}}$, and $h_n$ can be provided as ``lambda_el``, ``impurity_magnitude``,
+# and `h_n`, respectively.
 
 
 fig, spectrum, model, omega_range, aval_select = self_energy.extract_a2f(
@@ -134,8 +190,6 @@ fig = plt.figure(figsize=(7, 5)); ax = fig.gca()
 fig = self_energy.plot_spectra(ax=ax)
 
 plt.show()
-
-
 
 # The following plots all of the extracted quantities in a single figure. The default plotting range is taken from the second plotting statement.
 # By default, The Eliashberg function is extracted while removing the self-energies for binding energies smaller than the energy resolution. In that case, it is transparent to also eliminate these self-energies from the displayed result.
