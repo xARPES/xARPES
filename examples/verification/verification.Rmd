@@ -53,7 +53,7 @@ ekns = np.load(os.path.join(script_dir, dfld, "verification_kinergies.npy"))
 intn = np.load(os.path.join(script_dir, dfld, "verification_intensities.npy"))
 ```
 
-These data are combined with an energy resolution $\Delta E =2.5\,\mathrm{meV}$, an angular resolution of $\Delta \eta=0.1\degree$, for a band map at $T = 10\,\mathrm{meV}$.
+These data are combined with an energy resolution $\Delta E =2.5\,\mathrm{meV}$, an angular resolution of $\Delta \eta=0.1^{\circ}$, for a band map at $T = 10\,\mathrm{meV}$.
 
 For the plotting, `abscissa` can be changed from `angle` to `momentum` (representing the wavevector). After the Fermi-edge fit (see next step), `ordinate` can also be changed from `kinetic_energy` to `binding_energy`.
 
@@ -67,7 +67,7 @@ fig = plt.figure(figsize=(8, 5)); ax = fig.gca()
 bmap = xarpes.BandMap.from_np_arrays(intensities=intn, angles=angl, ekin=ekns,
         energy_resolution=0.0025, angle_resolution=0.1, temperature=10)
 
-fig = bmap.plot(abscissa='momentum', ordinate='kinetic_energy', ax=ax)
+fig = bmap.plot(abscissa='angle', ordinate='kinetic_energy', ax=ax)
 ```
 
 As the first step in the xARPES workflow (https://www.nature.com/articles/s41524-026-02026-9 Fig. 2), we fit the Fermi edge from the angle-integrated photointensity $\widetilde{P}(E^{\mathrm{kin}})$.
@@ -91,9 +91,9 @@ print('The optimised hnu - Phi=' + f'{bmap.hnuminPhi:.4f}' + ' +/- '
 
 As the second step, the fitting of the MDC maxima is performed.
 
-This step requires setting the minimum and maximum ($2\degree$ to $10\degree$) for the angle $\eta$, the range ($-80\,\mathrm{meV}$ to $0.0001\,\mathrm{meV}$) for the binding energy $E-\mu$, and the band extremum $k^{\mathrm{c}}=\,\mathrm{\AA}^{-1}$. Afterwards, the result at the slice closest to the selected binding energy $E-\mu\,=0$ is displayed.
+This step requires setting the minimum and maximum ($2^\circ$ to $10^\circ$) for the angle $\eta$, the range ($-80\,\mathrm{meV}$ to $0.1\,\mathrm{meV}$) for the binding energy $E-\mu$, and the band extremum $k^{\mathrm{c}}=0.1\,$Å$^{-1}$. Afterwards, the result at the slice closest to the selected binding energy $E-\mu\,=0$ is displayed.
 
-Note that the peak is $5.1\degree$ away from the center, corresponding to about $2\degree$ at the selected binding energy. xARPES allows for specifying the extremum either as a wavevector or as an angle, whichever is found to be most convenient. This can be seen by uncommenting the SpectralQuadratic definition with the angle and commenting the definition with the wavevector.
+Note that the peak is $5.1^{\circ}$ away from the center, corresponding to about $2^{\circ}$ at the selected binding energy. xARPES allows for specifying the extremum either as a wavevector or as an angle, whichever is found to be most convenient. This can be seen by uncommenting the SpectralQuadratic definition with the angle and commenting the definition with the wavevector.
 
 ```{python}
 # %matplotlib inline
@@ -175,8 +175,7 @@ fig = bmap.plot(abscissa='momentum', ordinate='kinetic_energy',
 
 #### ''Chi2kink method'' 
 
-In the following cell, we extract the Eliashberg function from the self-energy.
-The result of the chi2kink fit is plotted during the extraction. Setting
+In the following cell, we extract the Eliashberg function from the self-energy. This extraction is based on the maximum-entropy method. We have chosen the ``chi2kink`` flavour of the maximum-entropy method. Accordingly, the result of the chi2kink fit is plotted during the extraction. Setting
 `show=False` and `fig_close=True` will prevent the figure from being displayed.
 Afterwards, we plot the Eliashberg function and model function with the
 appropriate self-energy methods.
@@ -223,6 +222,10 @@ fig, spectrum, model, omega_range, aval_select = self_energy.extract_a2f(
 plt.show()
 ```
 
+#### The Eliashberg function and model function
+
+Having performed the one-shot extraction, we can inspect the Eliashberg function and the associated model function $m_n(\omega)$ that we used as part of the maximum-entropy method.
+
 ```{python}
 # %matplotlib inline
 
@@ -233,8 +236,12 @@ fig = self_energy.plot_spectra(ax=ax)
 plt.show()
 ```
 
-The following plots all of the extracted quantities in a single figure. The default plotting range is taken from the second plotting statement.
-By default, The Eliashberg function is extracted while removing the self-energies for binding energies smaller than the energy resolution. In that case, it is transparent to also eliminate these self-energies from the displayed result.
+The following plots all of the extracted quantities in a single figure. The figure also showcases typical xARPES usage: start with some generic xarpes functionalities such as `plot_spectra`, then tailor the plotted output towards the desired output, such as for scientific presentations/publications.
+
+The following figure shows not just the spectra from the previous figure, but it also decomposes the self-energy into the electron-phonon $\Sigma_{n}^{\mathrm{ph}}(E)$, electron-electron $\Sigma_{n}^{\mathrm{el}}(E)$, and electron-impurity $\Sigma_{n}^{\mathrm{imp}}(E)$ contributions. After this one-shot calculation, we will have a look at how to quantify these latter two contributions using the Bayesian loop.
+
+By default, The Eliashberg function is extracted while removing the self-energies for binding energies smaller than the energy resolution. For transparency, these self-energies are then also eliminated from the displayed result.
+
 
 ```{python}
 # %matplotlib inline
@@ -269,6 +276,10 @@ real_err.set_color(color_one); imag_err.set_color(color_two)
 a2f_line, model_line = ax1.get_lines()[-2:]
 a2f_line.set_color(color_three); model_line.set_color(color_four)
 
+#Tiny tweaks that should have been xARPES default behaviour.
+ax1.set_xlabel('$E-\mu, -\omega$ (meV)')
+ax2.set_ylabel('$\Sigma_{n}^{\prime}(E), -\Sigma_{n}^{\prime\prime}(E)$')
+
 # --- Overwrite the legend with a custom legend
 [ax.get_legend() and ax.get_legend().remove() for ax in (ax1, ax2)]
 h1, l1 = ax1.get_legend_handles_labels(); h2, l2 = ax2.get_legend_handles_labels()
@@ -278,7 +289,11 @@ ax1.set_ylim([0, 0.5]); ax2.set_ylim([0, 45])
 plt.show()
 ```
 
-In the following cell, we start from the optimal solution. Unsurprisingly, the optimal solution is obtained after just a couple of iterations.
+#### The Bayesian loop
+
+We now turn to the optimisation of the model parameters: The Fermi wavevector $k_n^{\mathrm{F}}$, the bare mass $m_n^{\mathrm{b}}$, the electron-electron coupling coefficient $\lambda_n^{\mathrm{el}}$, and the height of the model function $h_n$.
+
+For simplicity, we will first start from the optimal solution itself. Thus, the optimisation should effectively return to this solution after a couple tens of iterations. Aside from more forgiving $a_{\mathrm{min}}$ and $a_{\mathrm{max}}$ during the optimisation, the only new variables pertain to the relative size in the steps for the model parameters, named `scale_mb` et cetera. These scaling factors can be modified to ensure the code finds a better solution, while not making steps so large that the inner MEM loop fails to extract the Eliashberg function.  
 
 ```{python}
 with xarpes.trim_notebook_output(print_lines=10):
@@ -293,9 +308,9 @@ with xarpes.trim_notebook_output(print_lines=10):
             scale_lambda_el=0.1, scale_hn=0.1)
 ```
 
-In the following cell, we start from a much less probable solution, showing that the code can occasionally heavily improve on the solution.
+If the optimsation works from a trivial starting point, we can also start from a much less probable initial guess, to showcase that the code can also find the final solution, provided that there is some internal consistency among the initial parameters, as discussed in the supplement of the paper.
 
-The optimisation has been tested against Python v3.10.12, NumPy v2.2.6, and SciPy v1.15.3. Other combinations of these packages still have to be tested.
+Note that the optimisation can be slightly sensitive to the combination of Python, NumPy, and Scipy. The following results have been tested against Python v3.10.12, NumPy v2.2.6, and SciPy v1.15.3. The optimisation might get stuck along the way for other combinations.
 
 ```{python}
 with xarpes.trim_notebook_output(print_lines=10):
@@ -310,7 +325,7 @@ with xarpes.trim_notebook_output(print_lines=10):
 
 Following the recommended procedure, we perform a final optimisation with very tight criteria, for the purpose of further narrowing down the solution.
 
-With tightened `aval_min`, `aval_max`, and `sigma_svd`, the result gets a tiny bit closer to the true solution for some of the parameters (for the tested combination of packages).
+With tightened `aval_min`, `aval_max`, the result gets a tiny bit closer to the true solution for some of the parameters (for the tested combination of packages). We also inrease the number of self-energy data used in the singular value decomposition by increasing `sigma_svd`, we set a very tight loop optimisation criterion using `tole`, which must be met for a slightly increased number of `converge_iters`.
 
 ```{python}
 with xarpes.trim_notebook_output(print_lines=10):
@@ -323,3 +338,9 @@ with xarpes.trim_notebook_output(print_lines=10):
                 converge_iters=100, tole=1e-8, scale_mb=0.1, scale_imp=0.1, scale_kF=0.01,
                 scale_lambda_el=0.1, scale_hn=0.1)
 ```
+
+#### Once you are done
+
+Once you have finished, there are many things you can try. For example, you could try to repeat the above procedure for the left-hand branch. You will have to find a sufficiently good initial guess for the left-hand Fermi wavevector for the extraction to succeed.
+
+Afterwards, you can move on to the other available xARPES examples. We recommend doing the graphene tutorial as the first tutorial using real experimental data. The graphene tutorial uses a linearised bare band, which is a very common approximation the analysis of many-body quantities from ARPES, although it is a fairly good approximation in graphene. After that tutorial, you could move on to the $\rm{SrTiO}_3$ tutorial, which showcases the use of heuristically obtained photoemission matrix elements, while quantifying the electronic spectral function $A_n(E,k_{\parallel})$.
