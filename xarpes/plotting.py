@@ -11,8 +11,6 @@
 
 """Functions related to plotting."""
 
-import matplotlib.pyplot as plt
-
 def get_ax_fig_plt(ax=None, **kwargs):
     r"""Helper function used in plot functions supporting an optional `Axes`
     argument.
@@ -35,7 +33,9 @@ def get_ax_fig_plt(ax=None, **kwargs):
         `matplotlib` figure.
     plt : object
         `matplotlib.pyplot` module.
-    """
+    """    
+    import matplotlib.pyplot as plt
+
     if ax is None:
         fig = plt.figure(**kwargs)
         ax = fig.gca()
@@ -54,6 +54,8 @@ def add_fig_kwargs(func):
     error/unexpected event.
     """
     from functools import wraps
+    import matplotlib.pyplot as plt
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         # pop the kwds used by the decorator.

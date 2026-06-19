@@ -108,7 +108,13 @@ Upgrade pip:
 
 #### Option A — Out-of-the-box installation (PyPI)
 
+Pip aims to install a compatible version with:
+
     python3 -m pip install xarpes
+
+Later on, you can attempt to update the code using:
+
+    python3 -m pip install --upgrade xarpes
 
 #### Option B — Editable installation (GitHub)
 
@@ -142,7 +148,10 @@ It is recommended to use JupyterLab to analyse data. JupyterLab is launched usin
 
 # Citation
 
-If you have used xARPES for your research, please cite the following preprint:  
+If you have used xARPES for your research, please cite the following paper:  
+[npj Comput. Mater. publication](https://www.nature.com/articles/s41524-026-02026-9).
+
+The preprint is also available at:
 [arXiv preprint 2508.13845](https://arxiv.org/abs/2508.13845).
 
 # License
