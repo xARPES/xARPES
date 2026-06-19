@@ -1,4 +1,4 @@
-# Copyright (C) 2025 xARPES Developers
+# Copyright (C) 2025-2026 xARPES Developers
 # This program is free software under the terms of the GNU GPLv3 license.
 
 """User-configurable numerical parameters for xARPES."""

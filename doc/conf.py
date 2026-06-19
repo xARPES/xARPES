@@ -8,7 +8,7 @@ except Exception:
     version = release = "0.1.0"
 
 project = "xARPES"
-copyright = "2025 xARPES Developers"
+copyright = "2025-2026 xARPES Developers"
 
 # --- HTML logo + static files ---
 html_static_path = ["_static"]

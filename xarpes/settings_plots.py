@@ -1,9 +1,8 @@
-# Copyright (C) 2025 xARPES Developers
+# Copyright (C) 2025-2026 xARPES Developers
 # This program is free software under the terms of the GNU GPLv3 license.
 
 """Plotting and notebook behaviour settings for xARPES."""
 
-import matplotlib.pyplot as plt
 
 def plot_settings(name="default", register_pre_run=True):
     """Configure default plotting style for xARPES.
@@ -16,6 +15,7 @@ def plot_settings(name="default", register_pre_run=True):
         If True, register a Jupyter pre-run hook that closes figures.
     """
     import matplotlib as mpl
+    import matplotlib.pyplot as plt
 
     mpl.rc("xtick", labelsize=10, direction="in")
     mpl.rc("ytick", labelsize=10, direction="in")
@@ -39,6 +39,7 @@ def plot_settings(name="default", register_pre_run=True):
 def _maybe_register_pre_run_close_all():
     """Register a pre_run_cell hook once, and only inside Jupyter."""
     from IPython import get_ipython
+    import matplotlib.pyplot as plt
 
     if getattr(_maybe_register_pre_run_close_all, "_registered", False):
         return
