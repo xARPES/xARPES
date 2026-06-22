@@ -803,7 +803,7 @@ class BandMap:
                         color=line_color,
                     )
 
-                # Bare-band dispersion for SpectralLinear / SpectralQuadratic
+                # Bare-band dispersion for linear / quadratic classes
                 spec_class = getattr(
                     self_energy, "_class",
                     self_energy.__class__.__name__,
@@ -811,6 +811,7 @@ class BandMap:
 
                 if (plot_disp_mode != 'none'
                         and spec_class in ("SpectralLinear",
+                                           "MomentumLinear",
                                            "SpectralQuadratic",
                                            "MomentumQuadratic")):
 
@@ -843,11 +844,11 @@ class BandMap:
                             # Fallback: no valid side, use full range
                             disp_momenta = full_disp_momenta
                     else:
-                        # 'full' or 'domain' for SpectralLinear
+                        # 'full' or 'domain' for linear / momentum-quadratic classes
                         disp_momenta = full_disp_momenta
 
                     # --- Robust parameter checks before computing base_disp ---
-                    if spec_class == "SpectralLinear":
+                    if spec_class in ("SpectralLinear", "MomentumLinear"):
                         fermi_vel = getattr(
                             self_energy, "fermi_velocity", None
                         )
@@ -862,7 +863,7 @@ class BandMap:
                                 missing.append("fermi_wavevector")
                             raise TypeError(
                                 "Cannot plot bare dispersion for "
-                                "SpectralLinear: "
+                                f"{spec_class}: "
                                 f"{', '.join(missing)} is None."
                             )
 

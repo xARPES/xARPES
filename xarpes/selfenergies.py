@@ -51,12 +51,12 @@ class SelfEnergy:
         self._class = self._properties.get("_class", None)
 
         # ---- enforce supported classes at construction
-        if self._class not in ("SpectralLinear", "SpectralQuadratic",
-                               "MomentumQuadratic"):
+        if self._class not in ("SpectralLinear", "MomentumLinear",
+                               "SpectralQuadratic", "MomentumQuadratic"):
             raise ValueError(
                 f"Unsupported spectral class '{self._class}'. "
-                "Only 'SpectralLinear', 'SpectralQuadratic', or "
-                "'MomentumQuadratic' are allowed."
+                "Only 'SpectralLinear', 'MomentumLinear', "
+                "'SpectralQuadratic', or 'MomentumQuadratic' are allowed."
             )
 
         # grab user parameters
@@ -68,11 +68,11 @@ class SelfEnergy:
         self._abscissa_type    = self._parameters.get("abscissa_type", None)
 
         # ---- class-specific parameter constraints
-        if self._class == "SpectralLinear" and (self._bare_mass is not None):
-            raise ValueError("`bare_mass` cannot be set for SpectralLinear.")
-        if self._class == "SpectralQuadratic" and (self._fermi_velocity is not None):
+        if self._class in ("SpectralLinear", "MomentumLinear") and (self._bare_mass is not None):
+            raise ValueError(f"`bare_mass` cannot be set for {self._class}.")
+        if self._class in ("SpectralQuadratic", "MomentumQuadratic") and (self._fermi_velocity is not None):
             raise ValueError(
-                "`fermi_velocity` cannot be set for SpectralQuadratic."
+                f"`fermi_velocity` cannot be set for {self._class}."
                 )
 
         if self._side is not None and self._side not in ("left", "right"):
@@ -200,9 +200,9 @@ class SelfEnergy:
 
     @fermi_velocity.setter
     def fermi_velocity(self, x):
-        if self._class == "SpectralQuadratic":
+        if self._class in ("SpectralQuadratic", "MomentumQuadratic"):
             raise ValueError(
-                "`fermi_velocity` cannot be set for SpectralQuadratic."
+                f"`fermi_velocity` cannot be set for {self._class}."
                 )
         self._fermi_velocity = x
         self._parameters["fermi_velocity"] = x
@@ -217,9 +217,9 @@ class SelfEnergy:
 
     @bare_mass.setter
     def bare_mass(self, x):
-        if self._class == "SpectralLinear":
+        if self._class in ("SpectralLinear", "MomentumLinear"):
             raise ValueError(
-                "`bare_mass` cannot be set for SpectralLinear."
+                f"`bare_mass` cannot be set for {self._class}."
                 )
         self._bare_mass = x
         self._parameters["bare_mass"] = x
@@ -302,7 +302,7 @@ class SelfEnergy:
         if self._peak_positions is None:
             if self._peak is None:
                 return None
-            if self._class != "MomentumQuadratic" and self._ekin_range is None:
+            if self._class not in ("MomentumLinear", "MomentumQuadratic") and self._ekin_range is None:
                 return None
             if self._class == "SpectralQuadratic":
                 if self._side is None:
@@ -317,7 +317,7 @@ class SelfEnergy:
                 )
                 self._peak_positions = ((-1.0 if self._side == "left"
                                         else 1.0) * kpar_mag)
-            elif self._class == "MomentumQuadratic":
+            elif self._class in ("MomentumLinear", "MomentumQuadratic"):
                 self._peak_positions = np.asarray(self._peak)
             else:
                 self._peak_positions = (
@@ -333,7 +333,7 @@ class SelfEnergy:
         if self._peak_positions_sigma is None:
             if self._peak_sigma is None:
                 return None
-            if self._class == "MomentumQuadratic":
+            if self._class in ("MomentumLinear", "MomentumQuadratic"):
                 self._peak_positions_sigma = np.asarray(self._peak_sigma)
             else:
                 if self._ekin_range is None:
@@ -428,6 +428,15 @@ class SelfEnergy:
                 )
             return np.abs(vF) * np.sqrt(ekin / PREF) * broad
 
+        if self._class == "MomentumLinear":
+            vF = self._fermi_velocity if fermi_velocity is None else fermi_velocity
+            if vF is None:
+                raise AttributeError(
+                    "Cannot compute `imag` (MomentumLinear): set `fermi_velocity` "
+                    "first."
+                )
+            return np.abs(vF) * broad
+
         if self._class == "SpectralQuadratic":
             mb = self._bare_mass if bare_mass is None else bare_mass
             if mb is None:
@@ -468,6 +477,15 @@ class SelfEnergy:
                 )
             return np.abs(vF) * np.sqrt(ekin / PREF) * broad_sigma
 
+        if self._class == "MomentumLinear":
+            vF = self._fermi_velocity if fermi_velocity is None else fermi_velocity
+            if vF is None:
+                raise AttributeError(
+                    "Cannot compute `imag_sigma` (MomentumLinear): set "
+                    "`fermi_velocity` first."
+                )
+            return np.abs(vF) * broad_sigma
+
         if self._class == "SpectralQuadratic":
             mb = self._bare_mass if bare_mass is None else bare_mass
             if mb is None:
@@ -503,16 +521,16 @@ class SelfEnergy:
             return None
 
         kpar = self.peak_positions
-        if self._class != "MomentumQuadratic" and kpar is None:
+        if self._class not in ("MomentumLinear", "MomentumQuadratic") and kpar is None:
             return None
 
-        if self._class == "SpectralLinear":
+        if self._class in ("SpectralLinear", "MomentumLinear"):
             vF = self._fermi_velocity if fermi_velocity is None else fermi_velocity
             kF = (self._fermi_wavevector if fermi_wavevector is None
                 else fermi_wavevector)
             if vF is None or kF is None:
                 raise AttributeError(
-                    "Cannot compute `real` (SpectralLinear): set `fermi_velocity` "
+                    f"Cannot compute `real` ({self._class}): set `fermi_velocity` "
                     "and `fermi_wavevector` first."
                 )
             return enel - vF * (kpar - kF)
@@ -539,14 +557,14 @@ class SelfEnergy:
             return None
 
         kpar_sigma = self.peak_positions_sigma
-        if self._class != "MomentumQuadratic" and kpar_sigma is None:
+        if self._class not in ("MomentumLinear", "MomentumQuadratic") and kpar_sigma is None:
             return None
 
-        if self._class == "SpectralLinear":
+        if self._class in ("SpectralLinear", "MomentumLinear"):
             vF = self._fermi_velocity if fermi_velocity is None else fermi_velocity
             if vF is None:
                 raise AttributeError(
-                    "Cannot compute `real_sigma` (SpectralLinear): set "
+                    f"Cannot compute `real_sigma` ({self._class}): set "
                     "`fermi_velocity` first."
                 )
             return np.abs(vF) * kpar_sigma
@@ -610,7 +628,7 @@ class SelfEnergy:
             if self.peak_positions is None:
                 return None
 
-            if self._class == "SpectralLinear":
+            if self._class in ("SpectralLinear", "MomentumLinear"):
                 self._mdc_maxima = self.peak_positions
             elif self._class in ("SpectralQuadratic", "MomentumQuadratic"):
                 self._mdc_maxima = (
@@ -1273,7 +1291,7 @@ class SelfEnergy:
 
         allowed = {"fermi_wavevector", "impurity_magnitude", "lambda_el", "h_n"}
 
-        if self._class == "SpectralLinear":
+        if self._class in ("SpectralLinear", "MomentumLinear"):
             allowed.add("fermi_velocity")
         elif self._class == "SpectralQuadratic" or self._class == "MomentumQuadratic":
             allowed.add("bare_mass")
@@ -1357,7 +1375,7 @@ class SelfEnergy:
             raise ValueError(
                 "bayesian_loop requires an initial fermi_wavevector."
                 )
-        if self._class == "SpectralLinear" and vF0 is None:
+        if self._class in ("SpectralLinear", "MomentumLinear") and vF0 is None:
             raise ValueError(
                 "bayesian_loop requires an initial fermi_velocity."
                 )
@@ -1462,7 +1480,7 @@ class SelfEnergy:
             params.setdefault("lambda_el", lae0)
             params.setdefault("h_n", h_n0)
 
-            if self._class == "SpectralLinear":
+            if self._class in ("SpectralLinear", "MomentumLinear"):
                 params.setdefault("fermi_velocity", vF0)
             elif self._class == "SpectralQuadratic":
                 params.setdefault("bare_mass", mb0)
@@ -1477,7 +1495,7 @@ class SelfEnergy:
                 "fermi_wavevector": params["fermi_wavevector"],
             }
 
-            if self._class == "SpectralLinear":
+            if self._class in ("SpectralLinear", "MomentumLinear"):
                 optimisation_parameters["fermi_velocity"] = params["fermi_velocity"]
             elif self._class == "SpectralQuadratic" or self._class == "MomentumQuadratic":
                 optimisation_parameters["bare_mass"] = params["bare_mass"]
@@ -1795,10 +1813,10 @@ class SelfEnergy:
         bare_mass : float or None
             Initial bare mass (Quadratic) or None (Linear).
         """
-        if self._class == "SpectralLinear":
+        if self._class in ("SpectralLinear", "MomentumLinear"):
             if bare_mass is not None:
                 raise ValueError(
-                    "SpectralLinear bayesian_loop does not accept " 
+                    f"{self._class} bayesian_loop does not accept "
                     "`bare_mass`. Provide `fermi_velocity` instead."
                 )
 
@@ -1806,7 +1824,7 @@ class SelfEnergy:
                 fermi_velocity = getattr(self, "fermi_velocity", None)
                 if fermi_velocity is None:
                     raise ValueError(
-                        "SpectralLinear optimisation requires an initial "
+                        f"{self._class} optimisation requires an initial "
                         "fermi_velocity to be provided."
                     )
 
@@ -1814,7 +1832,7 @@ class SelfEnergy:
                 fermi_wavevector = getattr(self, "fermi_wavevector", None)
                 if fermi_wavevector is None:
                     raise ValueError(
-                        "SpectralLinear optimisation requires an initial "
+                        f"{self._class} optimisation requires an initial "
                         "fermi_wavevector to be provided."
                     )
 
@@ -1932,12 +1950,12 @@ class SelfEnergy:
         fermi_wavevector = None
         bare_mass = None
 
-        if self._class == "SpectralLinear":
+        if self._class in ("SpectralLinear", "MomentumLinear"):
             required_lin = {"fermi_velocity", "fermi_wavevector"}
             missing_lin = required_lin.difference(optimisation_parameters)
             if missing_lin:
                 raise ValueError(
-                    "SpectralLinear requires optimisation_parameters to include "
+                    f"{self._class} requires optimisation_parameters to include "
                     f"{sorted(missing_lin)}."
                 )
             fermi_velocity = optimisation_parameters["fermi_velocity"]

@@ -618,6 +618,7 @@ class MDCs:
             'Constant': ('offset',),
             'Linear': ('offset', 'slope'),
             'SpectralLinear': ('amplitude', 'peak', 'broadening'),
+            'MomentumLinear': ('amplitude', 'peak', 'broadening'),
             'SpectralQuadratic': ('amplitude', 'peak', 'broadening'),
             'MomentumQuadratic': ('amplitude', 'peak', 'broadening'),
         }

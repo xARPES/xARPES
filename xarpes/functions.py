@@ -51,7 +51,7 @@ def build_distributions(distributions, parameters):
         elif dist.class_name == 'Linear':
             dist.offset = parameters['offset_' + dist.label].value
             dist.slope = parameters['slope_' + dist.label].value
-        elif dist.class_name == 'SpectralLinear':
+        elif dist.class_name in ('SpectralLinear', 'MomentumLinear'):
             dist.amplitude = parameters['amplitude_' + dist.label].value
             dist.peak = parameters['peak_' + dist.label].value
             dist.broadening = parameters['broadening_' + dist.label].value
@@ -75,7 +75,7 @@ def construct_parameters(distribution_list, matrix_args=None):
         elif dist.class_name == 'Linear':
             parameters.add(name='offset_' + dist.label, value=dist.offset)
             parameters.add(name='slope_' + dist.label, value=dist.slope)
-        elif dist.class_name == 'SpectralLinear':
+        elif dist.class_name in ('SpectralLinear', 'MomentumLinear'):
             parameters.add(name='amplitude_' + dist.label,
                            value=dist.amplitude, min=0)
             parameters.add(name='peak_' + dist.label, value=dist.peak)

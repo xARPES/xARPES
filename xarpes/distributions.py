@@ -653,6 +653,53 @@ class SpectralLinear(Dispersion):
         np.deg2rad(angle_range)) - np.sin(np.deg2rad(self.peak)))** 2 +
         self.broadening** 2)
 
+
+class MomentumLinear(Dispersion):
+    r"""Class for the linear dispersion spectral function in momentum space."""
+    def __init__(self, amplitude, peak, broadening, name, index):
+        super().__init__(amplitude=amplitude, peak=peak,
+                         broadening=broadening, name=name, index=index)
+
+    def __call__(self, momentum_range, amplitude, broadening, peak):
+        r"""Evaluate the momentum-linear Lorentzian with explicit parameters."""
+        return amplitude / np.pi * broadening / (
+            (momentum_range - peak) ** 2 + broadening ** 2
+        )
+
+    def evaluate(self, momentum_range):
+        r"""Evaluate the distribution using stored instance parameters."""
+        return self.amplitude / np.pi * self.broadening / (
+            (momentum_range - self.peak) ** 2 + self.broadening ** 2
+        )
+
+    @add_fig_kwargs
+    def plot(self, momentum_range, momentum_resolution,
+             matrix_element=None, matrix_args=None, ax=None, **kwargs):
+        r"""Plot the momentum-linear spectral distribution."""
+        from scipy.ndimage import gaussian_filter
+
+        ax, fig, plt = get_ax_fig_plt(ax=ax)
+
+        ax.set_xlabel(r'$k_{//}$ ($\mathrm{\AA}^{-1}$)')
+        ax.set_ylabel('Counts (-)')
+
+        extend, step, numb = extend_function(momentum_range,
+                                             momentum_resolution)
+
+        extended_result = self.evaluate(extend)
+
+        if matrix_element is not None:
+            extended_result *= matrix_element(extend, **matrix_args)
+
+        final_result = gaussian_filter(extended_result, sigma=step)[
+            numb:-numb if numb else None]
+
+        ax.plot(momentum_range, final_result, label=self.label)
+
+        ax.legend()
+
+        return fig
+
     
 class MomentumQuadratic(Dispersion):
     r"""Class for the quadratic dispersion spectral function in momentum space."""
