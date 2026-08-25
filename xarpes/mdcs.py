@@ -151,7 +151,7 @@ class MDCs:
 
     @enel.setter
     def enel(self, _):
-        raise AttributeError("`enel` is read-only; set it via the " \
+        raise AttributeError("`enel` is read-only; set it via the "
         "constructor.")
 
     @property
@@ -234,14 +234,14 @@ class MDCs:
         """
         if np.isscalar(self.ekin):
             if  energy_value is not None:
-                raise ValueError("This dataset contains only one " \
+                raise ValueError("This dataset contains only one "
                 "momentum-distribution curve; do not provide energy_value.")
             else:
                 kinergy = self.ekin
                 counts = self.intensities
         else:
             if energy_value is None:
-                raise ValueError("This dataset contains multiple " \
+                raise ValueError("This dataset contains multiple "
                 "momentum-distribution curves. Please provide an energy_value "
                 "for which to plot the MDCs.")
             else:
@@ -891,7 +891,7 @@ class MDCs:
         if matrix_element is not None:
             parameters, element_names = construct_parameters(distributions,
                                                              matrix_args)
-            new_distributions = build_distributions(new_distributions, \
+            new_distributions = build_distributions(new_distributions,
                                                     parameters)
             mini = Minimizer(
                 residual, parameters,
@@ -959,7 +959,7 @@ class MDCs:
                         'of a center angle. Please provide a kinetic energy '
                         'and hnuminPhi.'
                     )
-                extended_result = dist.evaluate(extend, kinetic_energy, \
+                extended_result = dist.evaluate(extend, kinetic_energy,
                                                 self.hnuminPhi)
             else:
                 extended_result = dist.evaluate(extend)
@@ -974,11 +974,11 @@ class MDCs:
             if plot_individual and ax:
                 individual = gaussian_filter(extended_result, sigma=step)\
                     [numb:-numb if numb else None]
-                ax.plot(self.angles, individual, label=getattr(dist, \
+                ax.plot(self.angles, individual, label=getattr(dist,
                                                         'label', str(dist)))
 
         # Smoothed, cropped total curve aligned to self.angles
-        final_result = gaussian_filter(total_result, sigma=step)[numb:-numb \
+        final_result = gaussian_filter(total_result, sigma=step)[numb:-numb
                                                             if numb else None]
         if ax:
             ax.plot(self.angles, final_result, label='Distribution sum')

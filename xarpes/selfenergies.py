@@ -2931,7 +2931,7 @@ class SelfEnergy:
         if real is None or imag is None:
             raise ValueError(
                 "Cannot compute self-energy arrays for cost evaluation. "
-                "Ensure the required band parameters and peak/broadening " \
+                "Ensure the required band parameters and peak/broadening "
                 "inputs are set.")
 
         real_m = real[mE] * KILO - real_el
@@ -3264,7 +3264,7 @@ class SelfEnergy:
                         ** 2) / ( 1.0 + x ** 4))
         else:
             raise ValueError(
-                "El-el coupling has not yet been implemented for the given " \
+                "El-el coupling has not yet been implemented for the given "
                 "power."
                 )
 

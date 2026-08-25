@@ -414,7 +414,7 @@ class FermiDirac(UniqueDistribution):
         ax.set_xlabel(r'$E_{\mathrm{kin}}$ (-)')
         ax.set_ylabel('Counts (-)')
 
-        extend, step, numb = extend_function(energy_range, \
+        extend, step, numb = extend_function(energy_range,
                                                energy_resolution)
 
         extended_result = self.evaluate(extend)
@@ -699,7 +699,7 @@ class SpectralLinear(Dispersion):
         r"""
         """
         result = amplitude / np.pi * broadening / \
-            ((np.sin(np.deg2rad(angle_range)) - np.sin(np.deg2rad(peak)))**2 \
+            ((np.sin(np.deg2rad(angle_range)) - np.sin(np.deg2rad(peak)))**2
              + broadening ** 2)
         return result
 
@@ -792,8 +792,8 @@ class SpectralQuadratic(Dispersion):
                                                       kinetic_energy)
 
         return self.amplitude / np.pi * self.broadening / \
-            (((np.sin(np.deg2rad(angle_range)) - \
-               np.sin(np.deg2rad(binding_angle)))**2 - \
+            (((np.sin(np.deg2rad(angle_range)) -
+               np.sin(np.deg2rad(binding_angle)))**2 -
                 np.sin(np.deg2rad(self.peak))**2)**2 + self.broadening**2)
 
     @add_fig_kwargs
