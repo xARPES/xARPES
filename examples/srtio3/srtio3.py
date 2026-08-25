@@ -97,16 +97,16 @@ fig = mdcs.visualize_guess(distributions=guess_dists, matrix_element=mat_el,
 
 fig = plt.figure(figsize=(8, 6)); ax = fig.gca()
 
-fig = mdcs.fit_selection(distributions=guess_dists, matrix_element=mat_el, 
+fig = mdcs.fit_selection(distributions=guess_dists, matrix_element=mat_el,
                          matrix_args=mat_args, ax=ax)
 
 # **Note on the self-energy assignment**
-# - The user has to explicitly assign the peaks as left-hand or right-hand side.  
-# - In theory, one could incorporate such information in a minus sign of the peak position.  
-# - However, this would also require setting boundaries for the fitting range.  
+# - The user has to explicitly assign the peaks as left-hand or right-hand side.
+# - In theory, one could incorporate such information in a minus sign of the peak position.
+# - However, this would also require setting boundaries for the fitting range.
 # - Instead, the user is advised to carefully check correspondence of peak maxima with MDC fitting results.
 
-self_energy = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Inner_band_1', 
+self_energy = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Inner_band_1',
                                 bare_mass=0.58997502, fermi_wavevector=0.1411192, side='right'))
 
 self_two = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Outer_band_2',
@@ -119,8 +119,8 @@ self_energies = xarpes.CreateSelfEnergies([self_energy, self_two])
 
 fig = plt.figure(figsize=(8, 5)); ax = fig.gca()
 
-fig = bmap.plot(abscissa='momentum', ordinate='kinetic_energy', 
-                plot_dispersions='domain', 
+fig = bmap.plot(abscissa='momentum', ordinate='kinetic_energy',
+                plot_dispersions='domain',
                 self_energies=self_energies, ax=ax)
 
 
@@ -172,7 +172,7 @@ self_total = xarpes.CreateSelfEnergies([
     self_three, self_four
 ])
 
-fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax, 
+fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax,
                 self_energies=self_total, plot_dispersions='domain')
 
 
@@ -202,7 +202,7 @@ fig = mdcs.visualize_guess(distributions=guess_dists, matrix_element=mat_el,
 
 fig = plt.figure(figsize=(8, 6)); ax = fig.gca()
 
-fig = mdcs.fit_selection(distributions=guess_dists, matrix_element=mat_el, 
+fig = mdcs.fit_selection(distributions=guess_dists, matrix_element=mat_el,
                          matrix_args=mat_args, ax=ax)
 
 
@@ -211,7 +211,7 @@ fig = plt.figure(figsize=(8, 6)); ax = fig.gca()
 self_five = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Inner_left_5',
                                 bare_mass=0.59521794, fermi_wavevector=0.141069758, side='left'))
 
-self_six = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Outer_left_6', 
+self_six = xarpes.SelfEnergy(*mdcs.expose_parameters(select_label='Outer_left_6',
                                 bare_mass=0.58997502, fermi_wavevector=0.1411192, side='left'))
 
 fig = self_five.plot_both(ax=ax)
@@ -220,14 +220,14 @@ fig = self_five.plot_both(ax=ax)
 fig, ax = plt.subplots(2, 1, figsize=(6, 8))
 
 fig, spectrum, model, omega_range, aval_select = self_energy.extract_a2f(
-                                omega_min=0.5, omega_max=120, omega_num=250, 
+                                omega_min=0.5, omega_max=120, omega_num=250,
                                 omega_I=20, omega_M=100, omega_S=1.0, aval_min=0.0,
                                 aval_max=8.0, aval_num=10, parts='both',
                                 ecut_left=3.0, h_n=0.0741008, impurity_magnitude=16.475007,
                                 ax=ax[0], show=False, fig_close=False)
 
 fig, spectrum_left, model, omega_range, aval_select = self_five.extract_a2f(
-                                omega_min=0.5, omega_max=120, omega_num=250, 
+                                omega_min=0.5, omega_max=120, omega_num=250,
                                 omega_I=20, omega_M=100, omega_S=1.0, aval_min=0.0,
                                 aval_max=8.0, aval_num=10, parts='both',
                                 ecut_left=3.0, h_n=0.0743720, impurity_magnitude=15.882396,
@@ -244,9 +244,9 @@ with xarpes.trim_notebook_output(print_lines=10):
                 omega_max=120, omega_num=250, omega_I=20, omega_M=100, omega_S=1.0,
                 aval_min=0.0, aval_max=8.0, aval_num=10, method='chi2kink',
                 parts='both', ecut_left=3, iter_max=1e4, t_criterion=1e-8,
-                power=4, bare_mass=0.6094394681, fermi_wavevector=0.1420916364, h_n=0.07582382627, 
+                power=4, bare_mass=0.6094394681, fermi_wavevector=0.1420916364, h_n=0.07582382627,
                 impurity_magnitude=14.64962434, lambda_el=2.064840668e-07,
-                vary=("impurity_magnitude", "lambda_el", "fermi_wavevector", "bare_mass", 
+                vary=("impurity_magnitude", "lambda_el", "fermi_wavevector", "bare_mass",
                     "h_n"), scale_imp=1.0, scale_lambda_el=1.0, scale_kF=0.1, scale_mb=1.0, scale_hn=1.0)
 
 

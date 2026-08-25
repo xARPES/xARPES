@@ -84,7 +84,7 @@ class MDCs:
     where ``param`` is typically one of ``'offset'``, ``'slope'``,
     ``'amplitude'``, ``'peak'``, ``'broadening'``, and ``param_sigma`` stores
     the corresponding uncertainty for each slice.
-    
+
     """
 
     def __init__(self, intensities, angles, angle_resolution,
@@ -112,26 +112,26 @@ class MDCs:
     def angle_resolution(self):
         """Angular resolution (float)."""
         return self._angle_resolution
-    
+
     @angle_resolution.setter
     def angle_resolution(self, _):
         """Setter for the angle resolution. This raises an attribute error
         as the angle resolution needs to be derived from the band map."""
         raise AttributeError("`angle_resolution` is read-only; set it via the "
         "constructor.")
-    
+
     @property
     def energy_resolution(self):
         """Energy resolution (float)."""
         return self._energy_resolution
-    
+
     @energy_resolution.setter
     def energy_resolution(self, _):
         """Setter for the energy resolution. This raises an attribute error
         as the energy resolution needs to be derived from the band map."""
         raise AttributeError("`energy_resolution` is read-only; set it via the "
         "constructor.")
-    
+
     @property
     def temperature(self):
         """Temperature (float)."""
@@ -236,7 +236,7 @@ class MDCs:
             if  energy_value is not None:
                 raise ValueError("This dataset contains only one " \
                 "momentum-distribution curve; do not provide energy_value.")
-            else: 
+            else:
                 kinergy = self.ekin
                 counts = self.intensities
         else:
@@ -262,8 +262,8 @@ class MDCs:
 
     def plot(self, energy_value=None, energy_range=None, ax=None, **kwargs):
         """
-        Interactive or static plot with optional slider and full wrapper 
-        support. Behavior consistent with Jupyter and CLI based on show / 
+        Interactive or static plot with optional slider and full wrapper
+        support. Behavior consistent with Jupyter and CLI based on show /
         fig_close.
         """
         import matplotlib.pyplot as plt
@@ -444,7 +444,7 @@ class MDCs:
                         matrix_element=None, matrix_args=None, ax=None):
         r"""
         """
-        
+
         self._validate_angle_resolution('visualize_guess')
 
         counts, kinergy = self.energy_check(energy_value)
@@ -457,7 +457,7 @@ class MDCs:
                      f"{(kinergy - self.hnuminPhi) * KILO:.3f} meV")
         ax.scatter(self.angles, counts, label='Data')
 
-        final_result = self._merge_and_plot(ax=ax, 
+        final_result = self._merge_and_plot(ax=ax,
             distributions=distributions, kinetic_energy=kinergy,
             matrix_element=matrix_element,
             matrix_args=dict(matrix_args) if matrix_args else None,
@@ -469,7 +469,7 @@ class MDCs:
         ax.legend()
 
         return fig
-    
+
 
     def fit_selection(self, distributions, energy_value=None, energy_range=None,
             matrix_element=None, matrix_args=None, ax=None, **kwargs):
@@ -485,7 +485,7 @@ class MDCs:
         from scipy.ndimage import gaussian_filter
         from .functions import construct_parameters, build_distributions, \
             residual, resolve_param_name
-        
+
         # Wrapper kwargs
         title = kwargs.pop("title", None)
         savefig = kwargs.pop("savefig", None)
@@ -519,8 +519,8 @@ class MDCs:
         else:
             if energy_value is not None:
                 if (energy_value < energies.min() or energy_value > energies.max()):
-                    raise ValueError( f"Requested energy_value {energy_value:.3f} eV is " 
-                                     f"outside the available energy range " 
+                    raise ValueError( f"Requested energy_value {energy_value:.3f} eV is "
+                                     f"outside the available energy range "
                                      f"[{energies.min():.3f}, {energies.max():.3f}] eV." )
                 idx = np.abs(energies - energy_value).argmin()
                 indices = np.atleast_1d(idx)
@@ -740,7 +740,7 @@ class MDCs:
                 energies_sel = np.atleast_1d(energies[_idx])
             elif energy_range is not None:
                 e_min, e_max = energy_range
-                energies_sel = energies[(energies >= e_min) 
+                energies_sel = energies[(energies >= e_min)
                                         & (energies <= e_max)]
             else:
                 energies_sel = energies
@@ -774,9 +774,9 @@ class MDCs:
                     line, = ax.plot(self.angles, yvals, label=label)
                     individual_lines.append(line)
 
-            result_line, = ax.plot(self.angles, all_final_results[idx], 
+            result_line, = ax.plot(self.angles, all_final_results[idx],
                                    label="Fit")
-            resid_scatter = ax.scatter(self.angles, all_residuals[idx], 
+            resid_scatter = ax.scatter(self.angles, all_residuals[idx],
                                        label="Residual")
 
             # Title + limits (use only the currently shown slice)
@@ -863,18 +863,18 @@ class MDCs:
         if not show and (fig_close or is_cli):
             return None
         return fig
-    
+
 
     @add_fig_kwargs
     def fit(self, distributions, energy_value=None, matrix_element=None,
             matrix_args=None, ax=None):
         r"""
-        """      
+        """
         from copy import deepcopy
         from lmfit import Minimizer
         from .functions import construct_parameters, build_distributions, \
             residual
-        
+
         counts, kinergy = self.energy_check(energy_value)
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
@@ -883,7 +883,7 @@ class MDCs:
         ax.set_ylabel('Counts (-)')
         ax.set_title(f"Energy slice: "
                      f"{(kinergy - self.hnuminPhi) * KILO:.3f} meV")
-        
+
         ax.scatter(self.angles, counts, label='Data')
 
         new_distributions = deepcopy(distributions)
@@ -908,7 +908,7 @@ class MDCs:
 
         outcome = mini.minimize('least_squares')
         pcov = outcome.covar
-        
+
         # If matrix params were fitted, pass the fitted values to plotting
         if matrix_element is not None:
             new_matrix_args = {key: outcome.params[key].value for key in
@@ -916,11 +916,11 @@ class MDCs:
         else:
             new_matrix_args = None
 
-        final_result = self._merge_and_plot(ax=ax, 
+        final_result = self._merge_and_plot(ax=ax,
             distributions=new_distributions, kinetic_energy=kinergy,
             matrix_element=matrix_element, matrix_args=new_matrix_args,
             plot_individual=True)
-        
+
         residual_vals = counts - final_result
         ax.scatter(self.angles, residual_vals, label='Residual')
         ax.legend()
@@ -928,7 +928,7 @@ class MDCs:
             return fig, new_distributions, pcov, new_matrix_args
         else:
             return fig, new_distributions, pcov
-        
+
 
     def _merge_and_plot(self, ax, distributions, kinetic_energy,
                         matrix_element=None, matrix_args=None,
@@ -984,7 +984,7 @@ class MDCs:
             ax.plot(self.angles, final_result, label='Distribution sum')
 
         return final_result
-    
+
 
     def expose_parameters(self, select_label, fermi_wavevector=None,
                           fermi_velocity=None, bare_mass=None, side=None):
@@ -1086,5 +1086,5 @@ class MDCs:
                         exported_parameters[key] = val
 
         return (self._ekin_range, self.hnuminPhi, self.energy_resolution,
-                self.temperature, select_label, selected_properties, 
+                self.temperature, select_label, selected_properties,
                 exported_parameters)

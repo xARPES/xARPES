@@ -33,7 +33,7 @@ def get_ax_fig_plt(ax=None, **kwargs):
         `matplotlib` figure.
     plt : object
         `matplotlib.pyplot` module.
-    """    
+    """
     import matplotlib.pyplot as plt
 
     if ax is None:
@@ -67,7 +67,7 @@ def add_fig_kwargs(func):
         ax_grid = kwargs.pop('ax_grid', None)
         ax_annotate = kwargs.pop('ax_annotate', None)
         fig_close = kwargs.pop('fig_close', True)
-        
+
         import string
 
         # Call the original function

@@ -530,12 +530,12 @@ def singular_value_decomposition(kernel, sigma_svd):
     V = V[:, :s_reduced]
     U = U[:, :s_reduced]
     V_Sigma = V * Sigma[None, :]
-    
+
     uvec = np.zeros(s_reduced)
-    
+
     print('Dimensionality has been reduced from a matrix of rank ' + str(min(kernel.shape)) +
           ' to ' + str(int(s_reduced)) + ' in the singular space.')
-          
+
     return V_Sigma, U, uvec
 
 

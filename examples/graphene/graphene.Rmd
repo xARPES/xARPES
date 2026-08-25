@@ -63,7 +63,7 @@ fig = bmap.plot(abscissa='momentum', ordinate='kinetic_energy', size_kwargs=dict
 # angles = np.load(os.path.join(script_dir, dfld, "graphene_152_angles.npy"))
 # ekin = np.load(os.path.join(script_dir, dfld, "graphene_152_ekin.npy"))
 
-# bmap = xarpes.BandMap.from_np_arrays(intensities=intensities, angles=angles, 
+# bmap = xarpes.BandMap.from_np_arrays(intensities=intensities, angles=angles,
 #         ekin=ekin, energy_resolution=0.01, angle_resolution=0.1,temperature=50)
 
 # fig = bmap.plot(abscissa='momentum', ordinate='kinetic_energy', size_kwargs=dict(w=6, h=5))
@@ -139,7 +139,7 @@ mat_args = {}
 
 fig = plt.figure(figsize=(8, 6)); ax = fig.gca()
 
-fig = mdcs.visualize_guess(distributions=guess_dists, energy_value=energy_value, 
+fig = mdcs.visualize_guess(distributions=guess_dists, energy_value=energy_value,
                            matrix_element=mat_el, matrix_args=mat_args, ax=ax)
 ```
 
@@ -156,7 +156,7 @@ ax = fig.gca()
 
 mdcs = xarpes.MDCs(*bmap.mdc_set(angle_min, angle_max, energy_range=energy_range))
 
-fig = mdcs.fit_selection(distributions=guess_dists, 
+fig = mdcs.fit_selection(distributions=guess_dists,
                          matrix_element=mat_el, matrix_args=mat_args, ax=ax)
 ```
 
@@ -181,8 +181,8 @@ fig = bmap.plot(abscissa='momentum', ordinate='electron_energy', ax=ax,
 
 fig, spectrum, model, omega_range, aval_select = self_energy.extract_a2f(
         omega_min=0.5, omega_max=250, omega_num=250, omega_I=50, omega_M=200,
-        omega_S=1, aval_min=1.0, aval_max=9.0, aval_num=10, method="chi2kink", 
-        parts="both", ecut_left=0.0, ecut_right=None, t_criterion=1e-8, 
+        omega_S=1, aval_min=1.0, aval_max=9.0, aval_num=10, method="chi2kink",
+        parts="both", ecut_left=0.0, ecut_right=None, t_criterion=1e-8,
         sigma_svd=1e-4, iter_max=1e4, lambda_el=0.0, W=1500, h_n=0.1062861,
         impurity_magnitude=120.94606, power=4, f_chi_squared=None)
 ```
@@ -201,8 +201,8 @@ with xarpes.trim_notebook_output(print_lines=10):
                 omega_max=250, omega_num=250, omega_I=50, omega_M=200, omega_S=1.0,
                 W=1500, power=4, fermi_velocity=2.8590436, fermi_wavevector=0.358010499,
                 h_n=0.0802309738, impurity_magnitude=120.902261, lambda_el=0,
-                vary=("impurity_magnitude", "lambda_el", "fermi_wavevector", "fermi_velocity", "h_n"), 
-                converge_iters=10, tole=1e-2, scale_vF=1.0, scale_imp=1.0, scale_kF=0.1, 
+                vary=("impurity_magnitude", "lambda_el", "fermi_wavevector", "fermi_velocity", "h_n"),
+                converge_iters=10, tole=1e-2, scale_vF=1.0, scale_imp=1.0, scale_kF=0.1,
                 scale_lambda_el=1.0, scale_hn=10.0)
 ```
 
