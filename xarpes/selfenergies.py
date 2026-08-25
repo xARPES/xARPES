@@ -1731,7 +1731,7 @@ class SelfEnergy:
         W=None, power=None, mu=None, omega_S=None,
         sigma_svd=None, t_criterion=None,
         g_guess=None, b_guess=None, c_guess=None, d_guess=None,
-        h_n=None, h_n_min=None,impurity_magnitude=None, lambda_el=None):
+        h_n=None, h_n_min=None, impurity_magnitude=None, lambda_el=None):
         r"""
         Extract Eliashberg function α²F(ω) from the self-energy. While working
         with band maps and MDCs is more intuitive in eV, the self-energy
