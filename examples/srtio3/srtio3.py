@@ -235,7 +235,7 @@ fig, spectrum_left, model, omega_range, aval_select = self_five.extract_a2f(
 
 # Figure customization
 ax[0].set_xlabel(''); ax[0].set_xticklabels([])
-ax[0].set_title('$\chi^2$-kink')
+ax[0].set_title(r'$\chi^2$-kink')
 fig.subplots_adjust(top=0.92, hspace=0.1)
 plt.show()
 

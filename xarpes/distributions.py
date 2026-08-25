@@ -106,8 +106,8 @@ class CreateDistributions:
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
-        ax.set_xlabel('Angle ($\degree$)')
-        ax.set_ylabel('Counts (-)')
+        ax.set_xlabel(r'Angle ($\degree$)')
+        ax.set_ylabel(r'Counts (-)')
 
 
         extend, step, numb = extend_function(angle_range, angle_resolution)
@@ -180,8 +180,8 @@ class Distribution:
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
-        ax.set_xlabel('Angle ($\degree$)')
-        ax.set_ylabel('Counts (-)')
+        ax.set_xlabel(r'Angle ($\degree$)')
+        ax.set_ylabel(r'Counts (-)')
 
         extend, step, numb = extend_function(angle_range, angle_resolution)
 
@@ -805,8 +805,8 @@ class SpectralQuadratic(Dispersion):
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
-        ax.set_xlabel('Angle ($\degree$)')
-        ax.set_ylabel('Counts (-)')
+        ax.set_xlabel(r'Angle ($\degree$)')
+        ax.set_ylabel(r'Counts (-)')
 
         extend, step, numb = extend_function(angle_range, angle_resolution)
 

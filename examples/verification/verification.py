@@ -233,8 +233,8 @@ a2f_line, model_line = ax1.get_lines()[-2:]
 a2f_line.set_color(color_three); model_line.set_color(color_four)
 
 #Tiny tweaks that should have been xARPES default behaviour.
-ax1.set_xlabel('$E-\mu, -\omega$ (meV)')
-ax2.set_ylabel('$\Sigma_{n}^{\prime}(E), -\Sigma_{n}^{\prime\prime}(E)$')
+ax1.set_xlabel(r'$E-\mu, -\omega$ (meV)')
+ax2.set_ylabel(r'$\Sigma_{n}^{\prime}(E), -\Sigma_{n}^{\prime\prime}(E)$')
 
 # --- Overwrite the legend with a custom legend
 [ax.get_legend() and ax.get_legend().remove() for ax in (ax1, ax2)]

@@ -1073,8 +1073,8 @@ class BandMap:
 
         Angl, Ekin = np.meshgrid(self.angles, self.ekin)
 
-        ax.set_xlabel('Angle ($\degree$)')
-        ax.set_ylabel('$E_{\mathrm{kin}}$ (eV)')
+        ax.set_xlabel(r'Angle ($\degree$)')
+        ax.set_ylabel(r'$E_{\mathrm{kin}}$ (eV)')
         mesh = ax.pcolormesh(Angl, Ekin, self.intensities,
                        shading='auto', cmap=plt.get_cmap('bone').reversed(),
                              zorder=1)
