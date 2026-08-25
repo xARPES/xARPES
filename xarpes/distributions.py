@@ -53,7 +53,7 @@ class CreateDistributions:
     def __len__(self):
         r"""
         """
-        # Fast path: flat list length (may be different from n_individuals 
+        # Fast path: flat list length (may be different from n_individuals
         # if composites exist)
         return len(self.distributions)
 
@@ -91,7 +91,7 @@ class CreateDistributions:
         Return a flat list of leaf distributions (useful for plotting/storage).
         """
         return list(self._iter_leaves())
-    
+
 
     @add_fig_kwargs
     def plot(self, angle_range, angle_resolution, kinetic_energy=None,
@@ -106,8 +106,8 @@ class CreateDistributions:
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
-        ax.set_xlabel('Angle ($\degree$)')
-        ax.set_ylabel('Counts (-)')
+        ax.set_xlabel(r'Angle ($\degree$)')
+        ax.set_ylabel(r'Counts (-)')
 
 
         extend, step, numb = extend_function(angle_range, angle_resolution)
@@ -180,8 +180,8 @@ class Distribution:
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
-        ax.set_xlabel('Angle ($\degree$)')
-        ax.set_ylabel('Counts (-)')
+        ax.set_xlabel(r'Angle ($\degree$)')
+        ax.set_ylabel(r'Counts (-)')
 
         extend, step, numb = extend_function(angle_range, angle_resolution)
 
@@ -229,7 +229,7 @@ class UniqueDistribution(Distribution):
         return self._label
 
 class FermiDirac(UniqueDistribution):
-    r"""Child class for Fermi-Dirac (FD) distributions, used e.g., during 
+    r"""Child class for Fermi-Dirac (FD) distributions, used e.g., during
     Fermi-edge fitting. The FD class is unique, only one instance should be
     used per task.
 
@@ -414,7 +414,7 @@ class FermiDirac(UniqueDistribution):
         ax.set_xlabel(r'$E_{\mathrm{kin}}$ (-)')
         ax.set_ylabel('Counts (-)')
 
-        extend, step, numb = extend_function(energy_range, \
+        extend, step, numb = extend_function(energy_range,
                                                energy_resolution)
 
         extended_result = self.evaluate(extend)
@@ -474,8 +474,8 @@ class Constant(UniqueDistribution):
         return np.full(np.shape(angle_range), self.offset)
 
 class Linear(UniqueDistribution):
-    r"""Child cass for for linear distributions, used e.g., during MDC 
-    fitting. The linear class is unique, only one instance should be used per 
+    r"""Child cass for for linear distributions, used e.g., during MDC
+    fitting. The linear class is unique, only one instance should be used per
     task.
 
     Parameters
@@ -638,7 +638,7 @@ class NonUniqueDistribution(Distribution):
         Returns
         -------
         index : str
-            Unique index for instances. Not to be modified after 
+            Unique index for instances. Not to be modified after
             instantiation.
         """
         return self._index
@@ -699,7 +699,7 @@ class SpectralLinear(Dispersion):
         r"""
         """
         result = amplitude / np.pi * broadening / \
-            ((np.sin(np.deg2rad(angle_range)) - np.sin(np.deg2rad(peak)))**2 \
+            ((np.sin(np.deg2rad(angle_range)) - np.sin(np.deg2rad(peak)))**2
              + broadening ** 2)
         return result
 
@@ -710,7 +710,7 @@ class SpectralLinear(Dispersion):
         np.deg2rad(angle_range)) - np.sin(np.deg2rad(self.peak)))** 2 +
         self.broadening** 2)
 
-    
+
 class SpectralQuadratic(Dispersion):
     r"""Class for the quadratic dispersion spectral function"""
     def __init__(self, amplitude, peak, broadening, name, index,
@@ -792,8 +792,8 @@ class SpectralQuadratic(Dispersion):
                                                       kinetic_energy)
 
         return self.amplitude / np.pi * self.broadening / \
-            (((np.sin(np.deg2rad(angle_range)) - \
-               np.sin(np.deg2rad(binding_angle)))**2 - \
+            (((np.sin(np.deg2rad(angle_range)) -
+               np.sin(np.deg2rad(binding_angle)))**2 -
                 np.sin(np.deg2rad(self.peak))**2)**2 + self.broadening**2)
 
     @add_fig_kwargs
@@ -805,8 +805,8 @@ class SpectralQuadratic(Dispersion):
 
         ax, fig, plt = get_ax_fig_plt(ax=ax)
 
-        ax.set_xlabel('Angle ($\degree$)')
-        ax.set_ylabel('Counts (-)')
+        ax.set_xlabel(r'Angle ($\degree$)')
+        ax.set_ylabel(r'Counts (-)')
 
         extend, step, numb = extend_function(angle_range, angle_resolution)
 

@@ -17,7 +17,7 @@ In this example, we investigate the verification example from the xARPES manuscr
 
 This example corresponds to the "Verification using model data" Section from the first xARPES publication: https://www.nature.com/articles/s41524-026-02026-9, going through all the steps discussed in the main text. The notebook also contains an execution of the Bayesian loop with a set of parameters that is "far from" the optimal solution, similar to the supplemental section on the example.
 
-In the future, functionality will be added to xARPES for users to generate their own mock example, allowing for testing of desired hypotheses. 
+In the future, functionality will be added to xARPES for users to generate their own mock example, allowing for testing of desired hypotheses.
 
 
 First, we set the desired graphical environment, load xARPES and packages that we will use directly, and set the default xARPES plotting environment.
@@ -129,13 +129,13 @@ In the following cell, the selected set of MDCs is fitted, after which an intera
 - For some package versions, a static version of the interactive widget may spuriously show up inside other cells. This undesired behaviour may be circumvented by (once again) executing `xarpes.plot_settings('default')`.
 
 ```{python}
-# %matplotlib widget    
+# %matplotlib widget
 
 fig = plt.figure(figsize=(8, 6)); ax = fig.gca()
 
 fig = mdcs.fit_selection(distributions=guess_dists, ax=ax)
 ```
-First, we calculate the real $\widetilde{\Sigma}_{n0}^{\prime}(E_j)$ and minus imaginary parts $-\widetilde{\Sigma}_{n0}^{\prime\prime}(E_j)$ of the one-shot self-energy, using the right-hand branch as a first example. 
+First, we calculate the real $\widetilde{\Sigma}_{n0}^{\prime}(E_j)$ and minus imaginary parts $-\widetilde{\Sigma}_{n0}^{\prime\prime}(E_j)$ of the one-shot self-energy, using the right-hand branch as a first example.
 
 Following the section ''Extraction of the self-energy" of the publication, this calculation requires a one-shot initial guess for the bare mass $m_{n0}^{\mathrm{b}}$ and the Fermi wavevector $k_{n0}^{\mathrm{F}}$. We will use the Bayesian loop to optimise these parameters later on. However, the loop requires a sufficiently good initial guess of these parameters. Therefore, the following plot is useful for improving the initial guess.
 
@@ -169,11 +169,11 @@ fig = plt.figure(figsize=(8, 5)); ax = fig.gca()
 
 ax.set_ylim(29.8, 30.05)
 
-fig = bmap.plot(abscissa='momentum', ordinate='kinetic_energy', 
+fig = bmap.plot(abscissa='momentum', ordinate='kinetic_energy',
                 plot_dispersions='domain', self_energies=self_energies, ax=ax)
 ```
 
-#### ''Chi2kink method'' 
+#### ''Chi2kink method''
 
 In the following cell, we extract the Eliashberg function from the self-energy. This extraction is based on the maximum-entropy method. We have chosen the ``chi2kink`` flavour of the maximum-entropy method. Accordingly, the result of the chi2kink fit is plotted during the extraction. Setting
 `show=False` and `fig_close=True` will prevent the figure from being displayed.
@@ -181,7 +181,7 @@ Afterwards, we plot the Eliashberg function and model function with the
 appropriate self-energy methods.
 
 To model the characteristic kink-like behavior observed in the dependence of
-the goodness-of-fit metric on the control parameter $x$, we employ a smooth logistic function, 
+the goodness-of-fit metric on the control parameter $x$, we employ a smooth logistic function,
 hereafter referred to as the $\chi^2$-kink model. The fitted function is defined as
 
 $$
@@ -192,8 +192,8 @@ $$
 
 where $g$ denotes the asymptotic baseline value of the metric for small $x$,
 $b$ sets the amplitude of the step, $c$ determines the position of the kink
-along the $x$-axis, and $d$ controls the sharpness of the transition. Once the fitting 
-has been completed, the selected $a_{\mathrm{sel}}$ is obtained from 
+along the $x$-axis, and $d$ controls the sharpness of the transition. Once the fitting
+has been completed, the selected $a_{\mathrm{sel}}$ is obtained from
 $a=10^{c-f /d}$ with a tuning parameter $f \in [2, 2.5]$.
 
 For a full description of the ''chi2kink'' method, please see https://doi.org/10.1016/j.cpc.2022.108519.
@@ -277,8 +277,8 @@ a2f_line, model_line = ax1.get_lines()[-2:]
 a2f_line.set_color(color_three); model_line.set_color(color_four)
 
 #Tiny tweaks that should have been xARPES default behaviour.
-ax1.set_xlabel('$E-\mu, -\omega$ (meV)')
-ax2.set_ylabel('$\Sigma_{n}^{\prime}(E), -\Sigma_{n}^{\prime\prime}(E)$')
+ax1.set_xlabel(r'$E-\mu, -\omega$ (meV)')
+ax2.set_ylabel(r'$\Sigma_{n}^{\prime}(E), -\Sigma_{n}^{\prime\prime}(E)$')
 
 # --- Overwrite the legend with a custom legend
 [ax.get_legend() and ax.get_legend().remove() for ax in (ax1, ax2)]
@@ -293,7 +293,7 @@ plt.show()
 
 We now turn to the optimisation of the model parameters: The Fermi wavevector $k_n^{\mathrm{F}}$, the bare mass $m_n^{\mathrm{b}}$, the electron-electron coupling coefficient $\lambda_n^{\mathrm{el}}$, and the height of the model function $h_n$.
 
-For simplicity, we will first start from the optimal solution itself. Thus, the optimisation should effectively return to this solution after a couple tens of iterations. Aside from more forgiving $a_{\mathrm{min}}$ and $a_{\mathrm{max}}$ during the optimisation, the only new variables pertain to the relative size in the steps for the model parameters, named `scale_mb` et cetera. These scaling factors can be modified to ensure the code finds a better solution, while not making steps so large that the inner MEM loop fails to extract the Eliashberg function.  
+For simplicity, we will first start from the optimal solution itself. Thus, the optimisation should effectively return to this solution after a couple tens of iterations. Aside from more forgiving $a_{\mathrm{min}}$ and $a_{\mathrm{max}}$ during the optimisation, the only new variables pertain to the relative size in the steps for the model parameters, named `scale_mb` et cetera. These scaling factors can be modified to ensure the code finds a better solution, while not making steps so large that the inner MEM loop fails to extract the Eliashberg function.
 
 ```{python}
 with xarpes.trim_notebook_output(print_lines=10):
@@ -318,7 +318,7 @@ with xarpes.trim_notebook_output(print_lines=10):
                 omega_max=80, omega_num=250, omega_I=20, omega_M=60,
                 aval_min=3.0, aval_max=11.0, bare_mass=1.74625, fermi_wavevector=0.250125,
                 h_n=0.09, impurity_magnitude=9.1, lambda_el=0.22, sigma_svd=0.1,
-                vary=("impurity_magnitude", "lambda_el", "fermi_wavevector", "bare_mass", "h_n"), 
+                vary=("impurity_magnitude", "lambda_el", "fermi_wavevector", "bare_mass", "h_n"),
                 converge_iters=100, tole=1e-8, scale_mb=0.1, scale_imp=1.0, scale_kF=0.001,
                 scale_lambda_el=0.1, scale_hn=0.01)
 ```
@@ -332,9 +332,9 @@ with xarpes.trim_notebook_output(print_lines=10):
     spectrum, model, omega_range, aval_select, cost, params = self_energy.bayesian_loop(omega_min=1.0,
                 omega_max=80, omega_num=250, omega_I=20, omega_M=60,
                 aval_min=1.0, aval_max=9.0, sigma_svd=1e-4,
-                bare_mass=1.597636093, fermi_wavevector=0.2499774208, h_n=0.08181151626, 
+                bare_mass=1.597636093, fermi_wavevector=0.2499774208, h_n=0.08181151626,
                 impurity_magnitude=10.03795642, lambda_el=0.1054945571,
-                vary=("impurity_magnitude", "lambda_el", "fermi_wavevector", "bare_mass", "h_n"), 
+                vary=("impurity_magnitude", "lambda_el", "fermi_wavevector", "bare_mass", "h_n"),
                 converge_iters=100, tole=1e-8, scale_mb=0.1, scale_imp=0.1, scale_kF=0.01,
                 scale_lambda_el=0.1, scale_hn=0.1)
 ```

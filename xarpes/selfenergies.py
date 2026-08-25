@@ -126,12 +126,12 @@ class SelfEnergy:
     @property
     def hnuminPhi(self):
         return self._hnuminPhi
-    
+
     @property
     def energy_resolution(self):
         """Energy resolution associated with the self-energy."""
         return self._energy_resolution
-    
+
     @property
     def temperature(self):
         """Temperature associated with the self-energy [K]."""
@@ -223,7 +223,7 @@ class SelfEnergy:
     @property
     def amplitude(self):
         return self._amplitude
-    
+
     @amplitude.setter
     def amplitude(self, x):
         self._amplitude = x
@@ -232,7 +232,7 @@ class SelfEnergy:
     @property
     def amplitude_sigma(self):
         return self._amplitude_sigma
-    
+
     @amplitude_sigma.setter
     def amplitude_sigma(self, x):
         self._amplitude_sigma = x
@@ -241,7 +241,7 @@ class SelfEnergy:
     @property
     def peak(self):
         return self._peak
-    
+
     @peak.setter
     def peak(self, x):
         self._peak = x
@@ -254,7 +254,7 @@ class SelfEnergy:
     @property
     def peak_sigma(self):
         return self._peak_sigma
-    
+
     @peak_sigma.setter
     def peak_sigma(self, x):
         self._peak_sigma = x
@@ -265,7 +265,7 @@ class SelfEnergy:
     @property
     def broadening(self):
         return self._broadening
-    
+
     @broadening.setter
     def broadening(self, x):
         self._broadening = x
@@ -275,7 +275,7 @@ class SelfEnergy:
     @property
     def broadening_sigma(self):
         return self._broadening_sigma
-    
+
     @broadening_sigma.setter
     def broadening_sigma(self, x):
         self._broadening_sigma = x
@@ -286,7 +286,7 @@ class SelfEnergy:
     def center_wavevector(self):
         """Read-only center wavevector (SpectralQuadratic, if present)."""
         return self._center_wavevector
-    
+
     # ---------------- derived outputs ----------------
     @property
     def peak_positions(self):
@@ -313,7 +313,7 @@ class SelfEnergy:
                     * np.sin(np.deg2rad(self._peak))
                 )
         return self._peak_positions
-    
+
 
     @property
     def peak_positions_sigma(self):
@@ -327,7 +327,7 @@ class SelfEnergy:
                 * np.deg2rad(self._peak_sigma)
             )
         return self._peak_positions_sigma
-    
+
 
     @property
     def imag(self):
@@ -367,7 +367,7 @@ class SelfEnergy:
                 return None
             self._real_sigma = self._compute_real_sigma()
         return self._real_sigma
-    
+
     @property
     def a2f_spectrum(self):
         """Cached α²F(ω) spectrum from last extraction (or None)."""
@@ -749,8 +749,8 @@ class SelfEnergy:
                     self.peak_positions + self._center_wavevector
                 )
 
-        return self._mdc_maxima    
-    
+        return self._mdc_maxima
+
     def _se_legend_labels(self):
         """Return (real_label, imag_label) for legend with safe subscripts."""
         se_label = getattr(self, "label", None)
@@ -818,7 +818,7 @@ class SelfEnergy:
             rf"$-\Sigma_{{\mathrm{{{safe_label}}}}}^{{\mathrm{{{component}}}\prime\prime}}(E)$"
         )
         return real_label, imag_label
-    
+
     def _a2f_legend_labels(self):
         """Return (a2f_label, model_label) for legend with safe subscripts."""
         se_label = getattr(self, "label", None)
@@ -1652,7 +1652,7 @@ class SelfEnergy:
 
         ax.legend()
         return fig
-    
+
     @add_fig_kwargs
     def plot_spectra(self, ax=None, abscissa="forward", **kwargs):
         ax, fig, plt = get_ax_fig_plt(ax=ax)
@@ -1731,7 +1731,7 @@ class SelfEnergy:
         W=None, power=None, mu=None, omega_S=None,
         sigma_svd=None, t_criterion=None,
         g_guess=None, b_guess=None, c_guess=None, d_guess=None,
-        h_n=None, h_n_min=None,impurity_magnitude=None, lambda_el=None):
+        h_n=None, h_n_min=None, impurity_magnitude=None, lambda_el=None):
         r"""
         Extract Eliashberg function α²F(ω) from the self-energy. While working
         with band maps and MDCs is more intuitive in eV, the self-energy
@@ -2071,7 +2071,7 @@ class SelfEnergy:
 
         fermi_velocity, fermi_wavevector, bare_mass = self._prepare_bare(
             fermi_velocity, fermi_wavevector, bare_mass)
-        
+
         vary = tuple(vary) if vary is not None else ()
 
         allowed = {"fermi_wavevector", "impurity_magnitude", "lambda_el", "h_n"}
@@ -2084,14 +2084,14 @@ class SelfEnergy:
             raise NotImplementedError(
                 f"bayesian_loop does not support spectral class '{self._class}'."
             )
-        
+
         unknown = set(vary).difference(allowed)
         if unknown:
             raise ValueError(
                 f"Unsupported entries in vary: {sorted(unknown)}. "
                 f"Allowed: {sorted(allowed)}."
             )
-                        
+
         omega_num = int(omega_num)
         if omega_num < 2:
             raise ValueError("omega_num must be an integer >= 2.")
@@ -2189,10 +2189,10 @@ class SelfEnergy:
                 )
         if self._class == "SpectralQuadratic" and mb0 is None:
             raise ValueError("bayesian_loop requires an initial bare_mass.")
-        
+
         from scipy.optimize import minimize
         from . import create_kernel_function, singular_value_decomposition
-          
+
         ecut_left = float(mem_cfg["ecut_left"])
         ecut_right = mem_cfg["ecut_right"]
 
@@ -2240,7 +2240,7 @@ class SelfEnergy:
             "ecut_left": ecut_left,
             "ecut_right": ecut_right,
         }
-        
+
         def _reflect_min(xi, p0, p_min, scale):
             """Map R -> [p_min, +inf) using linear reflection around p_min."""
             return p_min + np.abs((float(p0) - p_min) + scale * float(xi))
@@ -2271,7 +2271,7 @@ class SelfEnergy:
                             "provided."
                         )
                     params["fermi_wavevector"] = kF0 + scale_kF * xi
-                    
+
                 elif name == "impurity_magnitude":
                     params["impurity_magnitude"] = _reflect_min(xi, imp0, 0.0, scale_imp)
 
@@ -2315,7 +2315,7 @@ class SelfEnergy:
             return self._cost_function(
                 optimisation_parameters=optimisation_parameters,
                 omega_min=omega_min, omega_max=omega_max, omega_num=omega_num,
-                omega_I=omega_I, omega_M=omega_M, mem_cfg=mem_cfg, 
+                omega_I=omega_I, omega_M=omega_M, mem_cfg=mem_cfg,
                 _precomp=_precomp
                 )
 
@@ -2454,7 +2454,7 @@ class SelfEnergy:
             print(" | ".join(msg))
 
             return cost_f
-        
+
         class TerminationCallback:
             def __init__(self, tole, converge_iters,
                          min_steps_for_regression):
@@ -2708,7 +2708,7 @@ class SelfEnergy:
         if self._class == "SpectralLinear":
             if bare_mass is not None:
                 raise ValueError(
-                    "SpectralLinear bayesian_loop does not accept " 
+                    "SpectralLinear bayesian_loop does not accept "
                     "`bare_mass`. Provide `fermi_velocity` instead."
                 )
 
@@ -2757,9 +2757,9 @@ class SelfEnergy:
 
         else:
             raise NotImplementedError(
-            f"_prepare_bare is not implemented for spectral class "
-            "'{self._class}'.")
-        
+            "_prepare_bare is not implemented for spectral class "
+            f"'{self._class}'.")
+
 
     def _cost_function(self, *, optimisation_parameters, omega_min, omega_max,
                     omega_num, omega_I, omega_M, mem_cfg, _precomp):
@@ -2796,7 +2796,7 @@ class SelfEnergy:
             raise ValueError(
                 f"Missing optimisation parameters: {sorted(missing)}"
             )
-        
+
         parts = mem_cfg["parts"]
         method = mem_cfg["method"]
         aval_min = float(mem_cfg["aval_min"])
@@ -2877,7 +2877,7 @@ class SelfEnergy:
 
         if _precomp is None:
             raise ValueError(
-                "_precomp is None in _cost_function. Pass the precomputed" 
+                "_precomp is None in _cost_function. Pass the precomputed"
                 " kernel/SVD bundle from bayesian_loop."
             )
 
@@ -2931,7 +2931,7 @@ class SelfEnergy:
         if real is None or imag is None:
             raise ValueError(
                 "Cannot compute self-energy arrays for cost evaluation. "
-                "Ensure the required band parameters and peak/broadening " \
+                "Ensure the required band parameters and peak/broadening "
                 "inputs are set.")
 
         real_m = real[mE] * KILO - real_el
@@ -3251,7 +3251,7 @@ class SelfEnergy:
 
         if power == 2:
             real_el = pref * x * ((np.pi * k_BT) ** 2 - W ** 2) / (1.0 + x ** 2)
-            imag_el = (pref * (enel_range ** 2 + (np.pi * k_BT) ** 2) 
+            imag_el = (pref * (enel_range ** 2 + (np.pi * k_BT) ** 2)
                        / (1.0 + x ** 2))
 
         elif power == 4:
@@ -3264,7 +3264,7 @@ class SelfEnergy:
                         ** 2) / ( 1.0 + x ** 4))
         else:
             raise ValueError(
-                "El-el coupling has not yet been implemented for the given " \
+                "El-el coupling has not yet been implemented for the given "
                 "power."
                 )
 

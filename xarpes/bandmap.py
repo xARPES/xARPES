@@ -105,11 +105,11 @@ class BandMap:
         angles = np.linspace(amin, amin + (anum - 1) * astp, anum)
         ekin = np.linspace(fmin, fmin + (fnum - 1) * fstp, fnum)
 
-        return cls(intensities=intensities, angles=angles, ekin=ekin, 
+        return cls(intensities=intensities, angles=angles, ekin=ekin,
                    **kwargs)
 
     @classmethod
-    def from_np_arrays(cls, intensities=None, angles=None, ekin=None, 
+    def from_np_arrays(cls, intensities=None, angles=None, ekin=None,
                        enel=None, **kwargs):
         """
         Construct a `BandMap` directly from NumPy arrays.
@@ -170,10 +170,10 @@ class BandMap:
         angles : array-like
             Angular axis values with shape ``(n_angle,)`` [degree].
         ekin : array-like, optional
-            Kinetic-energy axis values with shape ``(n_energy,)`` [eV]. If 
+            Kinetic-energy axis values with shape ``(n_energy,)`` [eV]. If
             provided, `ekin` becomes the authoritative energy axis.
         enel : array-like, optional
-            Binding-energy axis values with shape ``(n_energy,)`` [eV]. If 
+            Binding-energy axis values with shape ``(n_energy,)`` [eV]. If
             provided, `enel` becomes the authoritative energy axis.
         energy_resolution : float, optional
             Energy resolution of the measurement, [eV].
@@ -335,7 +335,7 @@ class BandMap:
         if not getattr(self, "_ekin_explicit", False) \
                 and self._hnuminPhi is not None and x is not None:
             self._ekin = x + self._hnuminPhi
-            
+
     @property
     def hnuminPhi(self):
         r"""Returns the photon energy minus the work function in eV if it has
@@ -372,7 +372,7 @@ class BandMap:
         -------
         hnuminPhi_std : float
             Standard deviation of energy minus the work function [eV]
-            
+
         """
         return self._hnuminPhi_std
 
@@ -401,7 +401,7 @@ class BandMap:
 
         """
         self.angles = self.angles + shift
-        
+
     def mdc_set(self, angle_min, angle_max, energy_value=None,
                 energy_range=None):
         r"""Return a set of momentum distribution curves (MDCs).
@@ -475,7 +475,7 @@ class BandMap:
             mdcs = self.intensities[energy_indices,
                                     angle_min_index:angle_max_index + 1]
 
-        return (mdcs, angle_range_out, self.angle_resolution, 
+        return (mdcs, angle_range_out, self.angle_resolution,
                 self.energy_resolution, self.temperature, enel_range_out, self.hnuminPhi)
 
     @add_fig_kwargs
@@ -767,7 +767,7 @@ class BandMap:
 
         plt.colorbar(mesh, ax=ax, label='counts (-)')
         return fig
-    
+
     @add_fig_kwargs
     def fit_fermi_edge(self, hnuminPhi_guess, background_guess=0.0,
                        integrated_weight_guess=1.0, angle_min=-np.inf,
@@ -1073,8 +1073,8 @@ class BandMap:
 
         Angl, Ekin = np.meshgrid(self.angles, self.ekin)
 
-        ax.set_xlabel('Angle ($\degree$)')
-        ax.set_ylabel('$E_{\mathrm{kin}}$ (eV)')
+        ax.set_xlabel(r'Angle ($\degree$)')
+        ax.set_ylabel(r'$E_{\mathrm{kin}}$ (eV)')
         mesh = ax.pcolormesh(Angl, Ekin, self.intensities,
                        shading='auto', cmap=plt.get_cmap('bone').reversed(),
                              zorder=1)
@@ -1102,4 +1102,4 @@ class BandMap:
                     [row_coords, col_coords], order=1)
 
         return fig
-    
+
