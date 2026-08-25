@@ -2757,8 +2757,8 @@ class SelfEnergy:
 
         else:
             raise NotImplementedError(
-            f"_prepare_bare is not implemented for spectral class "
-            "'{self._class}'.")
+            "_prepare_bare is not implemented for spectral class "
+            f"'{self._class}'.")
 
 
     def _cost_function(self, *, optimisation_parameters, omega_min, omega_max,
